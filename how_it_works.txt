@@ -1,0 +1,292 @@
+imports: os, sys, shutil, copy, BeautifulSoup
+globale constanten: ELSTART, DTDSTART, BL, TITEL
+conditionele imports op basis van o.a. os: gui toolkit
+
+getrelativepath(path,refpath): routine om path om te zetten in een hyperlink
+    relatief t.o.v. refpath
+
+getelname(x,y): routine om een tekst/naam op te bouwen op basis van een
+    tag (x) en bepaalde attribute uit een bijbehorende attribute dict (y)
+
+getshortname(x): routine om een naam in te korten indien deze langer is dan een
+    gegeven lengte en deze in dat geval te voorzien van een ellipsis
+
+DTDDialog - class waarmee de dialoog voor het opgeven van een DTD geimplementeerd
+    wordt
+    methoden onder ppygui:
+        __init__: definieren van de gui (radiobuttons)
+        on_ok: callback voor de "OK" button: geeft het geselecteerde dtd als
+            dictionary element door aan de parent en geeft de besturing terug
+        on_cancel: callback voor de "Cancel" button: geeft de besturing terug
+    methoden onder wxPython:
+        __init__: definieren van de gui (radiobuttons)
+
+LinkDialog - class waarmee de dialoog voor het definieren van een hyperlink
+    geimplementeerd wordt
+    methoden onder ppygui:
+        __init__: definieren van de gui (tekstvelden met een "kies" button)
+        kies: callback voor de kies button die een fileselector activeert en
+            de geselecteerde filenaam in het tekstveld overneemt
+        on_ok: callback voor de "OK" button: geeft de ingevulde gegevens als
+            dictionary elementen door aan de parent en geeft de besturing terug
+        on_cancel: callback voor de "Cancel" button: geeft de besturing terug
+    methoden onder wxPython:
+        __init__: definieren van de gui (tekstvelden met een "kies" button)
+        kies: callback voor de kies button die een fileselector activeert en
+            de geselecteerde filenaam in het tekstveld overneemt
+        on_ok: callback voor de OK button om te controleren of er wel een
+            filenaam is ingevuld
+
+ImageDialog - class waarmee de dialoog voor het definieren van een embedded image
+    geimplementeerd wordt
+    methoden onder ppygui:
+        __init__: definieren van de gui (tekstvelden met een "kies" button)
+        kies: callback voor de kies button die een fileselector activeert
+        on_ok: callback voor de "OK" button: geeft de ingevulde gegevens als
+            dictionary elementen door aan de parent en geeft de besturing terug
+        on_cancel: callback voor de "Cancel" button: geeft de besturing terug
+    methoden onder wxPython:
+        __init__: definieren van de gui (tekstvelden met een "kies" button)
+        kies: callback voor de kies button die een fileselector activeert en
+            de geselecteerde filenaam in het tekstveld overneemt
+        on_ok: callback voor de OK button om te controleren of er wel een
+            filenaam is ingevuld
+
+ListDialog - class waarmee de dialoog voor het definieren van een opsomming
+    geimplementeerd wordt
+    methoden onder ppygui:
+        __init__: definieren van de gui (selectors voor lijsttype en aantal;
+            tekstvelden en een "volgende" knop voor het opgeven van lijstitems)
+        on_type: callback voor de selectiebox van het type; om het aantal
+            in te vullen velden te beinvloeden
+        on_next: callback voor de "volgende" knop (zet het item in een lijst)
+        on_ok: callback voor de "OK" button: geeft de ingevulde gegevens als
+            dictionary elementen door aan de parent en geeft de besturing terug
+        on_cancel: callback voor de "Cancel" button: geeft de besturing terug
+    methoden onder wxPython:
+        __init__: definieren van de gui (selectors voor lijsttype en aantal;
+            editable grid voor het opgeven van lijstitems)
+        on_type: callback voor de selectiebox van het type; om het aantal
+            kolommen in de grid te beinvloeden
+        on_text: callback voor de spincontrol van het aantal; om het aantal
+            rijen in de grid te beinvloeden
+
+TableDialog - class waarmee de dialoog voor het definieren van een tabel
+    geimplementeerd wordt
+    methoden onder ppygui:
+        __init__: definieren van de gui (selectors voor aantal rijen en kolommen;
+            een tekstveld en een "volgende" knop voor het opgeven van headers)
+        on_next: callback voor de "volgende" knop (zet het item in een lijst)
+        on_ok: callback voor de "OK" button: geeft de ingevulde gegevens als
+            dictionary elementen door aan de parent en geeft de besturing terug
+        on_cancel: callback voor de "Cancel" button: geeft de besturing terug
+    methoden onder wxPython:
+        __init__: definieren van de gui (selectors voor aantal rijen en kolommen;
+            editable grid voor het opgeven van headers en items)
+        on_rows: callback voor de selector van het aantal rijen; om het aantal
+            rijen in de grid te beinvloeden
+        on_cols: callback voor de spincontrol van het aantal kolommen; om het
+            aantal kolommen in de grid te beinvloeden
+        on title: callback voor het grid; om bij klikken op kolomheaders de
+            titel aan te kunnen passen
+
+ElementDialog - class waarmee de dialoog voor het definieren/wijzigen van een
+    element met attributen geimplementeerd wordt
+    methoden onder ppygui:
+        __init__: definieren van de gui (tekstveld voor de tagnaam, tekstgrid voor
+            tonen van attribuut namen en waarden; tekstvelden en een "voegtoe"
+            en "verwijder" knop voor het manipuleren van een attribuut
+        on_sel: callback voor het grid om een attribuut te selecteren
+        on_edit: callback voor de edit knop om het geselecteerde attribuut te
+            verplaatsen naar de tekstvelden
+        on_del: callback voor de delete knop om het geselecteerde attribuut te
+            verwijderen
+        on_attok: callback voor de add/apply edit button om de inhoud van de
+            tekstvelden te veplaatsen naar het grid
+        on_ok: callback voor de "OK" button: geeft de opgegeven gegevens als
+            dictionary elementen door aan de parent en geeft de besturing terug
+            de opgegeven attributen worden als name-value dictionary doorgegeven
+        on_cancel: callback voor de "Cancel" button: geeft de besturing terug
+    methoden onder wxPython:
+        __init__: definieren van de gui (tekstveld voor de tagnaam, editable tekstgrid voor
+            tonen van attribuut namen en waarden; "add"  en "delete" knop voor het
+            manipuleren van het aantal regels in de grid.
+            de tag (text portie van het geselecteerde element) wordt doorgegeven zoals
+            deze in de tree staat (dus met <> ervoor)
+            de attributen (data portie van het tree element) als een dictionary
+        on_add: voegt een regel (onder) aan de grid toe
+        on_del: na selecteren van een of meer rijen worden deze uit de grid verwijderd.
+            is er niks geselecteerd dan volgt er een melding.
+
+TextDialog - class waarmee de dialoog voor het opgeven/wijzigen van een tekstdeel
+    geimplementeerd wordt
+    methoden onder ppygui:
+        __init__: definieren van de gui (tekstblok)
+        on_ok: callback voor de "OK" button: geeft de opgegeven tekst als
+            attribuut door aan de parent en geeft de besturing terug
+        on_cancel: callback voor de "Cancel" button: geeft de besturing terug
+    methoden onder wxPython:
+        __init__: definieren van de gui (tekstblok).
+            De tekst staat in de data portie van het tree element en wordt als zodanig
+            doorgegeven.
+
+
+MainFrame - class waarmee de main gui geimplementeerd wordt
+    __init__: opzetten van de gui: schermvullende treectrl
+        ppygui: dubbele root; WM2003 staat helaas geen globaal ("taskbar") menu toe
+            de tekst van de eerste root is de filenaam, het context menu van deze is het file menu
+            de tekst van de tweede root is de html tag, het context menu van deze en de
+            elementen eronder is het edit menu met daaronder het html menu
+            de emulator versie heeft het overigens meer zoals het op WM5 en hoger zou
+            zijn: een menu button onderaan met daaronder de file edit en html menu's
+            bij de menukeuzes wordt gecontroleerd of deze kunnen worden uitgevoerd op
+                basis van wat er geselecteerd is. Misschien kunnen de keuzes ook nog
+                net als in de pda versie als contextmenu gerealiseerd worden.
+        wxpython:  enkele root; pulldown menu bovenaan en context menu's
+            de tekst van het root element bevat de bestandsnaam
+            bij de menukeuzes wordt gecontroleerd of deze kunnen worden uitgevoerd op
+                basis van wat er geselecteerd is.
+    quit: callback voor de menu-optie File - Exit
+        afsluiten van de applicatie
+        GUI-AFHANKELIJK
+    newxml: callback voor de menu-optie File - New
+        maakt een initieel soup element en roept init_tree aan
+    openxml: callback voor de menu-optie File - Open
+        roept openfile aan en daarna init_tree
+    savexml: callback voor de menu-optie File - Save
+        roept savexmlas of savexmlfile aan, afhankelijk van het bestaan van self.xmlfn
+    savexmlas: callback voor de menu-optie File - SaveAs
+        toont een file selector, stelt na ok self.xmlfn in, roept savexmlfile aan en neemt xmlfn
+        over in de tree
+        file selector is uiteraard GUI-AFHANKELIJK
+    methoden onder ppygui:
+        about: toont een message met de naam van de auteur
+        openfile: toont een file selector, maakt na ok een soup element aan van het
+            file, meldt dat als het niet lukt, stelt self.rt en self.xmlfn in als
+            het wel lukt
+        init_tree:
+            zet het soup element om naar het tree widget op door aanroepen van
+            add_to_tree: recursieve functie om elementen aan de tree toe te voegen;
+                het dtd of een tekst wordt als tekst en als data opgenomen
+                een tag wordt als tekst opgenomen, de bijbehorende attributen als
+                    data in de vorm van een dictionary
+        savexmlfile:
+            maakt indien nodig een backup versie van het html bestand
+            zet de inhoud van het tree widget om een soup element door aanroepen van
+            expandnode:(gaat die try-except welwerken? bij de wx versie zorgt het
+                in elk geval voor dat hij nkis doet)
+            schrijft het soup element weg onder de bestandsnaam in self.xmlfn
+        on_bdown:
+        checkselection:
+        edit: callback voor de menu-optie Edit - Edit
+        cut: callback voor de menu-optie Edit - Cut
+        copy: callback voor de menu-optie Edit - Copy
+        delete: callback voor de menu-optie Edit-Delete
+        paste: callback voor de menu-optie Edit - Paste Before
+        paste_aft: callback voor de menu-optie Edit - Paste After
+        paste_blw: callback voor de menu-optie Edit - Paste Under
+        add_text: callback voor de menu-optie Edit - Insert text (under)
+        insert: callback voor de menu-optie Edit - Insert Element Before
+        ins_aft: callback voor de menu-optie Edit - Insert Element After
+        ins_chld: callback voor de menu-optie Edit - Insert Element Under
+        add_dtd: callback voor de menu-optie Html - Add DTD
+        add_link: callback voor de menu-optie Html - Create Link (under)
+        add_image: callback voor de menu-optie Html - Add Image (under)
+        add_list: callback voor de menu-optie Html - Add List (under)
+        add_table: callback voor de menu-optie Html - Add Table (under)
+    methoden zonder gui-specifieke zaken zijn:
+        newxml
+        openxml
+        savexml
+        cut
+        paste_aft
+        paste_blw
+        ins_aft
+        ins_chld
+    methoden onder wxPython:
+        savexmlas: callback voor de menu-optie File - SaveAs
+            toont een file selector, stelt na ok self.xmlfn in, roept
+            savexmlfile aan en neemt de xmlfn over in de tree
+        about: toont een message met de naam van de auteur
+        openfile: toont een file selector, maakt na ok een soup element aan van het
+            file, meldt dat als het niet lukt, stelt self.rt en self.xmlfn in als
+            het wel lukt
+        init_tree:
+            zet het soup element om naar het tree widget op door aanroepen van
+            add_to_tree: recursieve functie om elementen aan de tree toe te voegen;
+                het dtd of een tekst wordt als tekst en als data opgenomen
+                een tag wordt als tekst opgenomen, de bijbehorende attributen als
+                    data in de vorm van een dictionary
+        savexmlfile:
+            maakt indien nodig een backup versie van het html bestand
+            zet de inhoud van het tree widget om een soup element door aanroepen van
+            expandnode:(gaat die try-except welwerken? bij de wx versie zorgt het
+                in elk geval voor dat hij niks doet)
+            schrijft het soup element weg onder de bestandsnaam in self.xmlfn
+        on_bdown: deze methode staat er nog vanuit de ppgui versie maar wordt hier niet
+            gebruikt
+        checkselection:
+            bepaal het geselecteerde item en geef een melding als er niks geselecteerd is of
+            als het de root is (waar de filenaam in staat)
+            geeft het geselecteerde item terug als self.item en als dan niet selectie als bool
+            wordt gebruikt in onderstaande methoden om eventueel af te breken
+        edit: callback voor de menu-optie Edit - Edit
+            roept afhankelijk van de tree item tekst ElementDialog of TextDialog aan
+            na ok: pas het tree item aan conform de gewijzigde waarden in de dialoog
+                (de tag attributen worden hierbij vanuit de gridctrl in een dict gezet)
+        cut: callback voor de menu-optie Edit - Cut
+            roep copy() aan met switch cut=true
+        copy: callback voor de menu-optie Edit - Copy
+            controleer of cut/copy wel mogelijk is e.d.
+            als element: zet cut_txt op None bouw cut_el buffer op door aanroepen van
+            push_el: recursieve functie die een hierarchische list maakt van tree item
+                tekst (tag), tree item data  (attributen in de vorm van een dict), en
+                ditzelfde voor alle subelementen
+            anders: zet cut_el op None en zet tree item data in cut_txt
+        paste: callback voor de menu-optie Edit - Paste Before
+            controleer of paste wel mogelijk is e.d.
+            als tekst: voeg cut_txt toe onder het huidige tree item, of bepaal de juiste plek
+                onder de parent van het huidige tree item en voeg het daar in
+            anders: bepaal de node waaronder moet worden toegevoegd en
+                expandeer cut_el tot tree items door aanroepen van
+                zetzeronder: een recursieve functie die de hierarchische list
+                    opbreekt in elementen en deze aan de tree koppelt
+        paste_aft: callback voor de menu-optie Edit - Paste After
+            roep paste() aan met switch before=false
+        paste_blw: callback voor de menu-optie Edit - Paste Under
+            roep paste() aan met witch below = true
+        add_text: callback voor de menu-optie Edit - Insert text (under)
+            roept TextDialog aan
+            na ok: voer een tree item op onder het huidge conform de gewijzigde
+                waarden in de dialoog
+        insert: callback voor de menu-optie Edit - Insert Element Before
+            roept afhankelijk van de tree item tekst ElementDialog of TextDialog aan
+            na ok: voer een tree item op onder het huidge conform de gewijzigde
+                waarden in de dialoog (net als bij edit() worden de attributen
+                hierbij vanuit de gridctrl in een dict gezet)
+        ins_aft: callback voor de menu-optie Edit - Insert Element After
+            roep insert() aan met switch before=false
+        ins_chld: callback voor de menu-optie Edit - Insert Element Under
+            roep insert() aan met switch below=true
+        add_dtd: callback voor de menu-optie Html - Add DTD
+            roept DTDDialog aan
+            als save: bepaalt het in de dialoog gekozen DTD en voert deze op
+                in de tree
+        add_link: callback voor de menu-optie Html - Create Link (under)
+            roept LinkDialog aan
+            als save: zet de opgegeven tekstwaarden in een dict en voert een
+                a element op met deze dict als data
+        add_image: callback voor de menu-optie Html - Add Image (under)
+            roept LinkDialog aan
+            als save: zet de opgegeven tekstwaarden in een dict en voert een
+                img element op met deze dict als data
+        add_list: callback voor de menu-optie Html - Add List (under)
+            roept ListDialog aan
+            als save: bouwt op basis van de opgegeven gegevens elementen en
+                teksten op en zet ze op de juiste plek in de tree
+        add_table: callback voor de menu-optie Html - Add Table (under)
+            roept TableDialog aan
+            als save: bouwt op basis van de opgegeven gegevens elementen en
+                teksten op en zet ze op de juiste plek in de tree
+
+
