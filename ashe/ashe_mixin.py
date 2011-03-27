@@ -66,6 +66,7 @@ def getshortname(x):
 def escape(text):
     # convert non-ascii characters
     return text
+
 class editormixin(object):
     def init_fn(self):
         if self.xmlfn == '':
@@ -142,6 +143,7 @@ class editormixin(object):
             titel = '[untitled]'
         self.addtreetop(titel," - ".join((os.path.split(titel)[-1],TITEL)))
         add_to_tree(self.top,self.rt)
+        self.tree_dirty = False
 
     def edit(self, ev=None):
         pass

@@ -675,12 +675,31 @@ class MainFrame(wx.Frame,ed.editormixin):
         ed.editormixin.init_fn(self)
 
     def quit(self,ev=None):
-        self.Close()
+        if self.check_tree() != wx.CANCEL:
+            self.Close()
 
     def preview(self,ev=None):
         edt = PreviewDialog(self)
         h = edt.ShowModal()
         edt.Destroy()
+
+    def check_tree(self):
+        print "check_tree aangeroepen"
+        if self.tree_dirty:
+            h = wx.MessageBox("XML data has been modified - save before continuing?",
+                self.title,
+                style = wx.YES_NO | wx.CANCEL)
+            if h == wx.ID_YES:
+                self.savexml()
+            return h
+
+    def newxml(self, ev=None):
+        if self.check_tree() != wx.CANCEL:
+            ed.editormixin.newxml(self)
+
+    def openxml(self, ev=None):
+        if self.check_tree() != wx.CANCEL:
+            ed.editormixin.openxml(self)
 
     def savexmlas(self,ev=None):
         d,f = os.path.split(self.xmlfn) # AttributeError: 'module' object has no attribute 'split'
@@ -743,6 +762,8 @@ class MainFrame(wx.Frame,ed.editormixin):
         f = open(self.xmlfn,"w")
         f.write(str(self.bs))
         f.close()
+        self.tree_dirty = False
+
 
     def maakhtml(self):
         def expandnode(node,root,data):
@@ -880,7 +901,7 @@ class MainFrame(wx.Frame,ed.editormixin):
                 if tag != data or attrs != attrdict:
                     self.tree.SetItemText(self.item,ed.getelname(tag,attrs))
                 self.tree.SetPyData(self.item,attrs)
-            edt.Destroy()
+                self.tree_dirty = True
         else:
             data = self.tree.GetItemData(self.item).GetData()
             ## data = {'item': self.item, 'name': nam, 'value': val}
@@ -889,7 +910,8 @@ class MainFrame(wx.Frame,ed.editormixin):
                 txt = edt.txtData.GetValue()
                 self.tree.SetItemText(self.item,ed.getshortname(txt))
                 self.tree.SetPyData(self.item,txt)
-            edt.Destroy()
+                self.tree_dirty = True
+        edt.Destroy()
 
     def copy(self, ev=None, cut=False, retain=True):
         def push_el(el,result):
@@ -937,6 +959,7 @@ class MainFrame(wx.Frame,ed.editormixin):
                 self.cut_txt = data
         if cut:
             self.tree.Delete(self.item)
+            self.tree_dirty = True
             try:
                 if self.cut_txt.startswith(DTDSTART):
                     self.hasDTD = False
@@ -1024,6 +1047,7 @@ class MainFrame(wx.Frame,ed.editormixin):
             ## print node
             ## print self.cut_el
             zetzeronder(node,self.cut_el[0],i)
+        self.tree_dirty = True
 
     def add_text(self, ev=None):
         if DESKTOP and not self.checkselection():
@@ -1034,9 +1058,11 @@ class MainFrame(wx.Frame,ed.editormixin):
             new_item = self.tree.AppendItem(self.item,ed.getshortname(txt))
             self.tree.SetPyData(new_item,txt)
             # om te testen:
-            text = self.tree.GetItemText(new_item)
-            data = self.tree.GetItemPyData(new_item)
+            ## text = self.tree.GetItemText(new_item)
+            ## data = self.tree.GetItemPyData(new_item)
             ## print text,data
+            self.tree_dirty = True
+        edt.Destroy()
 
     def insert(self, ev=None,before=True,below=False):
         if DESKTOP and not self.checkselection():
@@ -1057,6 +1083,8 @@ class MainFrame(wx.Frame,ed.editormixin):
                 item = self.item if not before else self.tree.GetPrevSibling(self.item)
                 node = self.tree.InsertItem(parent,item,text)
                 self.tree.SetPyData(node,data)
+            self.tree_dirty = True
+        edt.Destroy()
 
     def add_dtd(self,ev=None):
         edt = DTDDialog(self)
@@ -1067,6 +1095,7 @@ class MainFrame(wx.Frame,ed.editormixin):
                     rr = self.tree.InsertItemBefore(self.top,0,ed.getshortname(dtd))
                     self.tree.SetPyData(rr,dtd)
                     self.hasDTD = True
+                    self.tree_dirty = True
                     break
         edt.Destroy()
 
@@ -1081,6 +1110,7 @@ class MainFrame(wx.Frame,ed.editormixin):
                 }
             rr = self.tree.AppendItem(self.item,'<> a')
             self.tree.SetPyData(rr,self.data)
+            self.tree_dirty = True
         edt.Destroy()
 
     def add_image(self,ev=None):
@@ -1095,6 +1125,7 @@ class MainFrame(wx.Frame,ed.editormixin):
                 }
             rr = self.tree.AppendItem(self.item,'<> img')
             self.tree.SetPyData(rr,self.data)
+            self.tree_dirty = True
         edt.Destroy()
 
     def add_list(self,ev=None):
@@ -1128,6 +1159,7 @@ class MainFrame(wx.Frame,ed.editormixin):
                     ## text = edt.items
                     ## rr = self.tree.AppendItem(new_data,ed.getshortname(text))
                     ## self.tree.SetPyData(rr,text)
+            self.tree_dirty = True
         edt.Destroy()
 
     def add_table(self,ev=None):
@@ -1157,6 +1189,7 @@ class MainFrame(wx.Frame,ed.editormixin):
                     text = edt.tblTable.GetCellValue(row,col)
                     rr = self.tree.AppendItem(new_cell,ed.getshortname(text)) # BL)
                     self.tree.SetPyData(rr, text) # BL)
+            self.tree_dirty = True
         edt.Destroy()
 
 class MainGui(object):
