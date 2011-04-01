@@ -1,5 +1,6 @@
 ﻿import os,sys,shutil,copy
 import BeautifulSoup as bs
+import string
 ELSTART = '<>'
 DTDSTART = "<!DOCTYPE"
 BL = "&nbsp;"
@@ -435,6 +436,7 @@ class ElementDialog(wx.Dialog):
     def __init__(self,parent,title='',tag=None,attrs=None):
         wx.Dialog.__init__(self,parent,-1,title=title) # action=("Cancel", self.on_cancel))
         self.pnl = wx.Panel(self,-1)
+        self.parent = parent
         vbox = wx.BoxSizer(wx.VERTICAL)
         hbox = wx.BoxSizer(wx.HORIZONTAL)
         lblName = wx.StaticText(self.pnl,-1, "element name:")
@@ -480,7 +482,7 @@ class ElementDialog(wx.Dialog):
 
         hbox = wx.BoxSizer(wx.HORIZONTAL)
         self.bOk = wx.Button(self.pnl,id=wx.ID_SAVE) # label='Save')
-        ## self.bOk.Bind(wx.EVT_BUTTON,self.on_ok)
+        self.bOk.Bind(wx.EVT_BUTTON,self.on_ok)
         self.bCancel = wx.Button(self.pnl,id=wx.ID_CANCEL) #label='Cancel')
         ## self.bCancel.Bind(wx.EVT_BUTTON,self.on_cancel)
         self.SetAffirmativeId(wx.ID_SAVE)
@@ -507,7 +509,20 @@ class ElementDialog(wx.Dialog):
             for ix in s:
                 self.tblAttr.DeleteRows(ix,1)
         else:
-            wx.MessageBox("Select a row by clicking on the row heading",'Selection is empty',wx.ICON_INFORMATION)
+            wx.MessageBox("Select a row by clicking on the row heading",
+                'Selection is empty',wx.ICON_INFORMATION)
+
+    def on_ok(self,ev=None):
+        tag = self.txtTag.GetValue()
+        ok = True
+        test = string.ascii_letters + string.digits
+        for letter in tag:
+            if tag not in test:
+                ok = False
+                wx.MessageBox('Illegal character(s) in tag name',
+                    self.parent.title, wx.ICON_ERROR)
+        if ok:
+            ev.Skip()
 
 class TextDialog(wx.Dialog):
     def __init__(self,parent,title='',text=None):
