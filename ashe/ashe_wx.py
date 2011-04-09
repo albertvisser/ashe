@@ -572,21 +572,21 @@ class MainFrame(wx.Frame,ed.editormixin):
         self.FM_PVW = wx.NewId()
         self.FM_XIT = wx.NewId()
 
-        self.filemenu.Append(self.FM_NEW,"&New")
-        self.filemenu.Append(self.FM_OPN,"&Open")
-        self.filemenu.Append(self.FM_SAV,'&Save')
+        self.filemenu.Append(self.FM_NEW,"&New      Ctrl-N")
+        self.filemenu.Append(self.FM_OPN,"&Open     Ctrl-O")
+        self.filemenu.Append(self.FM_SAV,'&Save     Ctrl-S')
         self.filemenu.Append(self.FM_SAS,'Save &As')
         self.filemenu.AppendSeparator()
         self.filemenu.Append(self.FM_PVW,'Pre&view')
         self.filemenu.AppendSeparator()
-        self.filemenu.Append(self.FM_XIT,'E&xit')
+        self.filemenu.Append(self.FM_XIT,'E&xit     Ctrl-Q, Alt-F4')
         menuBar.Append(self.filemenu, "&File")
 
         self.viewmenu = wx.Menu()
         self.VW_EXP = wx.NewId()
         self.VW_CLP = wx.NewId()
-        self.viewmenu.Append(self.VW_EXP,"Expand All (sub)Levels")
-        self.viewmenu.Append(self.VW_CLP,"Collapse All (sub)Levels")
+        self.viewmenu.Append(self.VW_EXP,"Expand All (sub)Levels    Ctrl +")
+        self.viewmenu.Append(self.VW_CLP,"Collapse All (sub)Levels  Ctrl -")
         menuBar.Append(self.viewmenu, "&View")
 
         self.editmenu = wx.Menu()
@@ -601,19 +601,30 @@ class MainFrame(wx.Frame,ed.editormixin):
         self.EM_IA = wx.NewId()
         self.EM_IU = wx.NewId()
         self.EM_DEL = wx.NewId()
-        self.editmenu.Append(self.EM_EDT,"Edit")
+        self.editmenu.Append(self.EM_EDT,
+            "Edit                    F2")
         self.editmenu.AppendSeparator()
-        self.editmenu.Append(self.EM_CUT,"Cut")
-        self.editmenu.Append(self.EM_CPY,"Copy")
-        self.pastebeforeitem = self.editmenu.Append(self.EM_PB,"Paste Before")
-        self.pasteafteritem = self.editmenu.Append(self.EM_PA,"Paste After")
-        self.pastebelowitem = self.editmenu.Append(self.EM_PU,"Paste Under")
+        self.editmenu.Append(self.EM_CUT,
+            "Cut                     Ctrl-X")
+        self.editmenu.Append(self.EM_CPY,
+            "Copy                    Ctrl-C")
+        self.pastebeforeitem = self.editmenu.Append(self.EM_PB,
+            "Paste Before            Shft-Ctrl-V")
+        self.pasteafteritem = self.editmenu.Append(self.EM_PA,
+            "Paste After             Alt-Ctrl-V")
+        self.pastebelowitem = self.editmenu.Append(self.EM_PU,
+            "Paste Under             Ctrl-V")
         self.editmenu.AppendSeparator()
-        self.editmenu.Append(self.EM_DEL,"Delete")
-        self.editmenu.Append(self.EM_IT,"Insert Text (under)")
-        self.editmenu.Append(self.EM_IB,'Insert Element Before')
-        self.editmenu.Append(self.EM_IA,'Insert Element After')
-        self.editmenu.Append(self.EM_IU,'Insert Element Under')
+        self.editmenu.Append(self.EM_DEL,
+            "Delete                  Del")
+        self.editmenu.Append(self.EM_IT,
+            "Insert Text (under)     Ctrl-Ins")
+        self.editmenu.Append(self.EM_IB,
+            'Insert Element Before   Shft-Ins')
+        self.editmenu.Append(self.EM_IA,
+            'Insert Element After    Alt-Ins')
+        self.editmenu.Append(self.EM_IU,
+            'Insert Element Under    Ins')
         ## self.pastebeforeitem.title = "Nothing to Paste"
         ## self.pastebeforeitem.enable(False)
         ## self.pasteafteritem.title = " "
@@ -675,6 +686,7 @@ class MainFrame(wx.Frame,ed.editormixin):
         self.tree.Bind(wx.EVT_LEFT_DCLICK, self.onLeftDClick)
         self.tree.Bind(wx.EVT_RIGHT_DOWN, self.OnRightDown)
         ## self.tree.Bind(wx.EVT_CONTEXT_MENU, self.onContextMenu)
+        self.tree.Bind(wx.EVT_KEY_DOWN, self.on_key)
 
         sizer0 = wx.BoxSizer(wx.VERTICAL)
         sizer1 = wx.BoxSizer(wx.HORIZONTAL)
@@ -687,6 +699,7 @@ class MainFrame(wx.Frame,ed.editormixin):
         sizer0.SetSizeHints(self.pnl)
         self.pnl.Layout()
         self.Show(True)
+        self.tree.SetFocus()
 
         ed.editormixin.init_fn(self)
 
@@ -882,6 +895,57 @@ class MainFrame(wx.Frame,ed.editormixin):
             ## print "klaar met menu"
             menu.Destroy()
         ## pass
+
+    def on_key(self,event):
+        """afhandeling toetscombinaties"""
+        ## pass # for now
+        skip = True
+        keycode = event.GetKeyCode()
+        mods = event.GetModifiers()
+        win = event.GetEventObject()
+        if keycode == wx.WXK_INSERT and win == self.tree:
+            if mods == wx.MOD_CONTROL:
+                self.add_text()
+            elif mods == wx.MOD_SHIFT:
+                self.insert()
+            elif mods == wx.MOD_ALT:
+                self.ins_aft()
+            else:
+                self.ins_chld()
+        elif keycode == ord("V"):
+            if mods == wx.MOD_CONTROL:
+                self.paste_blw()
+            elif mods == wx.MOD_CONTROL | wx.MOD_SHIFT:
+                self.paste()
+            elif mods == wx.MOD_CONTROL | wx.MOD_ALT:
+                self.paste_aft()
+        elif mods == wx.MOD_CONTROL:
+            if keycode == ord("O"):
+                self.openxml()
+            elif keycode == ord("N"):
+                self.newxml()
+            elif keycode == ord("S"):
+                self.savexml()
+            elif keycode == ord("Q"):
+                self.quit()
+            elif keycode == ord("X") and win == self.tree:
+                self.cut()
+            elif keycode == ord("C") and win == self.tree:
+                self.copy()
+            elif keycode == ord("+") and win == self.tree:
+                self.expand()
+            elif keycode == ord("-") and win == self.tree:
+                self.collapse()
+        ## elif keycode == wx.WXK_F1:
+            ## self.help_page()
+        elif keycode == wx.WXK_F2: # and win == self.tree:
+            self.edit()
+        elif keycode == wx.WXK_DELETE and win == self.tree:
+            self.delete()
+        ## elif keycode == wx.WXK_ESCAPE:
+            ## self.afsl()
+        if event and skip:
+            event.Skip()
 
     def checkselection(self):
         sel = True
@@ -1083,7 +1147,13 @@ class MainFrame(wx.Frame,ed.editormixin):
     def insert(self, ev=None,before=True,below=False):
         if DESKTOP and not self.checkselection():
             return
-        edt = ElementDialog(self,title="New element")
+        if below:
+            where = "under"
+        elif before:
+            where = "before"
+        else:
+            where = "after"
+        edt = ElementDialog(self,title="New element (insert {0})".format(where))
         if edt.ShowModal() == wx.ID_SAVE:
             tag = edt.txtTag.GetValue()
             attrs = {}
