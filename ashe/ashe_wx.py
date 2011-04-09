@@ -517,10 +517,11 @@ class ElementDialog(wx.Dialog):
         ok = True
         test = string.ascii_letters + string.digits
         for letter in tag:
-            if tag not in test:
+            if letter not in test:
                 ok = False
                 wx.MessageBox('Illegal character(s) in tag name',
                     self.parent.title, wx.ICON_ERROR)
+                break
         if ok:
             ev.Skip()
 
