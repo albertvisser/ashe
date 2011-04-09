@@ -24,7 +24,7 @@ class PreviewDialog(wx.Dialog):
         wx.Dialog.__init__(self,parent,title='Preview HTML',size=(1024,800),
             style = wx.DEFAULT_DIALOG_STYLE | wx.RESIZE_BORDER ,
             ) #,action=("Cancel", self.on_cancel))
-        self.pnl = wx.Panel(self,-1)
+        self.pnl = self # wx.Panel(self,-1)
 
         self.parent.maakhtml()
         self.data_file = "tempfile.html"
@@ -54,7 +54,7 @@ class DTDDialog(wx.Dialog):
     # AttributeError: 'module' object has no attribute 'RadioGroup'
     def __init__(self,parent):
         wx.Dialog.__init__(self,parent,title="Add DTD") # ,action=("Cancel", self.on_cancel))
-        self.pnl = wx.Panel(self,-1)
+        self.pnl = self # wx.Panel(self,-1)
         self.rbgDTD = [
             ['HTML 4.1 Strict',       '<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">'],
             ['HTML 4.1 Transitional', '<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">'],
@@ -99,7 +99,8 @@ class DTDDialog(wx.Dialog):
         self.bCancel = wx.Button(self.pnl,id=wx.ID_CANCEL) #label='Cancel')
         hbox.Add(self.bOk,0,wx.EXPAND | wx.ALL, 2)
         hbox.Add(self.bCancel,0,wx.EXPAND | wx.ALL, 2)
-        vbox.Add(hbox,0, wx.ALL | wx.ALIGN_CENTER_HORIZONTAL | wx.ALIGN_CENTER_VERTICAL,5)
+        vbox.Add(hbox, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM |
+            wx.ALIGN_CENTER_HORIZONTAL | wx.ALIGN_CENTER_VERTICAL, 15)
         self.pnl.SetSizer(vbox)
         self.pnl.SetAutoLayout(True)
         vbox.Fit(self.pnl)
@@ -111,28 +112,34 @@ class LinkDialog(wx.Dialog):
     def __init__(self,parent):
         self.parent = parent
         wx.Dialog.__init__(self,parent,title='Add Link') #,action=("Cancel", self.on_cancel))
-        self.pnl = wx.Panel(self,-1)
+        self.pnl = self # wx.Panel(self,-1)
         vbox = wx.BoxSizer(wx.VERTICAL) # border=(15,15,15,15))
 
         box = wx.StaticBox(self.pnl,-1)
         sbox = wx.StaticBoxSizer(box,wx.VERTICAL)
         gbox = wx.GridBagSizer(4,4)
+
+        lblTitle = wx.StaticText(self.pnl,-1, "descriptive title:")
+        gbox.Add(lblTitle,(0,0),(1,1),wx.ALIGN_CENTER_VERTICAL)
+        self.txtTitle = wx.TextCtrl(self.pnl,-1,size=(250,-1))
+        gbox.Add(self.txtTitle,(0,1))
+
         lblLink = wx.StaticText(self.pnl,-1, "link to document:")
-        gbox.Add(lblLink,(0,0),(1,1),wx.ALIGN_CENTER_VERTICAL)
+        gbox.Add(lblLink,(1,0),(1,1),wx.ALIGN_CENTER_VERTICAL)
         self.txtLink = wx.TextCtrl(self.pnl,-1,size=(250,-1),value="http://")
-        gbox.Add(self.txtLink,(0,1))
+        gbox.Add(self.txtLink,(1,1))
 
         self.bKies = wx.Button(self.pnl,-1,'Search')
         self.bKies.Bind(wx.EVT_BUTTON,self.kies)
-        gbox.Add(self.bKies,(1,0),(1,2),wx.ALIGN_CENTER_HORIZONTAL)
+        gbox.Add(self.bKies,(2,0),(1,2),wx.ALIGN_CENTER_HORIZONTAL)
 
-        lblTitle = wx.StaticText(self.pnl,-1, "descriptive title:")
-        gbox.Add(lblTitle,(2,0),(1,1),wx.ALIGN_CENTER_VERTICAL)
-        self.txtTitle = wx.TextCtrl(self.pnl,-1,size=(250,-1))
-        gbox.Add(self.txtTitle,(2,1))
+        lblText = wx.StaticText(self.pnl,-1, "link text:")
+        gbox.Add(lblText,(3,0),(1,1),wx.ALIGN_CENTER_VERTICAL)
+        self.txtText = wx.TextCtrl(self.pnl,-1,size=(250,-1))
+        gbox.Add(self.txtText,(3,1))
 
         sbox.Add(gbox,0,wx.ALL,10)
-        vbox.Add(sbox,0,wx.ALL,15)
+        vbox.Add(sbox, 0, wx.LEFT | wx.RIGHT | wx.TOP, 15)
 
         hbox = wx.BoxSizer(wx.HORIZONTAL)
         self.bOk = wx.Button(self.pnl,id=wx.ID_SAVE) # label='Save')
@@ -141,13 +148,15 @@ class LinkDialog(wx.Dialog):
         self.SetAffirmativeId(wx.ID_SAVE)
         hbox.Add(self.bOk,0,wx.EXPAND | wx.ALL, 2)
         hbox.Add(self.bCancel,0,wx.EXPAND | wx.ALL, 2)
-        vbox.Add(hbox,0, wx.ALL | wx.ALIGN_CENTER_HORIZONTAL | wx.ALIGN_CENTER_VERTICAL,2)
+        vbox.Add(hbox, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM |
+            wx.ALIGN_CENTER_HORIZONTAL | wx.ALIGN_CENTER_VERTICAL, 15)
 
         self.pnl.SetSizer(vbox)
         self.pnl.SetAutoLayout(True)
         vbox.Fit(self.pnl)
         vbox.SetSizeHints(self.pnl)
         self.pnl.Layout()
+        self.txtTitle.SetFocus()
 
     def kies(self,ev=None):
         dlg = wx.FileDialog(
@@ -178,25 +187,26 @@ class ImageDialog(wx.Dialog):
     def __init__(self,parent):
         wx.Dialog.__init__(self,parent,title='Add Image') #,action=("Cancel", self.on_cancel))
         self.parent = parent
-        self.pnl = wx.Panel(self,-1)
+        self.pnl = self # wx.Panel(self,-1)
         vbox = wx.BoxSizer(wx.VERTICAL) # border=(15,15,15,15))
 
         box = wx.StaticBox(self.pnl,-1)
         sbox = wx.StaticBoxSizer(box,wx.VERTICAL)
         gbox = wx.GridBagSizer(4,4)
+
+        lblTitle = wx.StaticText(self.pnl,-1, "descriptive title:")
+        gbox.Add(lblTitle,(0,0),(1,1),wx.ALIGN_CENTER_VERTICAL)
+        self.txtTitle = wx.TextCtrl(self.pnl,-1,size=(250,-1))
+        gbox.Add(self.txtTitle,(0,1))
+
         lblLink = wx.StaticText(self.pnl,-1, "link to image:")
-        gbox.Add(lblLink,(0,0),(1,1),wx.ALIGN_CENTER_VERTICAL)
+        gbox.Add(lblLink,(1,0),(1,1),wx.ALIGN_CENTER_VERTICAL)
         self.txtLink = wx.TextCtrl(self.pnl,-1,size=(250,-1),value="http://")
-        gbox.Add(self.txtLink,(0,1))
+        gbox.Add(self.txtLink,(1,1))
 
         self.bKies = wx.Button(self.pnl,-1,'Search')
         self.bKies.Bind(wx.EVT_BUTTON,self.kies)
-        gbox.Add(self.bKies,(1,0),(1,2),wx.ALIGN_CENTER_HORIZONTAL)
-
-        lblTitle = wx.StaticText(self.pnl,-1, "descriptive title:")
-        gbox.Add(lblTitle,(2,0),(1,1),wx.ALIGN_CENTER_VERTICAL)
-        self.txtTitle = wx.TextCtrl(self.pnl,-1,size=(250,-1))
-        gbox.Add(self.txtTitle,(2,1))
+        gbox.Add(self.bKies,(2,0),(1,2),wx.ALIGN_CENTER_HORIZONTAL)
 
         lblAlt = wx.StaticText(self.pnl,-1, "alternate text:")
         gbox.Add(lblAlt,(3,0),(1,1),wx.ALIGN_CENTER_VERTICAL)
@@ -204,7 +214,7 @@ class ImageDialog(wx.Dialog):
         gbox.Add(self.txtAlt,(3,1))
 
         sbox.Add(gbox,0,wx.ALL,10)
-        vbox.Add(sbox,0,wx.ALL,15)
+        vbox.Add(sbox,0, wx.LEFT | wx.RIGHT | wx.TOP, 15)
 
         hbox = wx.BoxSizer(wx.HORIZONTAL)
         self.bOk = wx.Button(self.pnl,id=wx.ID_SAVE) # label='Save')
@@ -213,13 +223,15 @@ class ImageDialog(wx.Dialog):
         self.SetAffirmativeId(wx.ID_SAVE)
         hbox.Add(self.bOk,0,wx.EXPAND | wx.ALL, 2)
         hbox.Add(self.bCancel,0,wx.EXPAND | wx.ALL, 2)
-        vbox.Add(hbox,0, wx.ALL | wx.ALIGN_CENTER_HORIZONTAL | wx.ALIGN_CENTER_VERTICAL,2)
+        vbox.Add(hbox, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM |
+            wx.ALIGN_CENTER_HORIZONTAL | wx.ALIGN_CENTER_VERTICAL, 15)
 
         self.pnl.SetSizer(vbox)
         self.pnl.SetAutoLayout(True)
         vbox.Fit(self.pnl)
         vbox.SetSizeHints(self.pnl)
         self.pnl.Layout()
+        self.txtTitle.SetFocus()
 
     def kies(self,ev=None):
         dlg = wx.FileDialog(
@@ -251,7 +263,7 @@ class ListDialog(wx.Dialog):
         self.items = []
         self.dataitems = []
         wx.Dialog.__init__(self,parent,title='Add List') #,action=("Cancel", self.on_cancel))
-        self.pnl = wx.Panel(self,-1)
+        self.pnl = self # wx.Panel(self,-1)
         vbox = wx.BoxSizer(wx.VERTICAL) # border=(15,15,15,15))
 
         box = wx.StaticBox(self.pnl,-1)
@@ -287,7 +299,7 @@ class ListDialog(wx.Dialog):
         tbl.SetColSize(0,240)
         self.tblList = tbl
         sbox.Add(self.tblList,0,wx.ALL,2)
-        vbox.Add(sbox,0,wx.LEFT,20)
+        vbox.Add(sbox, 0, wx.LEFT | wx.RIGHT | wx.TOP, 20)
 
         hbox = wx.BoxSizer(wx.HORIZONTAL)
         self.bOk = wx.Button(self.pnl,id=wx.ID_SAVE) # label='Save')
@@ -295,13 +307,15 @@ class ListDialog(wx.Dialog):
         self.SetAffirmativeId(wx.ID_SAVE)
         hbox.Add(self.bOk,0,wx.EXPAND | wx.ALL, 2)
         hbox.Add(self.bCancel,0,wx.EXPAND | wx.ALL, 2)
-        vbox.Add(hbox,0, wx.ALL | wx.ALIGN_CENTER_HORIZONTAL | wx.ALIGN_CENTER_VERTICAL,2)
+        vbox.Add(hbox, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM |
+            wx.ALIGN_CENTER_HORIZONTAL | wx.ALIGN_CENTER_VERTICAL, 20)
 
         self.pnl.SetSizer(vbox)
         self.pnl.SetAutoLayout(True)
         vbox.Fit(self.pnl)
         vbox.SetSizeHints(self.pnl)
         self.pnl.Layout()
+        self.cmbType.SetFocus()
 
     def on_type(self,ev=None):
         s = self.cmbType.GetValue()
@@ -338,7 +352,7 @@ class TableDialog(wx.Dialog):
     #
     def __init__(self,parent):
         wx.Dialog.__init__(self,parent,-1,title='Add Table') #,action=("Cancel", self.on_cancel))
-        self.pnl = wx.Panel(self,-1)
+        self.pnl = self # wx.Panel(self,-1)
         self.headings = []
         vbox = wx.BoxSizer(wx.VERTICAL) # border=(15,15,15,15))
 
@@ -346,7 +360,13 @@ class TableDialog(wx.Dialog):
         sbox = wx.StaticBoxSizer(box,wx.VERTICAL)
 
         ## tbox = wx.TBox(2,2,border=(2,2,20,2),spacing_x=2,spacing_y=2)
-        tbox = wx.FlexGridSizer(2, 2, 2, 2)  # rows, cols, vgap, hgap
+        tbox = wx.FlexGridSizer(3, 2, 2, 2)  # rows, cols, vgap, hgap
+
+        lblTitle = wx.StaticText(self.pnl,-1, "summary (description):")
+        tbox.Add(lblTitle)
+        self.txtTitle = wx.TextCtrl(self.pnl,-1,size=(250,-1))
+        tbox.Add(self.txtTitle)
+
         lblRows = wx.StaticText(self.pnl,-1, "initial number of rows:")
         ## self.txtRows = wx.TextCtrl(self.pnl,-1)
         self.txtRows = wx.SpinCtrl(self.pnl,-1,size=(40,-1))
@@ -372,7 +392,7 @@ class TableDialog(wx.Dialog):
         tbl.Bind(wxgrid.EVT_GRID_LABEL_RIGHT_DCLICK, self.on_title)
         self.tblTable = tbl
         sbox.Add(self.tblTable,0,wx.ALL,2)
-        vbox.Add(sbox,0,wx.LEFT,20)
+        vbox.Add(sbox, 0, wx.LEFT | wx.RIGHT | wx.TOP, 20)
 
         hbox = wx.BoxSizer(wx.HORIZONTAL)
         self.bOk = wx.Button(self.pnl,id=wx.ID_SAVE) # label='Save')
@@ -380,13 +400,15 @@ class TableDialog(wx.Dialog):
         self.SetAffirmativeId(wx.ID_SAVE)
         hbox.Add(self.bOk,0,wx.EXPAND | wx.ALL, 2)
         hbox.Add(self.bCancel,0,wx.EXPAND | wx.ALL, 2)
-        vbox.Add(hbox,0, wx.ALL | wx.ALIGN_CENTER_HORIZONTAL | wx.ALIGN_CENTER_VERTICAL,2)
+        vbox.Add(hbox, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM |
+            wx.ALIGN_CENTER_HORIZONTAL | wx.ALIGN_CENTER_VERTICAL, 20)
 
         self.pnl.SetSizer(vbox)
         self.pnl.SetAutoLayout(True)
         vbox.Fit(self.pnl)
         vbox.SetSizeHints(self.pnl)
         self.pnl.Layout()
+        self.txtTitle.SetFocus()
 
     def on_rows(self,ev=None):
         try:
@@ -435,7 +457,7 @@ class TableDialog(wx.Dialog):
 class ElementDialog(wx.Dialog):
     def __init__(self,parent,title='',tag=None,attrs=None):
         wx.Dialog.__init__(self,parent,-1,title=title) # action=("Cancel", self.on_cancel))
-        self.pnl = wx.Panel(self,-1)
+        self.pnl = self # wx.Panel(self,-1)
         self.parent = parent
         vbox = wx.BoxSizer(wx.VERTICAL)
         hbox = wx.BoxSizer(wx.HORIZONTAL)
@@ -446,7 +468,7 @@ class ElementDialog(wx.Dialog):
             ## self.txtTag.readonly=True
         hbox.Add(lblName,0,wx.ALIGN_CENTER_VERTICAL)
         hbox.Add(self.txtTag,0,wx.ALIGN_CENTER_VERTICAL)
-        vbox.Add(hbox,0,wx.LEFT,20)
+        vbox.Add(hbox, 0, wx.LEFT | wx.RIGHT | wx.TOP, 20)
 
         box = wx.StaticBox(self.pnl,-1)
         sbox = wx.StaticBoxSizer(box,wx.VERTICAL)
@@ -478,7 +500,7 @@ class ElementDialog(wx.Dialog):
         hbox.Add(self.bAdd,0,wx.EXPAND | wx.ALL, 1)
         hbox.Add(self.bDel,0,wx.EXPAND | wx.ALL, 1)
         sbox.Add(hbox,0, wx.ALL | wx.ALIGN_CENTER_HORIZONTAL,1) # ,wx.EXPAND|wx.ALL,5)
-        vbox.Add(sbox,0,wx.LEFT,20)
+        vbox.Add(sbox,0, wx.LEFT | wx.RIGHT ,20)
 
         hbox = wx.BoxSizer(wx.HORIZONTAL)
         self.bOk = wx.Button(self.pnl,id=wx.ID_SAVE) # label='Save')
@@ -488,13 +510,15 @@ class ElementDialog(wx.Dialog):
         self.SetAffirmativeId(wx.ID_SAVE)
         hbox.Add(self.bOk,0,wx.EXPAND | wx.ALL, 2)
         hbox.Add(self.bCancel,0,wx.EXPAND | wx.ALL, 2)
-        vbox.Add(hbox,0, wx.ALL | wx.ALIGN_CENTER_HORIZONTAL | wx.ALIGN_CENTER_VERTICAL,2)
+        vbox.Add(hbox, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM |
+            wx.ALIGN_CENTER_HORIZONTAL | wx.ALIGN_CENTER_VERTICAL, 20)
 
         self.pnl.SetSizer(vbox)
         self.pnl.SetAutoLayout(True)
         vbox.Fit(self.pnl)
         vbox.SetSizeHints(self.pnl)
         self.pnl.Layout()
+        self.txtTag.SetFocus()
         ## self.Show(True)
 
     def on_add(self,ev=None):
@@ -530,26 +554,28 @@ class TextDialog(wx.Dialog):
         if text is None:
             text = ''
         wx.Dialog.__init__(self,parent,-1,title) #,action=("Cancel", self.on_cancel))
-        self.pnl = wx.Panel(self,-1)
+        self.pnl = self # wx.Panel(self,-1)
         vbox = wx.BoxSizer(wx.VERTICAL)
         hbox = wx.BoxSizer(wx.HORIZONTAL)
         self.txtData = wx.TextCtrl(self.pnl,-1, size=(340,175), style=wx.TE_MULTILINE)
         self.txtData.SetValue(text)
         hbox.Add(self.txtData,1,wx.EXPAND | wx.ALL,5)
-        vbox.Add(hbox,0,wx.LEFT,20)
+        vbox.Add(hbox, 0, wx.LEFT | wx.RIGHT | wx.TOP, 20)
         hbox = wx.BoxSizer(wx.HORIZONTAL)
         self.bOk = wx.Button(self.pnl,id=wx.ID_SAVE) # label='Save')
         self.bCancel = wx.Button(self.pnl,id=wx.ID_CANCEL) #label='Cancel')
         self.SetAffirmativeId(wx.ID_SAVE)
         hbox.Add(self.bOk,0,wx.EXPAND | wx.ALL, 2)
         hbox.Add(self.bCancel,0,wx.EXPAND | wx.ALL, 2)
-        vbox.Add(hbox,0, wx.ALL | wx.ALIGN_CENTER_HORIZONTAL | wx.ALIGN_CENTER_VERTICAL,2)
+        vbox.Add(hbox, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM |
+            wx.ALIGN_CENTER_HORIZONTAL | wx.ALIGN_CENTER_VERTICAL, 20)
         self.sizer = vbox
         self.pnl.SetSizer(vbox)
         self.pnl.SetAutoLayout(True)
         vbox.Fit(self.pnl)
         vbox.SetSizeHints(self.pnl)
         self.pnl.Layout()
+        self.txtData.SetFocus()
 
 class MainFrame(wx.Frame,ed.editormixin):
     def __init__(self,parent,id,fn=''):
@@ -1196,6 +1222,9 @@ class MainFrame(wx.Frame,ed.editormixin):
                 }
             rr = self.tree.AppendItem(self.item,'<> a')
             self.tree.SetPyData(rr,self.data)
+            txt = edt.txtText.GetValue()
+            new_item = self.tree.AppendItem(rr, ed.getshortname(txt))
+            self.tree.SetPyData(new_item,txt)
             self.tree_dirty = True
         edt.Destroy()
 
@@ -1256,6 +1285,7 @@ class MainFrame(wx.Frame,ed.editormixin):
             cols = edt.tblTable.GetNumberCols() #int(edt.txtCols.GetValue())
             rows = edt.tblTable.GetNumberRows() #int(edt.txtRows.GetValue())
             new_item = self.tree.AppendItem(self.item,'<> table')
+            self.tree.SetPyData(new_item, {"summary:": edt.txtTitle.GetValue()})
             new_row = self.tree.AppendItem(new_item,'<> tr')
             for col in range(cols):
                 new_head = self.tree.AppendItem(new_row,'<> th')
