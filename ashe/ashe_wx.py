@@ -21,7 +21,7 @@ import wx.html as  html
 class PreviewDialog(wx.Dialog):
     def __init__(self,parent):
         self.parent = parent
-        wx.Dialog.__init__(self,parent,title='Preview HTML',size=(1024,800),
+        wx.Dialog.__init__(self,parent,title='Preview HTML',size=(1024,600),
             style = wx.DEFAULT_DIALOG_STYLE | wx.RESIZE_BORDER ,
             ) #,action=("Cancel", self.on_cancel))
         self.pnl = self # wx.Panel(self,-1)
@@ -262,7 +262,9 @@ class ListDialog(wx.Dialog):
     def __init__(self,parent):
         self.items = []
         self.dataitems = []
-        wx.Dialog.__init__(self,parent,title='Add List') #,action=("Cancel", self.on_cancel))
+        wx.Dialog.__init__(self,parent,title='Add List',
+            style = wx.DEFAULT_DIALOG_STYLE | wx.RESIZE_BORDER ,
+            ) #,action=("Cancel", self.on_cancel))
         self.pnl = self # wx.Panel(self,-1)
         vbox = wx.BoxSizer(wx.VERTICAL) # border=(15,15,15,15))
 
@@ -298,8 +300,8 @@ class ListDialog(wx.Dialog):
         tbl.SetColLabelValue(0,'list item')
         tbl.SetColSize(0,240)
         self.tblList = tbl
-        sbox.Add(self.tblList,0,wx.ALL,2)
-        vbox.Add(sbox, 0, wx.LEFT | wx.RIGHT | wx.TOP, 20)
+        sbox.Add(self.tblList, 1, wx.EXPAND | wx.ALL, 2)
+        vbox.Add(sbox, 1, wx.EXPAND | wx.LEFT | wx.RIGHT | wx.TOP, 20)
 
         hbox = wx.BoxSizer(wx.HORIZONTAL)
         self.bOk = wx.Button(self.pnl,id=wx.ID_SAVE) # label='Save')
@@ -351,7 +353,9 @@ class ListDialog(wx.Dialog):
 class TableDialog(wx.Dialog):
     #
     def __init__(self,parent):
-        wx.Dialog.__init__(self,parent,-1,title='Add Table') #,action=("Cancel", self.on_cancel))
+        wx.Dialog.__init__(self,parent,-1,title='Add Table',
+            style = wx.DEFAULT_DIALOG_STYLE | wx.RESIZE_BORDER ,
+            ) #,action=("Cancel", self.on_cancel))
         self.pnl = self # wx.Panel(self,-1)
         self.headings = []
         vbox = wx.BoxSizer(wx.VERTICAL) # border=(15,15,15,15))
@@ -384,15 +388,15 @@ class TableDialog(wx.Dialog):
         tbox.Add(self.txtCols)
         sbox.Add(tbox,0,wx.ALL,5)
 
-        tbl = wxgrid.Grid(self.pnl,-1,size=(340,120))
+        tbl = wxgrid.Grid(self.pnl,-1 ,size=(340,120))
         tbl.CreateGrid(0,0)
         tbl.Bind(wxgrid.EVT_GRID_LABEL_LEFT_CLICK, self.on_title)
         tbl.Bind(wxgrid.EVT_GRID_LABEL_RIGHT_CLICK, self.on_title)
         tbl.Bind(wxgrid.EVT_GRID_LABEL_LEFT_DCLICK, self.on_title)
         tbl.Bind(wxgrid.EVT_GRID_LABEL_RIGHT_DCLICK, self.on_title)
         self.tblTable = tbl
-        sbox.Add(self.tblTable,0,wx.ALL,2)
-        vbox.Add(sbox, 0, wx.LEFT | wx.RIGHT | wx.TOP, 20)
+        sbox.Add(self.tblTable, 1, wx.EXPAND | wx.ALL, 2)
+        vbox.Add(sbox, 1, wx.EXPAND | wx.ALL, 20)
 
         hbox = wx.BoxSizer(wx.HORIZONTAL)
         self.bOk = wx.Button(self.pnl,id=wx.ID_SAVE) # label='Save')
@@ -401,7 +405,7 @@ class TableDialog(wx.Dialog):
         hbox.Add(self.bOk,0,wx.EXPAND | wx.ALL, 2)
         hbox.Add(self.bCancel,0,wx.EXPAND | wx.ALL, 2)
         vbox.Add(hbox, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM |
-            wx.ALIGN_CENTER_HORIZONTAL | wx.ALIGN_CENTER_VERTICAL, 20)
+            wx.ALIGN_CENTER_HORIZONTAL, 20)
 
         self.pnl.SetSizer(vbox)
         self.pnl.SetAutoLayout(True)
