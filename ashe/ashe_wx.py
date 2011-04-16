@@ -473,7 +473,9 @@ class TableDialog(wx.Dialog):
 
 class ElementDialog(wx.Dialog):
     def __init__(self,parent,title='',tag=None,attrs=None):
-        wx.Dialog.__init__(self,parent,-1,title=title) # action=("Cancel", self.on_cancel))
+        wx.Dialog.__init__(self, parent, -1, title=title,
+            style = wx.DEFAULT_DIALOG_STYLE | wx.RESIZE_BORDER ,
+            ) # action=("Cancel", self.on_cancel))
         self.pnl = self # wx.Panel(self,-1)
         self.parent = parent
         vbox = wx.BoxSizer(wx.VERTICAL)
@@ -485,7 +487,7 @@ class ElementDialog(wx.Dialog):
             ## self.txtTag.readonly=True
         hbox.Add(lblName,0,wx.ALIGN_CENTER_VERTICAL)
         hbox.Add(self.txtTag,0,wx.ALIGN_CENTER_VERTICAL)
-        vbox.Add(hbox, 0, wx.LEFT | wx.RIGHT | wx.TOP, 20)
+        vbox.Add(hbox, 0, wx.ALIGN_CENTER_HORIZONTAL | wx.LEFT | wx.RIGHT | wx.TOP, 20)
 
         box = wx.StaticBox(self.pnl,-1)
         sbox = wx.StaticBoxSizer(box,wx.VERTICAL)
@@ -506,18 +508,18 @@ class ElementDialog(wx.Dialog):
             self.row = -1
         ## tbl.bind(selchanged=self.on_sel)
         self.tblAttr = tbl
-        hbox.Add(self.tblAttr)
-        sbox.Add(hbox) # ,1,wx.EXPAND|wx.ALL,5)
+        hbox.Add(self.tblAttr, 1, wx.EXPAND)
+        sbox.Add(hbox, 1, wx.ALL | wx.EXPAND, 5)
 
         hbox = wx.BoxSizer(wx.HORIZONTAL)
-        self.bAdd = wx.Button(self.pnl,label='Add Attribute')
+        self.bAdd = wx.Button(self.pnl, label = '&Add Attribute')
         self.bAdd.Bind(wx.EVT_BUTTON,self.on_add)
-        self.bDel = wx.Button(self.pnl,label='Delete Selected')
+        self.bDel = wx.Button(self.pnl, label = '&Delete Selected')
         self.bDel.Bind(wx.EVT_BUTTON,self.on_del)
         hbox.Add(self.bAdd,0,wx.EXPAND | wx.ALL, 1)
         hbox.Add(self.bDel,0,wx.EXPAND | wx.ALL, 1)
-        sbox.Add(hbox,0, wx.ALL | wx.ALIGN_CENTER_HORIZONTAL,1) # ,wx.EXPAND|wx.ALL,5)
-        vbox.Add(sbox,0, wx.LEFT | wx.RIGHT ,20)
+        sbox.Add(hbox,0, wx.ALL | wx.ALIGN_CENTER_HORIZONTAL, 1) # ,wx.EXPAND|wx.ALL,5)
+        vbox.Add(sbox, 1, wx.ALL | wx.EXPAND, 5) # , wx.LEFT | wx.RIGHT ,20)
 
         hbox = wx.BoxSizer(wx.HORIZONTAL)
         self.bOk = wx.Button(self.pnl,id=wx.ID_SAVE) # label='Save')
@@ -570,14 +572,16 @@ class TextDialog(wx.Dialog):
     def __init__(self,parent,title='',text=None):
         if text is None:
             text = ''
-        wx.Dialog.__init__(self,parent,-1,title) #,action=("Cancel", self.on_cancel))
+        wx.Dialog.__init__(self,parent, -1, title,
+            style = wx.DEFAULT_DIALOG_STYLE | wx.RESIZE_BORDER ,
+            ) #,action=("Cancel", self.on_cancel))
         self.pnl = self # wx.Panel(self,-1)
         vbox = wx.BoxSizer(wx.VERTICAL)
         hbox = wx.BoxSizer(wx.HORIZONTAL)
         self.txtData = wx.TextCtrl(self.pnl,-1, size=(340,175), style=wx.TE_MULTILINE)
         self.txtData.SetValue(text)
         hbox.Add(self.txtData,1,wx.EXPAND | wx.ALL,5)
-        vbox.Add(hbox, 0, wx.LEFT | wx.RIGHT | wx.TOP, 20)
+        vbox.Add(hbox, 1, wx.EXPAND | wx.LEFT | wx.RIGHT | wx.TOP, 20)
         hbox = wx.BoxSizer(wx.HORIZONTAL)
         self.bOk = wx.Button(self.pnl,id=wx.ID_SAVE) # label='Save')
         self.bCancel = wx.Button(self.pnl,id=wx.ID_CANCEL) #label='Cancel')

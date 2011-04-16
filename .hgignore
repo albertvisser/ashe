@@ -6,5 +6,6 @@ syntax: glob
 *pyc
 *log
 *txt
+*htm*
 afrift*.ini
 pylint*
