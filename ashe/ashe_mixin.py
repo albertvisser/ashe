@@ -93,6 +93,10 @@ class editormixin(object):
         self.openfile()
         self.init_tree()
 
+    def reopenxml(self, ev=None):
+        editormixin.openfile(self, self.xmlfn)
+        self.init_tree()
+
     def savexml(self,ev=None):
         if self.xmlfn == '':
             self.savexmlas()

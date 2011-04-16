@@ -21,7 +21,12 @@ import wx.html as  html
 class PreviewDialog(wx.Dialog):
     def __init__(self,parent):
         self.parent = parent
-        wx.Dialog.__init__(self,parent,title='Preview HTML',size=(1024,600),
+        dsp = wx.Display().GetClientArea()
+        hi = dsp.height if dsp.height < 800 else 800
+        wi = dsp.width if dsp.width < 1024 else 1024
+        print "preview: ", dsp.top, dsp.left, wi, hi
+        wx.Dialog.__init__(self,parent,title='Preview HTML',
+            pos = (dsp.top, dsp.left), size=(wi, hi),
             style = wx.DEFAULT_DIALOG_STYLE | wx.RESIZE_BORDER ,
             ) #,action=("Cancel", self.on_cancel))
         self.pnl = self # wx.Panel(self,-1)
@@ -34,11 +39,19 @@ class PreviewDialog(wx.Dialog):
 
         vbox = wx.BoxSizer(wx.VERTICAL) # border=(15,15,15,15))
         hbox = wx.BoxSizer(wx.HORIZONTAL)
-        self.html = html.HtmlWindow(self.pnl,-1,size=(1024,768)) #, zoom_level = 0)
-        ## self.html.SetRelatedFrame(self, "%s")
+        self.html = html.HtmlWindow(self.pnl, -1, # size = (600, 680)
+            size = (wi, hi - 30)
+            ) #, zoom_level = 0)
+        if "gtk2" in wx.PlatformInfo:
+            self.html.SetStandardFonts()
+
         self.html.LoadPage(self.data_file)
-        hbox.Add(self.html,1) #,wx.EXPAND | wx.ALL, 2)
-        vbox.Add(hbox,1)
+        x, y = self.html.GetPosition()
+        w, h = self.html.GetSize()
+        wm, hm = self.html.GetMaxSize()
+        print "size:", x, y, w, h, wm, hm
+        hbox.Add(self.html, 1) #,wx.EXPAND | wx.ALL, 2)
+        vbox.Add(hbox, 1)
 
         ## hbox = wx.BoxSizer(wx.HORIZONTAL)
         ## self.bOk = wx.Button(self.pnl,id=wx.ID_OK)
@@ -586,9 +599,17 @@ class MainFrame(wx.Frame,ed.editormixin):
         self.parent = parent
         self.title = "(untitled) - Albert's Simple HTML Editor"
         self.xmlfn = fn
+        ## if fn:
+            ## self.xmlfn = os.path.abspath(fn)
+        ## else:
+            ## self.xmlfn = ''
+        dsp = wx.Display().GetClientArea()
+        hi = dsp.height if dsp.height < 900 else 900
+        wi = dsp.width if dsp.width < 620 else 620
+        print "main: ", dsp.top, dsp.left, wi, hi
         wx.Frame.__init__(self, parent, id,
-            pos=(2,2),
-            size=(620,900)
+            pos = (dsp.top, dsp.left),
+            size = (wi, hi)
             )
         self.SetIcon(wx.Icon(os.path.join(PPATH,"ashe.ico"),wx.BITMAP_TYPE_ICO))
 
@@ -599,6 +620,7 @@ class MainFrame(wx.Frame,ed.editormixin):
         self.FM_OPN = wx.NewId()
         self.FM_SAV = wx.NewId()
         self.FM_SAS = wx.NewId()
+        self.FM_ROP = wx.NewId()
         self.FM_PVW = wx.NewId()
         self.FM_XIT = wx.NewId()
 
@@ -606,6 +628,7 @@ class MainFrame(wx.Frame,ed.editormixin):
         self.filemenu.Append(self.FM_OPN,"&Open     Ctrl-O")
         self.filemenu.Append(self.FM_SAV,'&Save     Ctrl-S')
         self.filemenu.Append(self.FM_SAS,'Save &As')
+        self.filemenu.Append(self.FM_ROP,'&Revert   Ctrl-R')
         self.filemenu.AppendSeparator()
         self.filemenu.Append(self.FM_PVW,'Pre&view')
         self.filemenu.AppendSeparator()
@@ -682,6 +705,7 @@ class MainFrame(wx.Frame,ed.editormixin):
         self.Connect(self.FM_OPN,-1,wx.wxEVT_COMMAND_MENU_SELECTED,self.openxml)
         self.Connect(self.FM_SAV,-1,wx.wxEVT_COMMAND_MENU_SELECTED,self.savexml)
         self.Connect(self.FM_SAS,-1,wx.wxEVT_COMMAND_MENU_SELECTED,self.savexmlas)
+        self.Connect(self.FM_ROP,-1,wx.wxEVT_COMMAND_MENU_SELECTED,self.reopenxml)
         self.Connect(self.FM_PVW,-1,wx.wxEVT_COMMAND_MENU_SELECTED,self.preview)
         self.Connect(self.FM_XIT,-1,wx.wxEVT_COMMAND_MENU_SELECTED,self.quit)
         self.Connect(self.VW_EXP,-1,wx.wxEVT_COMMAND_MENU_SELECTED,self.expand   )
@@ -955,6 +979,8 @@ class MainFrame(wx.Frame,ed.editormixin):
             elif keycode == ord("N"):
                 self.newxml()
             elif keycode == ord("S"):
+                self.savexml()
+            elif keycode == ord("R"):
                 self.savexml()
             elif keycode == ord("Q"):
                 self.quit()
