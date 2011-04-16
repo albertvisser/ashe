@@ -140,6 +140,8 @@ class LinkDialog(wx.Dialog):
         lblLink = wx.StaticText(self.pnl,-1, "link to document:")
         gbox.Add(lblLink,(1,0),(1,1),wx.ALIGN_CENTER_VERTICAL)
         self.txtLink = wx.TextCtrl(self.pnl,-1,size=(250,-1),value="http://")
+        self.txtLink.Bind(wx.EVT_TEXT, self.set_text)
+        self.linktxt = ""
         gbox.Add(self.txtLink,(1,1))
 
         self.bKies = wx.Button(self.pnl,-1,'Search')
@@ -149,6 +151,7 @@ class LinkDialog(wx.Dialog):
         lblText = wx.StaticText(self.pnl,-1, "link text:")
         gbox.Add(lblText,(3,0),(1,1),wx.ALIGN_CENTER_VERTICAL)
         self.txtText = wx.TextCtrl(self.pnl,-1,size=(250,-1))
+        self.txtText.Bind(wx.EVT_TEXT, self.set_text)
         gbox.Add(self.txtText,(3,1))
 
         sbox.Add(gbox,0,wx.ALL,10)
@@ -195,6 +198,15 @@ class LinkDialog(wx.Dialog):
         else:
             wx.MessageBox("link opgeven of cancel kiezen s.v.p",'')
 
+    def set_text(self, ev=None):
+        if ev.EventObject == self.txtLink:
+            linktxt = self.txtLink.GetValue()
+            if self.txtText.GetValue() == self.linktxt:
+                self.txtText.SetValue(linktxt)
+                self.linktxt = linktxt
+        elif self.txtText.GetValue() == "":
+            self.linktxt = ""
+
 class ImageDialog(wx.Dialog):
     # AttributeError: type object 'FileDialog' has no attribute 'open'
     def __init__(self,parent):
@@ -215,6 +227,8 @@ class ImageDialog(wx.Dialog):
         lblLink = wx.StaticText(self.pnl,-1, "link to image:")
         gbox.Add(lblLink,(1,0),(1,1),wx.ALIGN_CENTER_VERTICAL)
         self.txtLink = wx.TextCtrl(self.pnl,-1,size=(250,-1),value="http://")
+        self.txtLink.Bind(wx.EVT_TEXT, self.set_text)
+        self.linktxt = ""
         gbox.Add(self.txtLink,(1,1))
 
         self.bKies = wx.Button(self.pnl,-1,'Search')
@@ -224,6 +238,7 @@ class ImageDialog(wx.Dialog):
         lblAlt = wx.StaticText(self.pnl,-1, "alternate text:")
         gbox.Add(lblAlt,(3,0),(1,1),wx.ALIGN_CENTER_VERTICAL)
         self.txtAlt = wx.TextCtrl(self.pnl,-1,size=(250,-1))
+        self.txtAlt.Bind(wx.EVT_TEXT, self.set_text)
         gbox.Add(self.txtAlt,(3,1))
 
         sbox.Add(gbox,0,wx.ALL,10)
@@ -245,6 +260,15 @@ class ImageDialog(wx.Dialog):
         vbox.SetSizeHints(self.pnl)
         self.pnl.Layout()
         self.txtTitle.SetFocus()
+
+    def set_text(self, ev=None):
+        if ev.EventObject == self.txtLink:
+            linktxt = self.txtLink.GetValue()
+            if self.txtAlt.GetValue() == self.linktxt:
+                self.txtAlt.SetValue(linktxt)
+                self.linktxt = linktxt
+        elif self.txtAlt.GetValue() == "":
+            self.linktxt = ""
 
     def kies(self,ev=None):
         dlg = wx.FileDialog(
