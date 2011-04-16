@@ -981,7 +981,7 @@ class MainFrame(wx.Frame,ed.editormixin):
             elif keycode == ord("S"):
                 self.savexml()
             elif keycode == ord("R"):
-                self.savexml()
+                self.reopenxml()
             elif keycode == ord("Q"):
                 self.quit()
             elif keycode == ord("X") and win == self.tree:
