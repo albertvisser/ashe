@@ -38,6 +38,14 @@ def getrelativepath(path,refpath):
     return url
 
 def getelname(x,y):
+    tagattdict = {
+        'div': 'class',
+        'span': 'class',
+        'a': 'title',
+        'img': 'alt',
+        'href': 'alt',
+        'link': 'rel',
+        }
     def expand(att):
         try:
             hlp = y[att]
@@ -48,12 +56,11 @@ def getelname(x,y):
     naam = ' '.join(('<>',x))
     naam += expand('id')
     naam += expand('name')
-    if x in ('div', 'span'):
-        naam += expand('class')
-    elif x in ('a'):
-        naam += expand('title')
-    elif x in ('img', 'href'):
-        naam += expand('alt')
+
+    try:
+        naam += expand(tagattdict[x])
+    except KeyError:
+        pass
     return naam
 
 def getshortname(x):
