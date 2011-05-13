@@ -1,9 +1,13 @@
 Files in this directory
 =======================
 
+/:
+
 htmleditor.py
     starter for the files in the package "ashe"
     (only ppg and wx work though)
+
+ashe/:
 
 __init__.py
     (empty) package indicator
@@ -15,7 +19,7 @@ ashe_ppg.py
     imports shutil, copy, ppygui, BeautifulSoup, ashe_mixin
 ashe_tk.py
     GUI code, Tkinter version
-    uses Gene cash's Tree control for Tkinter
+    uses Gene Cash's Tree control for Tkinter
     imports Tkinter, Tree, mytkSimpleDialog, BeautifulSoup
     (not up-to-date with the others)
 ashe_wx.py
