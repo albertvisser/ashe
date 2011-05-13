@@ -1,6 +1,7 @@
 ﻿import os,sys,shutil,copy
 import BeautifulSoup as bs
 import string
+CMSTART = "<!>"
 ELSTART = '<>'
 DTDSTART = "<!DOCTYPE"
 BL = "&nbsp;"
@@ -24,7 +25,7 @@ class PreviewDialog(wx.Dialog):
         dsp = wx.Display().GetClientArea()
         hi = dsp.height if dsp.height < 800 else 800
         wi = dsp.width if dsp.width < 1024 else 1024
-        print "preview: ", dsp.top, dsp.left, wi, hi
+        ## print "preview: ", dsp.top, dsp.left, wi, hi
         wx.Dialog.__init__(self,parent,title='Preview HTML',
             pos = (dsp.top, dsp.left), size=(wi, hi),
             style = wx.DEFAULT_DIALOG_STYLE | wx.RESIZE_BORDER ,
@@ -49,7 +50,7 @@ class PreviewDialog(wx.Dialog):
         x, y = self.html.GetPosition()
         w, h = self.html.GetSize()
         wm, hm = self.html.GetMaxSize()
-        print "size:", x, y, w, h, wm, hm
+        ## print "size:", x, y, w, h, wm, hm
         hbox.Add(self.html, 1) #,wx.EXPAND | wx.ALL, 2)
         vbox.Add(hbox, 1)
 
@@ -496,18 +497,24 @@ class TableDialog(wx.Dialog):
             dlg.Destroy()
 
 class ElementDialog(wx.Dialog):
-    def __init__(self,parent,title='',tag=None,attrs=None):
-        wx.Dialog.__init__(self, parent, -1, title=title,
+    def __init__(self, parent, title = '', tag = None, attrs = None):
+        wx.Dialog.__init__(self, parent, -1, title = title,
             style = wx.DEFAULT_DIALOG_STYLE | wx.RESIZE_BORDER ,
             ) # action=("Cancel", self.on_cancel))
         self.pnl = self # wx.Panel(self,-1)
         self.parent = parent
         vbox = wx.BoxSizer(wx.VERTICAL)
         hbox = wx.BoxSizer(wx.HORIZONTAL)
-        lblName = wx.StaticText(self.pnl,-1, "element name:")
-        self.txtTag = wx.TextCtrl(self.pnl,-1)
+        lblName = wx.StaticText(self.pnl, -1, "element name:")
+        self.txtTag = wx.TextCtrl(self.pnl, -1)
+        iscomment = False
         if tag:
-            self.txtTag.SetValue(tag.split()[1])
+            x, y = tag.split(None,1)
+            if x == CMSTART:
+                iscomment = True
+                x, y = y.split(None,1)
+            if x == ELSTART:
+                self.txtTag.SetValue(y)
             ## self.txtTag.readonly=True
         hbox.Add(lblName,0,wx.ALIGN_CENTER_VERTICAL)
         hbox.Add(self.txtTag,0,wx.ALIGN_CENTER_VERTICAL)
@@ -537,11 +544,15 @@ class ElementDialog(wx.Dialog):
 
         hbox = wx.BoxSizer(wx.HORIZONTAL)
         self.bAdd = wx.Button(self.pnl, label = '&Add Attribute')
-        self.bAdd.Bind(wx.EVT_BUTTON,self.on_add)
+        self.bAdd.Bind(wx.EVT_BUTTON, self.on_add)
         self.bDel = wx.Button(self.pnl, label = '&Delete Selected')
-        self.bDel.Bind(wx.EVT_BUTTON,self.on_del)
+        self.bDel.Bind(wx.EVT_BUTTON, self.on_del)
+        self.bComment = wx.ToggleButton(self.pnl, label = '&Comment')
+        self.bComment.SetValue(iscomment)
+        ## self.bComment.Bind(wx.EVT_TOGGLEBUTTON, self.toggle_comment)
         hbox.Add(self.bAdd,0,wx.EXPAND | wx.ALL, 1)
         hbox.Add(self.bDel,0,wx.EXPAND | wx.ALL, 1)
+        hbox.Add(self.bComment,0,wx.EXPAND | wx.ALL, 1)
         sbox.Add(hbox,0, wx.ALL | wx.ALIGN_CENTER_HORIZONTAL, 1) # ,wx.EXPAND|wx.ALL,5)
         vbox.Add(sbox, 1, wx.ALL | wx.EXPAND, 5) # , wx.LEFT | wx.RIGHT ,20)
 
@@ -593,14 +604,25 @@ class ElementDialog(wx.Dialog):
             ev.Skip()
 
 class TextDialog(wx.Dialog):
-    def __init__(self,parent,title='',text=None):
+    def __init__(self, parent, title='', text = None):
+        iscomment = False
         if text is None:
             text = ''
+        else:
+            x, y = text.split(None, 1)
+            if x == CMSTART:
+                iscomment = True
+                text = y
         wx.Dialog.__init__(self,parent, -1, title,
             style = wx.DEFAULT_DIALOG_STYLE | wx.RESIZE_BORDER ,
             ) #,action=("Cancel", self.on_cancel))
         self.pnl = self # wx.Panel(self,-1)
         vbox = wx.BoxSizer(wx.VERTICAL)
+        hbox = wx.BoxSizer(wx.HORIZONTAL)
+        self.cbComment = wx.CheckBox(self.pnl, label = '&Comment(ed)')
+        self.cbComment.SetValue(iscomment)
+        hbox.Add(self.cbComment,0,wx.EXPAND | wx.ALL, 1)
+        vbox.Add(hbox, 0, wx.EXPAND | wx.LEFT | wx.RIGHT | wx.TOP, 20)
         hbox = wx.BoxSizer(wx.HORIZONTAL)
         self.txtData = wx.TextCtrl(self.pnl,-1, size=(340,175), style=wx.TE_MULTILINE)
         self.txtData.SetValue(text)
@@ -634,7 +656,7 @@ class MainFrame(wx.Frame,ed.editormixin):
         dsp = wx.Display().GetClientArea()
         hi = dsp.height if dsp.height < 900 else 900
         wi = dsp.width if dsp.width < 620 else 620
-        print "main: ", dsp.top, dsp.left, wi, hi
+        ## print "main: ", dsp.top, dsp.left, wi, hi
         wx.Frame.__init__(self, parent, id,
             pos = (dsp.top, dsp.left),
             size = (wi, hi)
@@ -795,7 +817,7 @@ class MainFrame(wx.Frame,ed.editormixin):
         edt.Destroy()
 
     def check_tree(self):
-        print "check_tree aangeroepen"
+        ## print "check_tree aangeroepen"
         if self.tree_dirty:
             h = wx.MessageBox("XML data has been modified - save before continuing?",
                 self.title,
@@ -1058,7 +1080,7 @@ class MainFrame(wx.Frame,ed.editormixin):
         if DESKTOP and not self.checkselection():
             return
         data = self.tree.GetItemText(self.item)
-        if data.startswith(ELSTART):
+        if data.startswith(ELSTART) or data.startswith(" ".join((CMSTART, ELSTART))):
             attrdict = self.tree.GetItemData(self.item).GetData()
             #~ print attrdict
             edt = ElementDialog(self,title='Edit an element',tag=data,attrs=attrdict)
@@ -1068,17 +1090,20 @@ class MainFrame(wx.Frame,ed.editormixin):
                 for i in range(edt.tblAttr.GetNumberRows()):
                     attrs[edt.tblAttr.GetCellValue(i,0)] = edt.tblAttr.GetCellValue(i,1)
                 if tag != data or attrs != attrdict:
-                    self.tree.SetItemText(self.item,ed.getelname(tag,attrs))
+                    self.tree.SetItemText(self.item,ed.getelname(tag, attrs,
+                        edt.bComment.GetValue()))
                 self.tree.SetPyData(self.item,attrs)
                 self.tree_dirty = True
         else:
+            txt = CMSTART + " " if data.startswith(CMSTART) else ""
             data = self.tree.GetItemData(self.item).GetData()
             ## data = {'item': self.item, 'name': nam, 'value': val}
-            edt = TextDialog(self,title='Edit Text',text=data)
+            edt = TextDialog(self, title='Edit Text',text = txt + data)
             if edt.ShowModal() == wx.ID_SAVE:
                 txt = edt.txtData.GetValue()
-                self.tree.SetItemText(self.item,ed.getshortname(txt))
-                self.tree.SetPyData(self.item,txt)
+                self.tree.SetItemText(self.item,ed.getshortname(txt,
+                    edt.cbComment.GetValue()))
+                self.tree.SetPyData(self.item, txt)
                 self.tree_dirty = True
         edt.Destroy()
 
@@ -1227,7 +1252,8 @@ class MainFrame(wx.Frame,ed.editormixin):
         edt = TextDialog(self,title="New Text")
         if edt.ShowModal() == wx.ID_SAVE:
             txt = edt.txtData.GetValue()
-            new_item = self.tree.AppendItem(self.item,ed.getshortname(txt))
+            new_item = self.tree.AppendItem(self.item,ed.getshortname(txt,
+                edt.cbComment.GetValue()))
             self.tree.SetPyData(new_item,txt)
             # om te testen:
             ## text = self.tree.GetItemText(new_item)
@@ -1255,7 +1281,7 @@ class MainFrame(wx.Frame,ed.editormixin):
             for i in range(edt.tblAttr.GetNumberRows()):
                 attrs[edt.tblAttr.GetCellValue(i,0)] = edt.tblAttr.GetCellValue(i,1)
             data = attrs
-            text = ed.getelname(tag,data)
+            text = ed.getelname(tag, data, edt.BComment.GetValue())
             if below:
                 self.tree.AppendItem(self.item,text)
                 self.tree.SetPyData(self.item,data)

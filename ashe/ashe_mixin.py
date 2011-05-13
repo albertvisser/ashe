@@ -37,7 +37,7 @@ def getrelativepath(path,refpath):
             url = os.path.join('..',url)
     return url
 
-def getelname(x,y):
+def getelname(tag, attrs, comment = False):
     tagattdict = {
         'div': 'class',
         'span': 'class',
@@ -48,27 +48,28 @@ def getelname(x,y):
         }
     def expand(att):
         try:
-            hlp = y[att]
+            hlp = attrs[att]
         except:
             return ''
         else:
-            return ' %s="%s"' % (att,hlp)
-    naam = ' '.join(('<>',x))
-    naam += expand('id')
-    naam += expand('name')
-
+            return ' {}="{}"'.format(att, hlp)
+    naam = '{} {}{}{}'.format('<>', tag, expand('id'), expand('name'))
     try:
-        naam += expand(tagattdict[x])
+        naam += expand(tagattdict[tag])
     except KeyError:
         pass
+    if comment:
+        naam = "<!> " + naam
     return naam
 
-def getshortname(x):
+def getshortname(text, comment = False):
     max = 30
-    x = x[:max] + "..." if len(x) > max else x
+    text = text[:max] + "..." if len(text) > max else text
     ## if len(x) > 20:
         ## return x[:20] + "..."
-    return x
+    if comment:
+        text = "<!> " + text
+    return text
 
 def escape(text):
     # convert non-ascii characters
