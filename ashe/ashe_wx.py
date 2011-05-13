@@ -957,16 +957,17 @@ class MainFrame(wx.Frame,ed.editormixin):
             em.AppendSeparator()
             em.Append(self.EM_CUT,"Cut")
             em.Append(self.EM_CPY,"Copy")
+            em.Append(self.EM_PB,"Paste Before")
+            em.Append(self.EM_PA,"Paste After")
             if data.startswith(ELSTART):
-                em.Append(self.EM_PB,"Paste Before")
-                em.Append(self.EM_PA,"Paste After")
                 em.Append(self.EM_PU,"Paste Under")
-                em.AppendSeparator()
+            em.AppendSeparator()
             em.Append(self.EM_DEL,"Delete")
             if data.startswith(ELSTART):
                 em.Append(self.EM_IT,"Insert Text (under)")
-                em.Append(self.EM_IB,'Insert Element Before')
-                em.Append(self.EM_IA,'Insert Element After')
+            em.Append(self.EM_IB,'Insert Element Before')
+            em.Append(self.EM_IA,'Insert Element After')
+            if data.startswith(ELSTART):
                 em.Append(self.EM_IU,'Insert Element Under')
             menu.AppendMenu(-1, "Edit", em)
             hm = wx.Menu()
@@ -1041,7 +1042,6 @@ class MainFrame(wx.Frame,ed.editormixin):
         if self.item is None or self.item == self.top:
             wx.MessageBox('You need to select an element or text first',self.title)
             sel = False
-
         return sel
 
     def expand(self,ev=None):
@@ -1221,6 +1221,9 @@ class MainFrame(wx.Frame,ed.editormixin):
     def add_text(self, ev=None):
         if DESKTOP and not self.checkselection():
             return
+        if not self.tree.GetItemText(self.item).startswith(ELSTART):
+            wx.MessageBox("Can't insert below text",self.title)
+            return
         edt = TextDialog(self,title="New Text")
         if edt.ShowModal() == wx.ID_SAVE:
             txt = edt.txtData.GetValue()
@@ -1237,6 +1240,9 @@ class MainFrame(wx.Frame,ed.editormixin):
         if DESKTOP and not self.checkselection():
             return
         if below:
+            if not self.tree.GetItemText(self.item).startswith(ELSTART):
+                wx.MessageBox("Can't insert below text",self.title)
+                return
             where = "under"
         elif before:
             where = "before"
@@ -1277,6 +1283,9 @@ class MainFrame(wx.Frame,ed.editormixin):
     def add_link(self,ev=None):
         if DESKTOP and not self.checkselection():
             return
+        if not self.tree.GetItemText(self.item).startswith(ELSTART):
+            wx.MessageBox("Can't do this below text",self.title)
+            return
         edt = LinkDialog(self)
         if edt.ShowModal() == wx.ID_SAVE:
             self.data = {
@@ -1294,6 +1303,9 @@ class MainFrame(wx.Frame,ed.editormixin):
     def add_image(self,ev=None):
         if DESKTOP and not self.checkselection():
             return
+        if not self.tree.GetItemText(self.item).startswith(ELSTART):
+            wx.MessageBox("Can't do this below text",self.title)
+            return
         edt = ImageDialog(self)
         if edt.ShowModal() == wx.ID_SAVE:
             self.data = {
@@ -1308,6 +1320,9 @@ class MainFrame(wx.Frame,ed.editormixin):
 
     def add_list(self,ev=None):
         if DESKTOP and not self.checkselection():
+            return
+        if not self.tree.GetItemText(self.item).startswith(ELSTART):
+            wx.MessageBox("Can't do this below text",self.title)
             return
         edt = ListDialog(self)
         if edt.ShowModal() == wx.ID_SAVE:
@@ -1342,6 +1357,9 @@ class MainFrame(wx.Frame,ed.editormixin):
 
     def add_table(self,ev=None):
         if DESKTOP and not self.checkselection():
+            return
+        if not self.tree.GetItemText(self.item).startswith(ELSTART):
+            wx.MessageBox("Can't do this below text",self.title)
             return
         edt = TableDialog(self)
         if edt.ShowModal() == wx.ID_SAVE:
