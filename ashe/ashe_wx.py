@@ -948,6 +948,7 @@ class MainFrame(wx.Frame,ed.editormixin):
         item, flags = self.tree.HitTest(pt)
         if item and item != self.top:
             self.tree.SelectItem(item)
+            data = self.tree.GetItemText(item)
             menu = wx.Menu()
             menu.Append(self.VW_EXP,"Expand All (sub)Levels")
             menu.Append(self.VW_CLP,"Collapse All (sub)Levels")
@@ -956,22 +957,25 @@ class MainFrame(wx.Frame,ed.editormixin):
             em.AppendSeparator()
             em.Append(self.EM_CUT,"Cut")
             em.Append(self.EM_CPY,"Copy")
-            em.Append(self.EM_PB,"Paste Before")
-            em.Append(self.EM_PA,"Paste After")
-            em.Append(self.EM_PU,"Paste Under")
-            em.AppendSeparator()
+            if data.startswith(ELSTART):
+                em.Append(self.EM_PB,"Paste Before")
+                em.Append(self.EM_PA,"Paste After")
+                em.Append(self.EM_PU,"Paste Under")
+                em.AppendSeparator()
             em.Append(self.EM_DEL,"Delete")
-            em.Append(self.EM_IT,"Insert Text (under)")
-            em.Append(self.EM_IB,'Insert Element Before')
-            em.Append(self.EM_IA,'Insert Element After')
-            em.Append(self.EM_IU,'Insert Element Under')
+            if data.startswith(ELSTART):
+                em.Append(self.EM_IT,"Insert Text (under)")
+                em.Append(self.EM_IB,'Insert Element Before')
+                em.Append(self.EM_IA,'Insert Element After')
+                em.Append(self.EM_IU,'Insert Element Under')
             menu.AppendMenu(-1, "Edit", em)
             hm = wx.Menu()
             hm.Append(self.HM_DTD,"Add DTD")
-            hm.Append(self.HM_LNK,"Create link (under)")
-            hm.Append(self.HM_IMG,"Add image (under)")
-            hm.Append(self.HM_LST,"Add list (under)")
-            hm.Append(self.HM_TBL,"Add table (under)")
+            if data.startswith(ELSTART):
+                hm.Append(self.HM_LNK,"Create link (under)")
+                hm.Append(self.HM_IMG,"Add image (under)")
+                hm.Append(self.HM_LST,"Add list (under)")
+                hm.Append(self.HM_TBL,"Add table (under)")
             menu.AppendMenu(-1, "HTML", hm)
             self.PopupMenu(menu)
             ## print "klaar met menu"
@@ -1037,6 +1041,7 @@ class MainFrame(wx.Frame,ed.editormixin):
         if self.item is None or self.item == self.top:
             wx.MessageBox('You need to select an element or text first',self.title)
             sel = False
+
         return sel
 
     def expand(self,ev=None):
