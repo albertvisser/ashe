@@ -899,7 +899,7 @@ class MainFrame(wx.Frame,ed.editormixin):
 
 
     def maakhtml(self):
-        def expandnode(node,root,data):
+        def expandnode(node, root, data):
             try:
                 for att in data:
                     root[att] = data[att]
@@ -909,10 +909,13 @@ class MainFrame(wx.Frame,ed.editormixin):
             while el.IsOk():
                 text = self.tree.GetItemText(el)
                 data = self.tree.GetItemPyData(el)
-                if text.startswith(ELSTART):
+                if text.startswith(ELSTART) or text.startswith(" ".join((CMSTART, ELSTART))):
                     sub = bs.Tag(self.bs,text.split(None,2)[1])
+                    if text.startswith(CMSTART):
+                        sub = bs.Comment(str(data.decode("latin-1")))
                     root.append(sub) # insert(0,sub)
-                    expandnode(el,sub,data)
+                    if not text.startswith(CMSTART):
+                        expandnode(el, sub, data)
                 else:
                     # dit levert fouten op bij het gebruiken van diacrieten
                     ## sub = bs.NavigableString(.ed.escape(data))
@@ -921,7 +924,9 @@ class MainFrame(wx.Frame,ed.editormixin):
                     ## root.append(ed.escape(data))
                     # misschien dat dit het doet
                     sub = bs.NavigableString(data.decode("latin-1"))
-                    root.append(data.decode("latin-1")) # insert(0,sub)
+                    if text.startswith(CMSTART):
+                        sub = bs.Comment(data.decode("latin-1"))
+                    root.append(sub) # data.decode("latin-1")) # insert(0,sub)
                 el,c = self.tree.GetNextChild(node,c)
 
     ## def on_bdown(self, ev=None):

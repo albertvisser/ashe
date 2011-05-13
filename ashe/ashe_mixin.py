@@ -131,21 +131,28 @@ class editormixin(object):
             return True
 
     def init_tree(self,name=''):
-        def add_to_tree(node,hier):
-            for x,y in enumerate([h for h in hier.contents]): # if h != '\n']):
-                if isinstance(y,bs.Tag): ## if type(y) is types.InstanceType:
+        def add_to_tree(node, hier, commented = False):
+            print hier
+            for x, y in enumerate([h for h in hier.contents]): # if h != '\n']):
+                print x, y
+                if isinstance(y, bs.Tag): ## if type(y) is types.InstanceType:
                     data = y.attrs
                     dic = dict(data)
                     ## print data,dic
-                    naam = getelname(y.name,dic)
-                    rr = self.addtreeitem(node,naam,dic)
-                    add_to_tree(rr,y)
-                elif isinstance(y,bs.Declaration):
+                    naam = getelname(y.name, dic, commented)
+                    rr = self.addtreeitem(node, naam, dic)
+                    add_to_tree(rr, y, commented)
+                elif isinstance(y, bs.Declaration):
                     if y.startswith(DTDSTART):
                         self.hasDTD = True
-                    rr = self.addtreeitem(node,getshortname(y),y)
+                    rr = self.addtreeitem(node, getshortname(y), y)
+                elif isinstance(y, bs.Comment):
+                    print y.string
+                    rt = bs.BeautifulSoup(y.string)
+                    print "rt =", rt
+                    add_to_tree(node, rt, commented = True)
                 else:
-                    rr = self.addtreeitem(node,getshortname(str(y)),str(y))
+                    rr = self.addtreeitem(node, getshortname(str(y), commented), str(y))
         self.hasTD = False
         if name:
             titel = name
