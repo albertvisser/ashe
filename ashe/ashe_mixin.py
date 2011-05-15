@@ -5,7 +5,9 @@ if os.name == 'ce':
 else:
     DESKTOP = True
 TITEL = "Albert's Simple HTML-editor"
+CMSTART = "<!>"
 ELSTART = '<>'
+CMELSTART = ' '.join((CMSTART, ELSTART))
 DTDSTART = "<!DOCTYPE"
 BL = "&nbsp;"
 
@@ -132,9 +134,9 @@ class editormixin(object):
 
     def init_tree(self,name=''):
         def add_to_tree(node, hier, commented = False):
-            print hier
+            ## print hier
             for x, y in enumerate([h for h in hier.contents]): # if h != '\n']):
-                print x, y
+                ## print x, y
                 if isinstance(y, bs.Tag): ## if type(y) is types.InstanceType:
                     data = y.attrs
                     dic = dict(data)
@@ -147,9 +149,9 @@ class editormixin(object):
                         self.hasDTD = True
                     rr = self.addtreeitem(node, getshortname(y), y)
                 elif isinstance(y, bs.Comment):
-                    print y.string
+                    ## print y.string
                     rt = bs.BeautifulSoup(y.string)
-                    print "rt =", rt
+                    ## print "rt =", rt
                     add_to_tree(node, rt, commented = True)
                 else:
                     rr = self.addtreeitem(node, getshortname(str(y), commented), str(y))
