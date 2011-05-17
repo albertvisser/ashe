@@ -1,3 +1,7 @@
+"""
+Hierin worden een aantal constanten, functies en een mixin class gedefinieerd
+voor de zaken die gui-toolkit onafhankelijk zijn
+"""
 import os
 import BeautifulSoup as bs
 if os.name == 'ce':
@@ -11,11 +15,14 @@ CMELSTART = ' '.join((CMSTART, ELSTART))
 DTDSTART = "<!DOCTYPE"
 BL = "&nbsp;"
 
-def get_html(f=None,preserve=False):
-    """preserve anticipates on the possibility to not strip out newlines
+def get_html(fname = None, preserve = False):
+    """get html from file
+
+    `preserve` anticipates on the possibility to not strip out newlines
     and replace tabs by spaces"""
-    if f:
-        data = ''.join([x.strip() for x in file(f)])
+    if fname:
+        with open(fname) as f_in:
+            data = ''.join([x.strip() for x in f_in])
         if not preserve:
             data = data.replace('\t',' ')
             data = data.replace('\n','')
@@ -25,21 +32,25 @@ def get_html(f=None,preserve=False):
         html = '<html><head><title></title></head><body></body></html>'
     return html
 
-def getrelativepath(path,refpath):
+def getrelativepath(path, refpath):
+    "return path made relative to refpath, or empty string"
     if path.startswith('./') or path.startswith('../') or os.path.sep not in path:
-        return path
-    common = os.path.commonprefix([path,refpath]).rsplit(os.path.sep,1)[0] + os.path.sep
+        return path # already relative
+    common = os.path.commonprefix([path, refpath]).rsplit(os.path.sep, 1)[0] + os.path.sep
     if not refpath.startswith(common):
         return '' # 'impossible to create relative link'
-    ref = os.path.dirname(refpath.replace(common,''))
+    ref = os.path.dirname(refpath.replace(common, ''))
     url = path.replace(common,'')
     if ref:
-        h = ref.split(os.path.sep)
-        for j in h:
-            url = os.path.join('..',url)
+        for _ in ref.split(os.path.sep):
+            url = os.path.join('..', url)
     return url
 
 def getelname(tag, attrs, comment = False):
+    """build name for element node
+
+    precede with <!> and/or <>
+    follow with key attribute(s)"""
     tagattdict = {
         'div': 'class',
         'span': 'class',
@@ -49,9 +60,10 @@ def getelname(tag, attrs, comment = False):
         'link': 'rel',
         }
     def expand(att):
+        "return expanded key-attr pair if present otherwise return empty string"
         try:
             hlp = attrs[att]
-        except:
+        except KeyError:
             return ''
         else:
             return ' {}="{}"'.format(att, hlp)
@@ -65,284 +77,312 @@ def getelname(tag, attrs, comment = False):
     return naam
 
 def getshortname(text, comment = False):
-    max = 30
-    text = text[:max] + "..." if len(text) > max else text
-    ## if len(x) > 20:
-        ## return x[:20] + "..."
+    "shorten name for text node"
+    maxlen = 30
+    text = text[:maxlen] + "..." if len(text) > max else text
     if comment:
         text = "<!> " + text
     return text
 
 def escape(text):
-    # convert non-ascii characters
+    "convert non-ascii characters - not necessary?"
     return text
 
-class editormixin(object):
+class EditorMixin(object):
+    "mixin class to add gui-independent methods to main frame"
+
     def init_fn(self):
+        "init file"
         if self.xmlfn == '':
-            self.rt = bs.BeautifulSoup(get_html()) #,selfClosingTags=SELFCLOSING)
+            self.root = bs.BeautifulSoup(get_html())
             if DESKTOP:
                 ## self.openxml()
                 self.init_tree() # tijdens testen even geen open dialoog
             else:
                 self.init_tree()
         else:
-            self.rt = bs.BeautifulSoup(get_html(self.xmlfn))
+            self.root = bs.BeautifulSoup(get_html(self.xmlfn))
             self.init_tree()
 
-    def quit(self):
+    def quit(self, evt = None):
+        "generic quit method"
         pass
 
-    def newxml(self):
-        self.rt = bs.BeautifulSoup(get_html()) #,selfClosingTags=SELFCLOSING) # is altijd html
+    def newxml(self, evt = None):
+        "new file"
+        self.root = bs.BeautifulSoup(get_html())
         self.xmlfn = ''
         self.init_tree()
 
-    def openxml(self,ev=None):
+    def openxml(self, evt = None):
+        "open file"
         ## em.editormixin.openhtml()
         self.openfile()
         self.init_tree()
 
-    def reopenxml(self, ev=None):
-        editormixin.openfile(self, self.xmlfn)
+    def reopenxml(self, evt = None):
+        "reopen file"
+        EditorMixin.openfile(self, self.xmlfn)
         self.init_tree()
 
-    def savexml(self,ev=None):
+    def savexml(self, evt = None):
+        "save html to file"
         if self.xmlfn == '':
             self.savexmlas()
         else:
             self.savexmlfile()
 
-    def savexmlas(self):
+    def savexmlas(self, evt = None):
+        "placeholder for gui-specific method"
         pass
 
-    def about(self):
+    def about(self, evt = None):
+        "wordt niet gebruikt?"
         self.abouttext = "\n".join((
             "Made in 2008 by Albert Visser",
             "Written in PythonCE and PocketPyGui"
             ))
 
-    def openfile(self,h):
+    def openfile(self, fname):
+        "to be called from gui-specific method"
+        # het onderstaande wordt nergens gebruikt:
         try:
-            rt = bs.BeautifulSoup(get_html(h)) #,selfClosingTags=SELFCLOSING)
+            root = bs.BeautifulSoup(get_html(fname)) # fname was eerst h
         except:
             return False
         else:
-            self.rt = rt
-            self.xmlfn = h
+            self.root = root
+            self.xmlfn = fname
             return True
 
-    def init_tree(self,name=''):
-        def add_to_tree(node, hier, commented = False):
+    def init_tree(self, name = ''):
+        "build internal tree representation of the html"
+        def add_to_tree(item, node, commented = False):
+            """add contents of BeautifulSoup node (`node`) to tree item (`item`)
+            `commented` flag is used in building item text"""
             ## print hier
-            for x, y in enumerate([h for h in hier.contents]): # if h != '\n']):
-                ## print x, y
-                if isinstance(y, bs.Tag): ## if type(y) is types.InstanceType:
-                    data = y.attrs
+            for idx, subnode in enumerate([h for h in node.contents]): # if h != '\n']):
+                ## print idx, subnode
+                if isinstance(subnode, bs.Tag):
+                    data = subnode.attrs
                     dic = dict(data)
                     ## print data,dic
-                    naam = getelname(y.name, dic, commented)
-                    rr = self.addtreeitem(node, naam, dic)
-                    add_to_tree(rr, y, commented)
-                elif isinstance(y, bs.Declaration):
-                    if y.startswith(DTDSTART):
-                        self.hasDTD = True
-                    rr = self.addtreeitem(node, getshortname(y), y)
-                elif isinstance(y, bs.Comment):
-                    ## print y.string
-                    rt = bs.BeautifulSoup(y.string)
-                    ## print "rt =", rt
-                    add_to_tree(node, rt, commented = True)
+                    naam = getelname(subnode.name, dic, commented)
+                    newitem = self.addtreeitem(item, naam, dic)
+                    add_to_tree(newitem, subnode, commented)
+                elif isinstance(subnode, bs.Declaration):
+                    if subnode.startswith(DTDSTART):
+                        self.has_dtd = True
+                    newitem = self.addtreeitem(item, getshortname(subnode), subnode)
+                    # moet hier niet ook nog add_to_tree op volgen?
+                elif isinstance(subnode, bs.Comment):
+                    ## print subitem.string
+                    newnode = bs.BeautifulSoup(subnode.string)
+                    add_to_tree(item, newnode, commented = True)
                 else:
-                    rr = self.addtreeitem(node, getshortname(str(y), commented), str(y))
-        self.hasTD = False
+                    newitem = self.addtreeitem(item, getshortname(str(subnode),
+                        commented), str(subnode))
+                    # moet hier niet ook nog add_to_tree op volgen?
+        self.has_dtd = False
         if name:
             titel = name
         elif self.xmlfn:
             titel = self.xmlfn
         else:
             titel = '[untitled]'
-        self.addtreetop(titel," - ".join((os.path.split(titel)[-1],TITEL)))
-        add_to_tree(self.top,self.rt)
+        self.addtreetop(titel, " - ".join((os.path.split(titel)[-1], TITEL)))
+        add_to_tree(self.top, self.root)
         self.tree_dirty = False
 
-    def edit(self, ev=None):
+    def edit(self, evt = None):
+        "placeholder for gui-specific method"
         pass
 
-    def cut(self, ev=None):
-        self.copy(cut=True)
+    def cut(self, evt = None):
+        "cut = copy with removing item from tree"
+        self.copy(cut = True)
 
-    def delete(self, ev=None):
-        self.copy(cut=True, retain=False)
+    def delete(self, evt = None):
+        "delete = copy with removing item from tree and memory"
+        self.copy(cut = True, retain = False)
 
-    def copy(self, ev=None, cut=False):
+    def copy(self, evt = None, cut = False, retain = True):
+        "placeholder for gui-specific method"
         pass
 
-    def paste(self, ev=None,before=True,below=False):
+    def paste(self, evt = None, before = True, below = False):
+        "placeholder for gui-specific method"
         pass
 
-    def paste_aft(self, ev=None):
+    def paste_aft(self, evt = None):
+        "paste after instead of before"
         self.paste(before=False)
 
-    def paste_blw(self, ev=None):
+    def paste_blw(self, evt = None):
+        "paste below instead of before"
         self.paste(below=True)
 
-    def insert(self, ev=None,before=True,below=False):
+    def insert(self, evt = None, before = True, below = False):
+        "placeholder for gui-specific method"
         pass
 
-    def ins_aft(self, ev=None):
+    def ins_aft(self, evt = None):
+        "insert after instead of before"
         self.insert(before=False)
 
-    def ins_chld(self, ev=None):
+    def ins_chld(self, evt = None):
+        "insert belof instead of before"
         self.insert(below=True)
 
-    def add_text(self, ev=None):
+    def add_text(self, evt = None):
+        "placeholder for gui-specific method"
         pass
 
 def test_getrelativepath():
+    "test routine"
     dir1 = 'F:\\gepruts\\htmleditor\\index.html'
     dir2 = 'http://www.magiokis.nl/index.html'
-    print dir1,dir2,
-    href = getrelativepath(dir2,dir1)
+    print dir1, dir2,
+    href = getrelativepath(dir2, dir1)
     try:
         assert href == 'http://www.magiokis.nl/index.html'
     except AssertionError:
         print "fout"
     else:
         print "ok"
-    print href.join(("href was ","\n"))
+    print href.join(("href was ", "\n"))
 
     dir1 = 'F:\\gepruts\\htmleditor\\index.html'
     dir2 = 'other.html'
-    print dir1,dir2,
-    href = getrelativepath(dir2,dir1)
+    print dir1, dir2,
+    href = getrelativepath(dir2, dir1)
     try:
         assert href == 'other.html'
     except AssertionError:
         print "fout"
     else:
         print "ok"
-    print href.join(("href was ","\n"))
+    print href.join(("href was ", "\n"))
 
     dir1 = 'F:\\gepruts\\htmleditor\\index.html'
     dir2 = './other.html'
-    print dir1,dir2,
-    href = getrelativepath(dir2,dir1)
+    print dir1, dir2,
+    href = getrelativepath(dir2, dir1)
     try:
         assert href == './other.html'
     except AssertionError:
         print "fout"
     else:
         print "ok"
-    print href.join(("href was ","\n"))
+    print href.join(("href was ", "\n"))
 
     dir1 = 'F:\\gepruts\\htmleditor\\index.html'
     dir2 = '../other.html'
-    print dir1,dir2,
-    href = getrelativepath(dir2,dir1)
+    print dir1, dir2,
+    href = getrelativepath(dir2, dir1)
     try:
         assert href == '../other.html'
     except AssertionError:
         print "fout"
     else:
         print "ok"
-    print href.join(("href was ","\n"))
+    print href.join(("href was ", "\n"))
 
     dir1 = 'F:\\gepruts\\htmleditor\\index.html'
     dir2 = 'F:\\gepruts\\htmleditor\\other.html'
-    print dir1,dir2,
-    href = getrelativepath(dir2,dir1)
+    print dir1, dir2,
+    href = getrelativepath(dir2, dir1)
     try:
         assert href == 'other.html'
     except AssertionError:
         print "fout"
     else:
         print "ok"
-    print href.join(("href was ","\n"))
+    print href.join(("href was ", "\n"))
 
     dir1 = 'F:\\gepruts\\htmleditor\\index.html'
     dir2 = 'F:\\gepruts\\xhtmleditor\\other.html'
-    print dir1,dir2,
-    href = getrelativepath(dir2,dir1)
+    print dir1, dir2,
+    href = getrelativepath(dir2, dir1)
     try:
         assert href == '..\\xhtmleditor\\other.html'
     except AssertionError:
         print "fout"
     else:
         print "ok"
-    print href.join(("href was ","\n"))
+    print href.join(("href was ", "\n"))
 
     dir1 = 'F:\\gepruts\\htmleditor\\index.html'
     dir2 = 'F:\\geprutserd\\htmleditor\\other.html'
-    print dir1,dir2,
-    href = getrelativepath(dir2,dir1)
+    print dir1, dir2,
+    href = getrelativepath(dir2, dir1)
     try:
         assert href == '..\\..\\geprutserd\\htmleditor\\other.html'
     except AssertionError:
         print "fout"
     else:
         print "ok"
-    print href.join(("href was ","\n"))
+    print href.join(("href was ", "\n"))
 
     dir1 = 'F:\\gepruts\\htmleditor\\index.html'
     dir2 = 'C:\\gepruts\\htmleditor\\other.html'
-    print dir1,dir2,
-    href = getrelativepath(dir2,dir1)
+    print dir1, dir2,
+    href = getrelativepath(dir2, dir1)
     try:
         assert href == 'impossible to create relative link'
     except AssertionError:
         print "fout"
     else:
         print "ok"
-    print href.join(("href was ","\n"))
+    print href.join(("href was ", "\n"))
 
     dir1 = 'F:\\gepruts\\htmleditor\\index.html'
     dir2 =             'F:\\gepruts\\other.html'
-    print dir1,dir2
-    href = getrelativepath(dir2,dir1)
+    print dir1, dir2
+    href = getrelativepath(dir2, dir1)
     try:
         assert href == '..\\other.html'
     except AssertionError:
         print "fout"
     else:
         print "ok"
-    print href.join(("href was ","\n")) # -> ../..//gepruts/other.html
+    print href.join(("href was ", "\n")) # -> ../..//gepruts/other.html
 
     dir1 = 'F:\\gepruts\\htmleditor\\index.html'
     dir2 =             'F:\\htmleditor\\other.html'
-    print dir1,dir2
-    href = getrelativepath(dir2,dir1)
+    print dir1, dir2
+    href = getrelativepath(dir2, dir1)
     try:
         assert href == '..\\..\\htmleditor\\other.html'
     except AssertionError:
         print "fout"
     else:
         print "ok"
-    print href.join(("href was ","\n")) # -> ../..//htmleditor/other.html
+    print href.join(("href was ", "\n")) # -> ../..//htmleditor/other.html
 
     dir1 = 'F:\\gepruts\\htmleditor\\index.html'
     dir2 =                      'F:\\other.html'
-    print dir1,dir2
-    href = getrelativepath(dir2,dir1)
+    print dir1, dir2
+    href = getrelativepath(dir2, dir1)
     try:
         assert href == '..\\..\\other.html'
     except AssertionError:
         print "fout"
     else:
         print "ok"
-    print href.join(("href was ","\n")) #-> ../..///other.html
+    print href.join(("href was ", "\n")) #-> ../..///other.html
 
     dir1 =             'F:\\gepruts\\index.html'
     dir2 = 'F:\\gepruts\\htmleditor\\other.html'
-    print dir1,dir2
-    href = getrelativepath(dir2,dir1)
+    print dir1, dir2
+    href = getrelativepath(dir2, dir1)
     try:
         assert href == 'htmleditor\\other.html'
     except AssertionError:
         print "fout"
     else:
         print "ok"
-    print href.join(("href was ","\n")) # -> ../../gepruts/htmleditor/other.html
+    print href.join(("href was ", "\n")) # -> ../../gepruts/htmleditor/other.html
 
 if __name__ == "__main__":
     ## print getelname("a",{"name": 'Hello', "snork": "hahaha"})
