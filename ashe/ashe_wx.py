@@ -964,7 +964,7 @@ class MainFrame(wx.Frame, ed.EditorMixin):
         "interne tree omzetten in BeautifulSoup object"
         def expandnode(node, root, data, commented = False):
             "tree item (node) met inhoud (data) toevoegen aan BS node (root)"
-            print data, commented
+            ## print data, commented
             try:
                 for att in data:
                     root[att] = data[att]
@@ -1070,8 +1070,8 @@ class MainFrame(wx.Frame, ed.EditorMixin):
             edit_menu.Append(self.EM_DEL, "Delete")
             if data.startswith(ELSTART):
                 edit_menu.Append(self.EM_IT, "Insert Text (under)")
-            edit_menu.Append(self.EM_IB, 'Insert Eledit_menuent Before')
-            edit_menu.Append(self.EM_IA, 'Insert Eledit_menuent After')
+            edit_menu.Append(self.EM_IB, 'Insert Element Before')
+            edit_menu.Append(self.EM_IA, 'Insert Element After')
             if data.startswith(ELSTART):
                 edit_menu.Append(self.EM_IU, 'Insert Eledit_menuent Under')
             menu.AppendMenu(-1, "Edit", edit_menu)
@@ -1167,33 +1167,49 @@ class MainFrame(wx.Frame, ed.EditorMixin):
 
     def edit(self, evt = None):
         "start edit m.b.v. dialoog"
+        def comment_out(node, commented):
+            "subitem(s) (ook) op commentaar zetten"
+            subnode, pos = self.tree.GetFirstChild(node)
+            while subnode.IsOk():
+                txt = self.tree.GetItemText(subnode)
+                if commented:
+                    if not txt.startswith(CMSTART):
+                        self.tree.SetItemText(subnode, " ".join((CMSTART, txt)))
+                else:
+                    if txt.startswith(CMSTART):
+                        self.tree.SetItemText(subnode, txt.split(None, 1)[1])
+                comment_out(subnode, commented)
+                subnode, pos = self.tree.GetNextChild(node, pos)
         if DESKTOP and not self.checkselection():
             return
         data = self.tree.GetItemText(self.item)
         ## print "edit:", data
         if data.startswith(ELSTART) or data.startswith(CMELSTART):
             attrdict = self.tree.GetItemData(self.item).GetData()
+            was_commented = data.startswith(CMSTART)
             ## print "element attrs:", attrdict
             edt = ElementDialog(self, title = 'Edit an element', tag = data,
                 attrs = attrdict)
             if edt.ShowModal() == wx.ID_SAVE:
                 tag = edt.tag_text.GetValue()
+                commented = edt.comment_button.GetValue()
                 attrs = {}
                 for i in range(edt.attr_table.GetNumberRows()):
                     attrs[edt.attr_table.GetCellValue(i, 0)] = edt.attr_table.GetCellValue(i, 1)
                 if tag != data or attrs != attrdict:
                     self.tree.SetItemText(self.item, ed.getelname(tag, attrs,
-                        edt.comment_button.GetValue()))
+                        commented))
                 ## print self.tree.GetItemText(self.item)
                 ## print "voor:", self.tree.GetItemData(self.item).GetData()
                 self.tree.SetPyData(self.item, attrs)
                 ## print "na:", self.tree.GetItemData(self.item).GetData()
+                if commented != was_commented:
+                    comment_out(self.item, commented)
                 self.tree_dirty = True
         else:
             txt = CMSTART + " " if data.startswith(CMSTART) else ""
             data = self.tree.GetItemData(self.item).GetData()
-            ## data = {'item': self.item, 'name': nam, 'value': val}
-            print "text:", txt, data
+            ## print "text:", txt, data
             edt = TextDialog(self, title='Edit Text', text = txt + data)
             if edt.ShowModal() == wx.ID_SAVE:
                 txt = edt.data_text.GetValue()
@@ -1290,9 +1306,14 @@ class MainFrame(wx.Frame, ed.EditorMixin):
         if DESKTOP and not self.checkselection():
             return
         data = self.tree.GetItemPyData(self.item)
-        if below and not self.tree.GetItemText(self.item).startswith(ELSTART):
-            wx.MessageBox("Can't paste below text", self.title)
-            return
+        if below:
+            text = self.tree.GetItemText(self.item)
+            if text.startswith(CMSTART):
+                wx.MessageBox("Can't paste below comment", self.title)
+                return
+            if not text.startswith(ELSTART):
+                wx.MessageBox("Can't paste below text", self.title)
+                return
         if data == self.root:
             if before:
                 wx.MessageBox("Can't paste before the root", self.title)
@@ -1378,9 +1399,14 @@ class MainFrame(wx.Frame, ed.EditorMixin):
             return
         if below:
             text = self.tree.GetItemText(self.item)
+            if text.startswith(CMSTART):
+                wx.MessageBox("Can't insert below comment", self.title)
+                return
             if not text.startswith(ELSTART) and not text.startswith(CMELSTART):
                 wx.MessageBox("Can't insert below text", self.title)
                 return
+            under_comment = text.startswith(CMSTART)
+            print "under comment:", under_comment
             where = "under"
         elif before:
             where = "before"
@@ -1393,12 +1419,19 @@ class MainFrame(wx.Frame, ed.EditorMixin):
             for idx in range(edt.attr_table.GetNumberRows()):
                 attrs[edt.attr_table.GetCellValue(idx, 0)] = edt.attr_table.GetCellValue(idx, 1)
             data = attrs
-            text = ed.getelname(tag, data, edt.comment_button.GetValue())
+            commented = edt.comment_button.GetValue()
             if below:
+                print "commented, under_comment:", commented, under_comment
+                text = ed.getelname(tag, data, commented or under_comment)
+                print text
                 item = self.tree.AppendItem(self.item, text)
                 self.tree.SetPyData(item, data)
             else:
                 parent = self.tree.GetItemParent(self.item)
+                text = self.tree.GetItemText(parent)
+                under_comment = text.startswith(CMSTART)
+                print "commented, under_comment:", commented, under_comment
+                text = ed.getelname(tag, data, commented or under_comment)
                 item = self.item if not before else self.tree.GetPrevSibling(self.item)
                 node = self.tree.InsertItem(parent, item, text)
                 self.tree.SetPyData(node, data)
