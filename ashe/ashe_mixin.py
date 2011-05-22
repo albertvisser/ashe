@@ -46,19 +46,11 @@ def getrelativepath(path, refpath):
             url = os.path.join('..', url)
     return url
 
-def getelname(tag, attrs, comment = False):
+def getelname(tag, attrs = None, comment = False):
     """build name for element node
 
     precede with <!> and/or <>
     follow with key attribute(s)"""
-    tagattdict = {
-        'div': 'class',
-        'span': 'class',
-        'a': 'title',
-        'img': 'alt',
-        'href': 'alt',
-        'link': 'rel',
-        }
     def expand(att):
         "return expanded key-attr pair if present otherwise return empty string"
         try:
@@ -67,6 +59,16 @@ def getelname(tag, attrs, comment = False):
             return ''
         else:
             return ' {}="{}"'.format(att, hlp)
+    tagattdict = {
+        'div': 'class',
+        'span': 'class',
+        'a': 'title',
+        'img': 'alt', # "title',
+        'link': 'rel',
+        'table': 'summary',
+        }
+    if attrs is None:
+        attrs = {}
     naam = '{} {}{}{}'.format('<>', tag, expand('id'), expand('name'))
     try:
         naam += expand(tagattdict[tag])
@@ -79,7 +81,7 @@ def getelname(tag, attrs, comment = False):
 def getshortname(text, comment = False):
     "shorten name for text node"
     maxlen = 30
-    text = text[:maxlen] + "..." if len(text) > max else text
+    text = text[:maxlen] + "..." if len(text) > maxlen else text
     if comment:
         text = "<!> " + text
     return text
@@ -237,154 +239,3 @@ class EditorMixin(object):
     def add_text(self, evt = None):
         "placeholder for gui-specific method"
         pass
-
-def test_getrelativepath():
-    "test routine"
-    dir1 = 'F:\\gepruts\\htmleditor\\index.html'
-    dir2 = 'http://www.magiokis.nl/index.html'
-    print dir1, dir2,
-    href = getrelativepath(dir2, dir1)
-    try:
-        assert href == 'http://www.magiokis.nl/index.html'
-    except AssertionError:
-        print "fout"
-    else:
-        print "ok"
-    print href.join(("href was ", "\n"))
-
-    dir1 = 'F:\\gepruts\\htmleditor\\index.html'
-    dir2 = 'other.html'
-    print dir1, dir2,
-    href = getrelativepath(dir2, dir1)
-    try:
-        assert href == 'other.html'
-    except AssertionError:
-        print "fout"
-    else:
-        print "ok"
-    print href.join(("href was ", "\n"))
-
-    dir1 = 'F:\\gepruts\\htmleditor\\index.html'
-    dir2 = './other.html'
-    print dir1, dir2,
-    href = getrelativepath(dir2, dir1)
-    try:
-        assert href == './other.html'
-    except AssertionError:
-        print "fout"
-    else:
-        print "ok"
-    print href.join(("href was ", "\n"))
-
-    dir1 = 'F:\\gepruts\\htmleditor\\index.html'
-    dir2 = '../other.html'
-    print dir1, dir2,
-    href = getrelativepath(dir2, dir1)
-    try:
-        assert href == '../other.html'
-    except AssertionError:
-        print "fout"
-    else:
-        print "ok"
-    print href.join(("href was ", "\n"))
-
-    dir1 = 'F:\\gepruts\\htmleditor\\index.html'
-    dir2 = 'F:\\gepruts\\htmleditor\\other.html'
-    print dir1, dir2,
-    href = getrelativepath(dir2, dir1)
-    try:
-        assert href == 'other.html'
-    except AssertionError:
-        print "fout"
-    else:
-        print "ok"
-    print href.join(("href was ", "\n"))
-
-    dir1 = 'F:\\gepruts\\htmleditor\\index.html'
-    dir2 = 'F:\\gepruts\\xhtmleditor\\other.html'
-    print dir1, dir2,
-    href = getrelativepath(dir2, dir1)
-    try:
-        assert href == '..\\xhtmleditor\\other.html'
-    except AssertionError:
-        print "fout"
-    else:
-        print "ok"
-    print href.join(("href was ", "\n"))
-
-    dir1 = 'F:\\gepruts\\htmleditor\\index.html'
-    dir2 = 'F:\\geprutserd\\htmleditor\\other.html'
-    print dir1, dir2,
-    href = getrelativepath(dir2, dir1)
-    try:
-        assert href == '..\\..\\geprutserd\\htmleditor\\other.html'
-    except AssertionError:
-        print "fout"
-    else:
-        print "ok"
-    print href.join(("href was ", "\n"))
-
-    dir1 = 'F:\\gepruts\\htmleditor\\index.html'
-    dir2 = 'C:\\gepruts\\htmleditor\\other.html'
-    print dir1, dir2,
-    href = getrelativepath(dir2, dir1)
-    try:
-        assert href == 'impossible to create relative link'
-    except AssertionError:
-        print "fout"
-    else:
-        print "ok"
-    print href.join(("href was ", "\n"))
-
-    dir1 = 'F:\\gepruts\\htmleditor\\index.html'
-    dir2 =             'F:\\gepruts\\other.html'
-    print dir1, dir2
-    href = getrelativepath(dir2, dir1)
-    try:
-        assert href == '..\\other.html'
-    except AssertionError:
-        print "fout"
-    else:
-        print "ok"
-    print href.join(("href was ", "\n")) # -> ../..//gepruts/other.html
-
-    dir1 = 'F:\\gepruts\\htmleditor\\index.html'
-    dir2 =             'F:\\htmleditor\\other.html'
-    print dir1, dir2
-    href = getrelativepath(dir2, dir1)
-    try:
-        assert href == '..\\..\\htmleditor\\other.html'
-    except AssertionError:
-        print "fout"
-    else:
-        print "ok"
-    print href.join(("href was ", "\n")) # -> ../..//htmleditor/other.html
-
-    dir1 = 'F:\\gepruts\\htmleditor\\index.html'
-    dir2 =                      'F:\\other.html'
-    print dir1, dir2
-    href = getrelativepath(dir2, dir1)
-    try:
-        assert href == '..\\..\\other.html'
-    except AssertionError:
-        print "fout"
-    else:
-        print "ok"
-    print href.join(("href was ", "\n")) #-> ../..///other.html
-
-    dir1 =             'F:\\gepruts\\index.html'
-    dir2 = 'F:\\gepruts\\htmleditor\\other.html'
-    print dir1, dir2
-    href = getrelativepath(dir2, dir1)
-    try:
-        assert href == 'htmleditor\\other.html'
-    except AssertionError:
-        print "fout"
-    else:
-        print "ok"
-    print href.join(("href was ", "\n")) # -> ../../gepruts/htmleditor/other.html
-
-if __name__ == "__main__":
-    ## print getelname("a",{"name": 'Hello', "snork": "hahaha"})
-    ## print getshortname("Hee hallo")
-    test_getrelativepath()

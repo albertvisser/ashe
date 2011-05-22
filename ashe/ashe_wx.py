@@ -208,7 +208,14 @@ class LinkDialog(wx.Dialog):
         "bij OK: het geselecteerde (absolute) pad omzetten in een relatief pad"
         link = self.link_text.GetValue()
         if link:
-            link = ed.getrelativepath(link, self.parent.xmlfn)
+            print "link adres:", link
+            if not link.startswith('http://'):
+                if self.parent.xmlfn:
+                    whereami = self.parent.xmlfn
+                else:
+                    whereami = os.path.join(os.getcwd(),'index.html')
+                print "whereamI:", whereami
+                link = ed.getrelativepath(link, whereami)
             if not link:
                 wx.MessageBox('Impossible to make this local link relative',
                     self.parent.title)
@@ -297,7 +304,12 @@ class ImageDialog(wx.Dialog):
         "bij OK: het geselecteerde (absolute) pad omzetten in een relatief pad"
         link = self.link_text.GetValue()
         if link:
-            link = ed.getrelativepath(link, self.parent.xmlfn)
+            if not link.startswith('http://'):
+                if self.parent.xmlfn:
+                    whereami = self.parent.xmlfn
+                else:
+                    whereami = os.path.join(os.getcwd(),'index.html')
+                link = ed.getrelativepath(link, whereami)
             if not link:
                 wx.MessageBox('Impossible to make this local link relative',
                     self.parent.title)
@@ -1279,7 +1291,8 @@ class MainFrame(wx.Frame, ed.EditorMixin):
             try:
                 if self.cut_txt.startswith(DTDSTART):
                     self.has_dtd = False
-            except ValueError:
+            except AttributeError:
+            ## except ValueError:
                 pass
         ## self.pastebeforeitem.text="Paste Before"
         ## self.pastebeforeitem.enable(True)
@@ -1460,12 +1473,12 @@ class MainFrame(wx.Frame, ed.EditorMixin):
             return
         edt = LinkDialog(self)
         if edt.ShowModal() == wx.ID_SAVE:
-            self.data = {
+            data = {
                 "href": edt.link,
                 "title": edt.title_text.GetValue()
                 }
-            node = self.tree.AppendItem(self.item, '<> a')
-            self.tree.SetPyData(node, self.data)
+            node = self.tree.AppendItem(self.item, ed.getelname('a', data))
+            self.tree.SetPyData(node, data)
             txt = edt.text_text.GetValue()
             new_item = self.tree.AppendItem(node, ed.getshortname(txt))
             self.tree.SetPyData(new_item, txt)
@@ -1481,13 +1494,13 @@ class MainFrame(wx.Frame, ed.EditorMixin):
             return
         edt = ImageDialog(self)
         if edt.ShowModal() == wx.ID_SAVE:
-            self.data = {
+            data = {
                 "src": edt.link,
                 "alt": edt.alt_text.GetValue(),
                 "title": edt.title_text.GetValue()
                 }
-            node = self.tree.AppendItem(self.item, '<> img')
-            self.tree.SetPyData(node, self.data)
+            node = self.tree.AppendItem(self.item, ed.getelname('img', data))
+            self.tree.SetPyData(node, data)
             self.tree_dirty = True
         edt.Destroy()
 
@@ -1500,20 +1513,19 @@ class MainFrame(wx.Frame, ed.EditorMixin):
             return
         edt = ListDialog(self)
         if edt.ShowModal() == wx.ID_SAVE:
-            self.data = {}
             list_type = edt.type_select.GetValue()[0] + "l"
             itemtype = "dt" if list_type == "dl" else "li"
-            new_item = self.tree.AppendItem(self.item, ' '.join((ELSTART, list_type)))
+            new_item = self.tree.AppendItem(self.item, ed.getelname(list_type))
 
             for row in range(edt.list_table.GetNumberRows()):
-                new_data = self.tree.AppendItem(new_item, ' '.join((ELSTART, itemtype)))
+                new_subitem = self.tree.AppendItem(new_item, ed.getelname(itemtype))
                 data = edt.list_table.GetCellValue(row, 0)
-                node = self.tree.AppendItem(new_data, ed.getshortname(data))
+                node = self.tree.AppendItem(new_subitem, ed.getshortname(data))
                 self.tree.SetPyData(node, data)
                 if type == "dl":
-                    new_data = self.tree.AppendItem(new_item, '<> dd')
+                    new_item = self.tree.AppendItem(new_subitem, ed.getelname('dd'))
                     data = edt.list_table.GetCellValue(row, 1)
-                    node = self.tree.AppendItem(new_data, ed.getshortname(data))
+                    node = self.tree.AppendItem(new_item, ed.getshortname(data))
                     self.tree.SetPyData(node, data)
 
             ## for i,data in enumerate(edt.dataitems):
@@ -1540,27 +1552,28 @@ class MainFrame(wx.Frame, ed.EditorMixin):
         if edt.ShowModal() == wx.ID_SAVE:
             cols = edt.table_table.GetNumberCols() #int(edt.cols_text.GetValue())
             rows = edt.table_table.GetNumberRows() #int(edt.rows_text.GetValue())
-            new_item = self.tree.AppendItem(self.item, '<> table')
-            self.tree.SetPyData(new_item, {"summary:": edt.title_text.GetValue()})
-            new_row = self.tree.AppendItem(new_item, '<> tr')
+            data = {"summary": edt.title_text.GetValue()}
+            new_item = self.tree.AppendItem(self.item, ed.getelname('table', data))
+            self.tree.SetPyData(new_item, data)
+            new_row = self.tree.AppendItem(new_item, ed.getelname('tr'))
             for col in range(cols):
-                new_head = self.tree.AppendItem(new_row, '<> th')
+                new_head = self.tree.AppendItem(new_row, ed.getelname('th'))
                 # try:
                 head = edt.table_table.GetColLabelValue(col) # edt.headings[col]
                 # except IndexError:
                 if not head:
-                    node = self.tree.AppendItem(new_head, BL)
+                    node = self.tree.AppendItem(new_head, ed.getshortname(BL))
                     self.tree.SetPyData(node, BL)
                 else:
                     node = self.tree.AppendItem(new_head, ed.getshortname(head))
                     self.tree.SetPyData(node, head)
             for row in range(rows):
-                new_row = self.tree.AppendItem(new_item, '<> tr')
+                new_row = self.tree.AppendItem(new_item, ed.getelname('tr'))
                 for col in range(cols):
-                    new_cell = self.tree.AppendItem(new_row, '<> td')
+                    new_cell = self.tree.AppendItem(new_row, ed.getelname('td'))
                     text = edt.table_table.GetCellValue(row, col)
-                    node = self.tree.AppendItem(new_cell, ed.getshortname(text)) # BL)
-                    self.tree.SetPyData(node, text) # BL)
+                    node = self.tree.AppendItem(new_cell, ed.getshortname(text))
+                    self.tree.SetPyData(node, text)
             self.tree_dirty = True
         edt.Destroy()
 
@@ -1568,7 +1581,7 @@ def main_gui(args):
     "start main GUI"
     app = wx.App(redirect = True, filename = "ashe.log")
     if len(args) > 1:
-        frm = MainFrame(None, -1, fn = args[1])
+        frm = MainFrame(None, -1, fname = args[1])
     else:
         frm = MainFrame(None, -1)
     app.MainLoop()
