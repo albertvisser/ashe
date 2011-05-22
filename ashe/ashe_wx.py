@@ -1195,11 +1195,11 @@ class MainFrame(wx.Frame, ed.EditorMixin):
         if DESKTOP and not self.checkselection():
             return
         data = self.tree.GetItemText(self.item)
-        ## print "edit:", data
+        print "edit:", data
         if data.startswith(ELSTART) or data.startswith(CMELSTART):
             attrdict = self.tree.GetItemData(self.item).GetData()
             was_commented = data.startswith(CMSTART)
-            ## print "element attrs:", attrdict
+            print "element attrs:", attrdict
             edt = ElementDialog(self, title = 'Edit an element', tag = data,
                 attrs = attrdict)
             if edt.ShowModal() == wx.ID_SAVE:
@@ -1221,7 +1221,7 @@ class MainFrame(wx.Frame, ed.EditorMixin):
         else:
             txt = CMSTART + " " if data.startswith(CMSTART) else ""
             data = self.tree.GetItemData(self.item).GetData()
-            ## print "text:", txt, data
+            print "text:", txt, data
             edt = TextDialog(self, title='Edit Text', text = txt + data)
             if edt.ShowModal() == wx.ID_SAVE:
                 txt = edt.data_text.GetValue()
@@ -1346,7 +1346,7 @@ class MainFrame(wx.Frame, ed.EditorMixin):
             data = self.cut_txt
             if below:
                 node = self.tree.AppendItem(self.item, item)
-                self.tree.SetPyData(self.item, data)
+                self.tree.SetPyData(node, data)
                 ## i = len(node)
             else:
                 add_to = self.tree.GetItemParent(self.item)
