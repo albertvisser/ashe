@@ -192,7 +192,7 @@ class EditorMixin(object):
             titel = self.xmlfn
         else:
             titel = '[untitled]'
-        self.addtreetop(titel, " - ".join((os.path.split(titel)[-1], TITEL)))
+        self.addtreetop(titel, " - ".join((os.path.basename(titel), TITEL)))
         add_to_tree(self.top, self.root)
         self.tree_dirty = False
 

@@ -726,22 +726,31 @@ class MainFrame(wx.Frame, ed.EditorMixin):
         self.FM_PVW = wx.NewId()
         self.FM_XIT = wx.NewId()
 
-        self.filemenu.Append(self.FM_NEW, "&New      Ctrl-N")
-        self.filemenu.Append(self.FM_OPN, "&Open     Ctrl-O")
-        self.filemenu.Append(self.FM_SAV, '&Save     Ctrl-S')
-        self.filemenu.Append(self.FM_SAS, 'Save &As  Shift-Ctrl-S')
-        self.filemenu.Append(self.FM_ROP, '&Revert   Ctrl-R')
+        self.filemenu.Append(self.FM_NEW, "&New      Ctrl-N",
+            "Start a new HTML document")
+        self.filemenu.Append(self.FM_OPN, "&Open     Ctrl-O",
+            "Open an existing HTML document")
+        self.filemenu.Append(self.FM_SAV, '&Save     Ctrl-S',
+            "Save the current document")
+        self.filemenu.Append(self.FM_SAS, 'Save &As  Shift-Ctrl-S',
+            "Save the current document under a different name")
+        self.filemenu.Append(self.FM_ROP, '&Revert   Ctrl-R',
+            "Discard are changes since the last save")
         self.filemenu.AppendSeparator()
-        self.filemenu.Append(self.FM_PVW, 'Pre&view')
+        self.filemenu.Append(self.FM_PVW, 'Pre&view',
+            "Render the HTML")
         self.filemenu.AppendSeparator()
-        self.filemenu.Append(self.FM_XIT, 'E&xit     Ctrl-Q, Alt-F4')
+        self.filemenu.Append(self.FM_XIT, 'E&xit     Ctrl-Q, Alt-F4',
+            'Quit the application')
         menu_bar.Append(self.filemenu, "&File")
 
         self.viewmenu = wx.Menu()
         self.VW_EXP = wx.NewId()
         self.VW_CLP = wx.NewId()
-        self.viewmenu.Append(self.VW_EXP, "Expand All (sub)Levels    Ctrl +")
-        self.viewmenu.Append(self.VW_CLP, "Collapse All (sub)Levels  Ctrl -")
+        self.viewmenu.Append(self.VW_EXP, "Expand All (sub)Levels    Ctrl +",
+            "Show what's beneath the current element")
+        self.viewmenu.Append(self.VW_CLP, "Collapse All (sub)Levels  Ctrl -",
+            "Hide what's beneath the current element")
         menu_bar.Append(self.viewmenu, "&View")
 
         self.editmenu = wx.Menu()
@@ -757,29 +766,29 @@ class MainFrame(wx.Frame, ed.EditorMixin):
         self.EM_IU = wx.NewId()
         self.EM_DEL = wx.NewId()
         self.editmenu.Append(self.EM_EDT,
-            "Edit                    F2")
+            "Edit                    F2", "Modify the element/text and/or its attributes")
         self.editmenu.AppendSeparator()
         self.editmenu.Append(self.EM_CUT,
-            "Cut                     Ctrl-X")
+            "Cut                     Ctrl-X", "Copy and delete the current element")
         self.editmenu.Append(self.EM_CPY,
-            "Copy                    Ctrl-C")
+            "Copy                    Ctrl-C", "Copy the current element")
         self.pastebeforeitem = self.editmenu.Append(self.EM_PB,
-            "Paste Before            Shft-Ctrl-V")
+            "Paste Before            Shft-Ctrl-V", "Paste the copied element")
         self.pasteafteritem = self.editmenu.Append(self.EM_PA,
-            "Paste After             Alt-Ctrl-V")
+            "Paste After             Alt-Ctrl-V", "Paste the copied element")
         self.pastebelowitem = self.editmenu.Append(self.EM_PU,
-            "Paste Under             Ctrl-V")
+            "Paste Under             Ctrl-V", "Paste the copied element")
         self.editmenu.AppendSeparator()
         self.editmenu.Append(self.EM_DEL,
-            "Delete                  Del")
+            "Delete                  Del", "Delete the current element")
         self.editmenu.Append(self.EM_IT,
-            "Insert Text (under)     Ctrl-Ins")
+            "Insert Text (under)     Ctrl-Ins", "Add a text node under the current one")
         self.editmenu.Append(self.EM_IB,
-            'Insert Element Before   Shft-Ins')
+            'Insert Element Before   Shft-Ins', "Add a new element")
         self.editmenu.Append(self.EM_IA,
-            'Insert Element After    Alt-Ins')
+            'Insert Element After    Alt-Ins', "Add a new element")
         self.editmenu.Append(self.EM_IU,
-            'Insert Element Under    Ins')
+            'Insert Element Under    Ins', "Add a new element")
         ## self.pastebeforeitem.title = "Nothing to Paste"
         ## self.pastebeforeitem.enable(False)
         ## self.pasteafteritem.title = " "
@@ -795,11 +804,16 @@ class MainFrame(wx.Frame, ed.EditorMixin):
         self.HM_IMG = wx.NewId()
         self.HM_LST = wx.NewId()
         self.HM_TBL = wx.NewId()
-        self.dtdmenu = self.htmlmenu.Append(self.HM_DTD, "Add DTD")
-        self.htmlmenu.Append(self.HM_LNK, "Create link (under)")
-        self.htmlmenu.Append(self.HM_IMG, "Add image (under)")
-        self.htmlmenu.Append(self.HM_LST, "Add list (under)")
-        self.htmlmenu.Append(self.HM_TBL, "Add table (under)")
+        self.dtdmenu = self.htmlmenu.Append(self.HM_DTD, "Add DTD",
+            "Add a document type description")
+        self.htmlmenu.Append(self.HM_LNK, "Create link (under)"
+            "Add a link")
+        self.htmlmenu.Append(self.HM_IMG, "Add image (under)",
+            "Include an image")
+        self.htmlmenu.Append(self.HM_LST, "Add list (under)",
+            "create a list")
+        self.htmlmenu.Append(self.HM_TBL, "Add table (under)",
+            "create a table")
         menu_bar.Append(self.htmlmenu, "&HTML")
         self.SetMenuBar(menu_bar)
 
@@ -843,6 +857,9 @@ class MainFrame(wx.Frame, ed.EditorMixin):
         self.tree.Bind(wx.EVT_RIGHT_DOWN, self.on_rightdown)
         ## self.tree.Bind(wx.EVT_CONTEXT_MENU, self.onContextMenu)
         self.tree.Bind(wx.EVT_KEY_DOWN, self.on_key)
+
+        self.sb = wx.StatusBar(self)
+        self.SetStatusBar(self.sb)
 
         sizer0 = wx.BoxSizer(wx.VERTICAL)
         sizer1 = wx.BoxSizer(wx.HORIZONTAL)
@@ -888,6 +905,12 @@ class MainFrame(wx.Frame, ed.EditorMixin):
         daarna een html bestand kiezen"""
         if self.check_tree() != wx.CANCEL:
             ed.EditorMixin.openxml(self)
+            self.sb.SetStatusText("loaded {}".format(self.xmlfn))
+
+    def reopenxml(self, evt = None):
+        """onvoorwaardelijk html bestand opnieuw laden"""
+        ed.EditorMixin.reopenxml(self)
+        self.sb.SetStatusText("reloaded {}".format(self.xmlfn))
 
     def preview(self, evt = None):
         "toon preview dialoog"
@@ -910,7 +933,8 @@ class MainFrame(wx.Frame, ed.EditorMixin):
             self.xmlfn = dlg.GetPath()
             self.savexmlfile(saveas = True)
             self.tree.SetItemText(self.top, self.xmlfn)
-            self.SetTitle(" - ".join((os.path.split(self.xmlfn)[-1], TITEL)))
+            self.SetTitle(" - ".join((os.path.basename(self.xmlfn), TITEL)))
+            self.sb.SetStatusText("{} saved".format(self.xmlfn))
         dlg.Destroy()
 
     def about(self, evt = None):
@@ -966,11 +990,13 @@ class MainFrame(wx.Frame, ed.EditorMixin):
         try:
             with open(self.xmlfn,"w") as f_out:
                 f_out.write(str(self.soup))
-            self.tree_dirty = False
         except IOError as err:
             dlg = wx.MessageBox(self.title, err, wx.OK | wx.ICON_INFORMATION)
             dlg.ShowModal()
             dlg.Destroy()
+            return
+        self.tree_dirty = False
+        self.sb.SetStatusText("{} saved".format(self.xmlfn))
 
     def maakhtml(self):
         "interne tree omzetten in BeautifulSoup object"
