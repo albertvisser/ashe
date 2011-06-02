@@ -2,7 +2,6 @@
 
 import os
 import sys
-import shutil
 import string
 import wx
 import wx.grid as wxgrid
@@ -715,6 +714,42 @@ class MainFrame(wx.Frame, ed.EditorMixin):
             )
         self.SetIcon(wx.Icon(os.path.join(PPATH,"ashe.ico"), wx.BITMAP_TYPE_ICO))
 
+        self.setup_menu()
+
+        self.pnl = wx.Panel(self, -1)
+
+        self.tree = wx.TreeCtrl(self.pnl, -1)
+        ## isz = (16, 16)
+        ## il = wx.ImageList(isz[0], isz[1])
+        ## fldridx     = il.Add(wx.ArtProvider_GetBitmap(wx.ART_FOLDER,      wx.ART_OTHER, isz))
+        ## fldropenidx = il.Add(wx.ArtProvider_GetBitmap(wx.ART_FILE_OPEN,   wx.ART_OTHER, isz))
+        ## fileidx     = il.Add(wx.ArtProvider_GetBitmap(wx.ART_NORMAL_FILE, wx.ART_OTHER, isz))
+        ## self.tree.SetImageList(il)
+        ## self.il = il
+        self.tree.Bind(wx.EVT_LEFT_DCLICK, self.on_leftdclick)
+        self.tree.Bind(wx.EVT_RIGHT_DOWN, self.on_rightdown)
+        ## self.tree.Bind(wx.EVT_CONTEXT_MENU, self.onContextMenu)
+        self.tree.Bind(wx.EVT_KEY_DOWN, self.on_key)
+
+        self.sb = wx.StatusBar(self)
+        self.SetStatusBar(self.sb)
+
+        sizer0 = wx.BoxSizer(wx.VERTICAL)
+        sizer1 = wx.BoxSizer(wx.HORIZONTAL)
+        sizer1.Add(self.tree, 1, wx.EXPAND)
+        sizer0.Add(sizer1, 1, wx.EXPAND)
+
+        self.pnl.SetSizer(sizer0)
+        self.pnl.SetAutoLayout(True)
+        sizer0.Fit(self.pnl)
+        sizer0.SetSizeHints(self.pnl)
+        self.pnl.Layout()
+        self.Show(True)
+        self.tree.SetFocus()
+
+        ed.EditorMixin.getsoup(self, fname)
+
+    def setup_menu(self):
         menu_bar = wx.MenuBar()
 
         self.filemenu = wx.Menu()
@@ -843,39 +878,6 @@ class MainFrame(wx.Frame, ed.EditorMixin):
         self.Connect(self.HM_LST, -1, wx.wxEVT_COMMAND_MENU_SELECTED, self.add_list )
         self.Connect(self.HM_TBL, -1, wx.wxEVT_COMMAND_MENU_SELECTED, self.add_table)
 
-        self.pnl = wx.Panel(self, -1)
-
-        self.tree = wx.TreeCtrl(self.pnl, -1)
-        ## isz = (16, 16)
-        ## il = wx.ImageList(isz[0], isz[1])
-        ## fldridx     = il.Add(wx.ArtProvider_GetBitmap(wx.ART_FOLDER,      wx.ART_OTHER, isz))
-        ## fldropenidx = il.Add(wx.ArtProvider_GetBitmap(wx.ART_FILE_OPEN,   wx.ART_OTHER, isz))
-        ## fileidx     = il.Add(wx.ArtProvider_GetBitmap(wx.ART_NORMAL_FILE, wx.ART_OTHER, isz))
-        ## self.tree.SetImageList(il)
-        ## self.il = il
-        self.tree.Bind(wx.EVT_LEFT_DCLICK, self.on_leftdclick)
-        self.tree.Bind(wx.EVT_RIGHT_DOWN, self.on_rightdown)
-        ## self.tree.Bind(wx.EVT_CONTEXT_MENU, self.onContextMenu)
-        self.tree.Bind(wx.EVT_KEY_DOWN, self.on_key)
-
-        self.sb = wx.StatusBar(self)
-        self.SetStatusBar(self.sb)
-
-        sizer0 = wx.BoxSizer(wx.VERTICAL)
-        sizer1 = wx.BoxSizer(wx.HORIZONTAL)
-        sizer1.Add(self.tree, 1, wx.EXPAND)
-        sizer0.Add(sizer1, 1, wx.EXPAND)
-
-        self.pnl.SetSizer(sizer0)
-        self.pnl.SetAutoLayout(True)
-        sizer0.Fit(self.pnl)
-        sizer0.SetSizeHints(self.pnl)
-        self.pnl.Layout()
-        self.Show(True)
-        self.tree.SetFocus()
-
-        ed.EditorMixin.init_fn(self)
-
     def check_tree(self):
         """vraag of de wijzigingen moet worden opgeslagen
         keuze uitvoeren en teruggeven (i.v.m. eventueel gekozen Cancel)"""
@@ -898,30 +900,58 @@ class MainFrame(wx.Frame, ed.EditorMixin):
         """kijken of er wijzigingen opgeslagen moeten worden
         daarna nieuwe html aanmaken"""
         if self.check_tree() != wx.CANCEL:
-            ed.EditorMixin.newxml(self)
+            try:
+                ed.EditorMixin.getsoup(self, fname = None)
+                self.sb.SetStatusText("started new document")
+            except Exception as err:
+                dlg = wx.MessageBox(self.title, err, wx.OK | wx.INFORMATION)
+                dlg.ShowModal()
+                dlg.Destroy()
 
     def openxml(self, evt = None):
         """kijken of er wijzigingen opgeslagen moeten worden
         daarna een html bestand kiezen"""
         if self.check_tree() != wx.CANCEL:
-            ed.EditorMixin.openxml(self)
-            self.sb.SetStatusText("loaded {}".format(self.xmlfn))
+            loc = os.path.dirname(self.xmlfn) if self.xmlfn else os.getcwd()
+            dlg = wx.FileDialog(
+                self, message="Choose a file",
+                defaultDir = loc,
+                wildcard = HMASK,
+                style = wx.OPEN
+                )
+            if dlg.ShowModal() == wx.ID_OK:
+                try:
+                    ed.EditorMixin.getsoup(self, fname = dlg.GetPath())
+                    self.sb.SetStatusText("loaded {}".format(self.xmlfn))
+                except Exception as err:
+                    dlg.Destroy()
+                    dlg = wx.MessageBox(self.title, err, wx.OK | wx.INFORMATION)
+                    dlg.ShowModal()
+                    dlg.Destroy()
 
-    def reopenxml(self, evt = None):
-        """onvoorwaardelijk html bestand opnieuw laden"""
-        ed.EditorMixin.reopenxml(self)
-        self.sb.SetStatusText("reloaded {}".format(self.xmlfn))
-
-    def preview(self, evt = None):
-        "toon preview dialoog"
-        edt = PreviewDialog(self)
-        edt.ShowModal()
-        edt.Destroy()
+    def savexml(self, evt = None):
+        "save html to file"
+        if self.xmlfn == '':
+            self.savexmlas()
+        else:
+            self.data2soup()
+            try:
+                self.soup2file()
+            except IOError as err:
+                dlg = wx.MessageBox(self.title, err, wx.OK | wx.ICON_INFORMATION)
+                dlg.ShowModal()
+                dlg.Destroy()
+                return
+            self.sb.SetStatusText("saved {}".format(self.xmlfn))
 
     def savexmlas(self, evt = None):
         """vraag bestand om html op te slaan
         bestand opslaan en naam in titel en root element zetten"""
-        dname, fname = os.path.split(self.xmlfn)
+        if self.xmlfn:
+            dname, fname = os.path.split(self.xmlfn)
+        else:
+            dname = os.getcwd()
+            fname = ""
         dlg = wx.FileDialog(
             self, message = "Save file as ...",
             defaultDir = dname,
@@ -931,34 +961,40 @@ class MainFrame(wx.Frame, ed.EditorMixin):
             )
         if dlg.ShowModal() == wx.ID_OK:
             self.xmlfn = dlg.GetPath()
-            self.savexmlfile(saveas = True)
+            self.data2soup()
+            try:
+                self.soup2file(saveas = True)
+            except IOError as err:
+                dlg.Destroy()
+                dlg = wx.MessageBox(self.title, err, wx.OK | wx.ICON_INFORMATION)
+                dlg.ShowModal()
+                dlg.Destroy()
+                return
             self.tree.SetItemText(self.top, self.xmlfn)
             self.SetTitle(" - ".join((os.path.basename(self.xmlfn), TITEL)))
-            self.sb.SetStatusText("{} saved".format(self.xmlfn))
+            self.sb.SetStatusText("saved as {}".format(self.xmlfn))
         dlg.Destroy()
+
+    def reopenxml(self, evt = None):
+        """onvoorwaardelijk html bestand opnieuw laden"""
+        try:
+            ed.EditorMixin.getsoup(self, fname = self.xmlfn)
+            self.sb.SetStatusText("reloaded {}".format(self.xmlfn))
+        except Exception as err:
+            dlg = wx.MessageBox(self.title, err, wx.OK | wx.INFORMATION)
+            dlg.ShowModal()
+            dlg.Destroy()
+
+    def preview(self, evt = None):
+        "toon preview dialoog"
+        edt = PreviewDialog(self)
+        edt.ShowModal()
+        edt.Destroy()
 
     def about(self, evt = None):
         "toon programma info"
         ed.EditorMixin.about(self)
         wx.MessageBox(self.abouttext, self.title, wx.OK | wx.ICON_INFORMATION)
-
-    def openfile(self):
-        """vraag bestand om te openen
-        controleer of het geparsed kan worden"""
-        dlg = wx.FileDialog(
-            self, message="Choose a file",
-            defaultDir = os.getcwd(),
-            wildcard = HMASK,
-            style = wx.OPEN
-            )
-        if dlg.ShowModal() == wx.ID_OK:
-            pname = dlg.GetPath()
-            if not ed.EditorMixin.openfile(self, pname):
-                dlg = wx.MessageBox(self.title, 'html parsing error',
-                               wx.OK | wx.ICON_INFORMATION)
-                dlg.ShowModal()
-                dlg.Destroy()
-        dlg.Destroy()
 
     def addtreeitem(self, node, naam, data):
         """itemnaam en -data toevoegen aan de interne tree
@@ -979,26 +1015,7 @@ class MainFrame(wx.Frame, ed.EditorMixin):
         if DESKTOP:
             self.tree.SelectItem(self.top)
 
-    def savexmlfile(self, saveas = False):
-        "open file en schrijf html erheen"
-        if not saveas:
-            try:
-                shutil.copyfile(self.xmlfn, self.xmlfn + '.bak')
-            except IOError as mld:
-                wx.MessageBox(mld, self.title, wx.OK | wx.ICON_ERROR)
-        self.maakhtml()
-        try:
-            with open(self.xmlfn,"w") as f_out:
-                f_out.write(str(self.soup))
-        except IOError as err:
-            dlg = wx.MessageBox(self.title, err, wx.OK | wx.ICON_INFORMATION)
-            dlg.ShowModal()
-            dlg.Destroy()
-            return
-        self.tree_dirty = False
-        self.sb.SetStatusText("{} saved".format(self.xmlfn))
-
-    def maakhtml(self):
+    def data2soup(self):
         "interne tree omzetten in BeautifulSoup object"
         def expandnode(node, root, data, commented = False):
             "tree item (node) met inhoud (data) toevoegen aan BS node (root)"

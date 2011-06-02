@@ -3,6 +3,7 @@ Hierin worden een aantal constanten, functies en een mixin class gedefinieerd
 voor de zaken die gui-toolkit onafhankelijk zijn
 """
 import os
+import shutil
 import BeautifulSoup as bs
 if os.name == 'ce':
     DESKTOP = False
@@ -14,23 +15,6 @@ ELSTART = '<>'
 CMELSTART = ' '.join((CMSTART, ELSTART))
 DTDSTART = "<!DOCTYPE"
 BL = "&nbsp;"
-
-def get_html(fname = None, preserve = False):
-    """get html from file
-
-    `preserve` anticipates on the possibility to not strip out newlines
-    and replace tabs by spaces"""
-    if fname:
-        with open(fname) as f_in:
-            data = ''.join([x.strip() for x in f_in])
-        if not preserve:
-            data = data.replace('\t',' ')
-            data = data.replace('\n','')
-        # modify some self-closing tags: to accomodate BS:
-        html = data.replace('<br/>','<br />').replace('<hr/>','<hr />')
-    else:
-        html = '<html><head><title></title></head><body></body></html>'
-    return html
 
 def getrelativepath(path, refpath):
     "return path made relative to refpath, or empty string"
@@ -93,72 +77,37 @@ def escape(text):
 class EditorMixin(object):
     "mixin class to add gui-independent methods to main frame"
 
-    def init_fn(self):
-        "init file"
-        if self.xmlfn == '':
-            self.root = bs.BeautifulSoup(get_html())
-            if DESKTOP:
-                ## self.openxml()
-                self.init_tree() # tijdens testen even geen open dialoog
-            else:
-                self.init_tree()
+    def getsoup(self, fname = "", preserve = False):
+        """build initial html or read from file and initialize tree
+
+        `preserve` anticipates on the possibility to not strip out newlines
+        and replace tabs by spaces"""
+        if fname:
+            with open(fname) as f_in:
+                data = ''.join([x.strip() for x in f_in])
+            if not preserve:
+                data = data.replace('\t',' ')
+                data = data.replace('\n','')
+            # modify some self-closing tags: to accomodate BS:
+            html = data.replace('<br/>','<br />').replace('<hr/>','<hr />')
         else:
-            self.root = bs.BeautifulSoup(get_html(self.xmlfn))
-            self.init_tree()
-
-    def quit(self, evt = None):
-        "generic quit method"
-        pass
-
-    def newxml(self, evt = None):
-        "new file"
-        self.root = bs.BeautifulSoup(get_html())
-        self.xmlfn = ''
-        self.init_tree()
-
-    def openxml(self, evt = None):
-        "open file"
-        ## em.editormixin.openhtml()
-        self.openfile()
-        self.init_tree()
-
-    def reopenxml(self, evt = None):
-        "reopen file"
-        EditorMixin.openfile(self, self.xmlfn)
-        self.init_tree()
-
-    def savexml(self, evt = None):
-        "save html to file"
-        if self.xmlfn == '':
-            self.savexmlas()
-        else:
-            self.savexmlfile()
-
-    def savexmlas(self, evt = None):
-        "placeholder for gui-specific method"
-        pass
-
-    def about(self, evt = None):
-        "wordt niet gebruikt?"
-        self.abouttext = "\n".join((
-            "Made in 2008 by Albert Visser",
-            "Written in PythonCE and PocketPyGui"
-            ))
-
-    def openfile(self, fname):
-        "to be called from gui-specific method"
-        # het onderstaande wordt nergens gebruikt:
+            html = '<html><head><title></title></head><body></body></html>'
         try:
-            root = bs.BeautifulSoup(get_html(fname)) # fname was eerst h
-        except:
-            return False
+            root = bs.BeautifulSoup(html)
+        except Exception as err:
+            print err
+            raise
         else:
             self.root = root
             self.xmlfn = fname
-            return True
+            self.init_tree(fname)
+            print ">{}<".format(self.xmlfn)
 
     def init_tree(self, name = ''):
-        "build internal tree representation of the html"
+        """build internal tree representation of the html
+
+        to be extended with gui-specific method"""
+
         def add_to_tree(item, node, commented = False):
             """add contents of BeautifulSoup node (`node`) to tree item (`item`)
             `commented` flag is used in building item text"""
@@ -194,6 +143,19 @@ class EditorMixin(object):
             titel = '[untitled]'
         self.addtreetop(titel, " - ".join((os.path.basename(titel), TITEL)))
         add_to_tree(self.top, self.root)
+        self.tree_dirty = False
+
+    def soup2file(self, saveas = False):
+        if not saveas:
+            try:
+                shutil.copyfile(self.xmlfn, self.xmlfn + '.bak')
+            except IOError as mld:
+                raise
+        try:
+            with open(self.xmlfn,"w") as f_out:
+                f_out.write(str(self.soup))
+        except IOError as err:
+            raise
         self.tree_dirty = False
 
     def edit(self, evt = None):
@@ -239,3 +201,10 @@ class EditorMixin(object):
     def add_text(self, evt = None):
         "placeholder for gui-specific method"
         pass
+    def about(self, evt = None):
+        "wordt niet gebruikt?"
+        self.abouttext = "\n".join((
+            "Made in 2008 by Albert Visser",
+            "Written in PythonCE and PocketPyGui"
+            ))
+
