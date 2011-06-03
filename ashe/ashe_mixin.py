@@ -101,7 +101,6 @@ class EditorMixin(object):
             self.root = root
             self.xmlfn = fname
             self.init_tree(fname)
-            print ">{}<".format(self.xmlfn)
 
     def init_tree(self, name = ''):
         """build internal tree representation of the html
@@ -203,8 +202,9 @@ class EditorMixin(object):
         pass
     def about(self, evt = None):
         "wordt niet gebruikt?"
-        self.abouttext = "\n".join((
-            "Made in 2008 by Albert Visser",
-            "Written in PythonCE and PocketPyGui"
-            ))
+        return """\
+            "Simple tree-based HTML editor
+
+            Started in 2008 by Albert Visser
+            Versions for PC and PDA available"""
 
