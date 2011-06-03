@@ -29,44 +29,43 @@ class PreviewDialog(wx.Dialog):
         dsp = wx.Display().GetClientArea()
         high = dsp.height if dsp.height < 800 else 800
         wide = dsp.width if dsp.width < 1024 else 1024
-        ## print "preview: ", dsp.top, dsp.left, wi, hi
         wx.Dialog.__init__(self, parent, title = 'Preview HTML',
             pos = (dsp.top, dsp.left), size=(wide, high),
             style = wx.DEFAULT_DIALOG_STYLE | wx.RESIZE_BORDER ,
-            ) #,action=("Cancel", self.on_cancel))
-        self.pnl = self # wx.Panel(self, -1)
+            )
+        self.pnl = self
 
-        self.parent.maakhtml()
+        self.parent.data2soup()
         self.data_file = "tempfile.html"
         with open(self.data_file,"w") as f_out:
             f_out.write(str(self.parent.soup))
 
 
-        vbox = wx.BoxSizer(wx.VERTICAL) # border=(15, 15, 15, 15))
+        vbox = wx.BoxSizer(wx.VERTICAL)
         hbox = wx.BoxSizer(wx.HORIZONTAL)
-        self.html = html.HtmlWindow(self.pnl, -1, # size = (600, 680)
+        self.html = html.HtmlWindow(self.pnl, -1,
             size = (wide, high - 30)
-            ) #, zoom_level = 0)
+            )
         if "gtk2" in wx.PlatformInfo:
             self.html.SetStandardFonts()
+        ## self.Bind(wx.EVT_KEY_DOWN, self.on_key)
 
         self.html.LoadPage(self.data_file)
-        ## x, y = self.html.GetPosition()
-        ## w, h = self.html.GetSize()
-        ## wm, hm = self.html.GetMaxSize()
-        ## print "size:", x, y, w, h, wm, hm
-        hbox.Add(self.html, 1) #, wx.EXPAND | wx.ALL, 2)
+        hbox.Add(self.html, 1)
         vbox.Add(hbox, 1)
 
-        ## hbox = wx.BoxSizer(wx.HORIZONTAL)
-        ## self.ok_button = wx.Button(self.pnl, id = wx.ID_OK)
-        ## hbox.Add(self.ok_button, 0, wx.ALL, 2)
-        ## vbox.Add(hbox, 0, wx.ALIGN_CENTER_HORIZONTAL | wx.ALIGN_CENTER_VERTICAL)
         self.pnl.SetSizer(vbox)
         self.pnl.SetAutoLayout(True)
         vbox.Fit(self.pnl)
         vbox.SetSizeHints(self.pnl)
         self.pnl.Layout()
+
+    ## def on_key(self, event):
+        ## keycode = event.GetKeyCode()
+        ## print keycode
+        ## if keycode == wx.WXK_ESCAPE:
+            ## self.Unbind(wx.EVT_KEY_DOWN)
+            ## self.Destroy()
 
 class DTDDialog(wx.Dialog):
     "dialoog om het toe te voegen dtd te selecteren"
@@ -93,15 +92,15 @@ class DTDDialog(wx.Dialog):
 
     def __init__(self, parent):
         wx.Dialog.__init__(self, parent, title="Add DTD")
-        self.pnl = self # wx.Panel(self, -1)
-        vbox = wx.BoxSizer(wx.VERTICAL) # ,border=(15, 15, 15, 15))
+        self.pnl = self
+        vbox = wx.BoxSizer(wx.VERTICAL)
 
         box = wx.StaticBox(self.pnl, -1)
         sbox = wx.StaticBoxSizer(box, wx.VERTICAL)
         hbox = wx.BoxSizer(wx.HORIZONTAL)
         lbl = wx.StaticText(self.pnl, -1, "Select document type:")
         hbox.Add(lbl, 0, wx.TOP, 10)
-        sbox.Add(hbox, 0) # , wx.LEFT|wx.RIGHT, 10)
+        sbox.Add(hbox, 0)
 
         hbox = wx.BoxSizer(wx.HORIZONTAL)
         vbox2 = wx.BoxSizer(wx.VERTICAL)
@@ -112,7 +111,7 @@ class DTDDialog(wx.Dialog):
                 radio = wx.RadioButton(self.pnl, -1, x[0])
             x.append(radio)
             vbox2.Add(radio, 0, wx.ALL, 2)
-        hbox.Add(vbox2) # , 0, wx.TOP, 15)
+        hbox.Add(vbox2)
         sbox.Add(hbox, 0, wx.ALL, 10)
 
         hbox = wx.BoxSizer(wx.HORIZONTAL)
@@ -125,9 +124,9 @@ class DTDDialog(wx.Dialog):
         sbox.Add(hbox, 1, wx.EXPAND | wx.ALL, 10)
         vbox.Add(sbox, 1, wx.EXPAND | wx.LEFT | wx.RIGHT, 15)
         hbox = wx.BoxSizer(wx.HORIZONTAL)
-        self.ok_button = wx.Button(self.pnl, id = wx.ID_SAVE) # label='Save')
+        self.ok_button = wx.Button(self.pnl, id = wx.ID_SAVE)
         self.SetAffirmativeId(wx.ID_SAVE)
-        self.cancel_button = wx.Button(self.pnl, id = wx.ID_CANCEL) #label='Cancel')
+        self.cancel_button = wx.Button(self.pnl, id = wx.ID_CANCEL)
         hbox.Add(self.ok_button, 0, wx.EXPAND | wx.ALL, 2)
         hbox.Add(self.cancel_button, 0, wx.EXPAND | wx.ALL, 2)
         vbox.Add(hbox, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM |
@@ -144,8 +143,8 @@ class LinkDialog(wx.Dialog):
     def __init__(self, parent):
         self.parent = parent
         wx.Dialog.__init__(self, parent, title = 'Add Link')
-        self.pnl = self # wx.Panel(self, -1)
-        vbox = wx.BoxSizer(wx.VERTICAL) # border=(15, 15, 15, 15))
+        self.pnl = self
+        vbox = wx.BoxSizer(wx.VERTICAL)
 
         box = wx.StaticBox(self.pnl, -1)
         sbox = wx.StaticBoxSizer(box, wx.VERTICAL)
@@ -177,9 +176,9 @@ class LinkDialog(wx.Dialog):
         vbox.Add(sbox, 0, wx.LEFT | wx.RIGHT | wx.TOP, 15)
 
         hbox = wx.BoxSizer(wx.HORIZONTAL)
-        self.ok_button = wx.Button(self.pnl, id = wx.ID_SAVE) # label='Save')
+        self.ok_button = wx.Button(self.pnl, id = wx.ID_SAVE)
         self.ok_button.Bind(wx.EVT_BUTTON, self.on_ok)
-        self.cancel_button = wx.Button(self.pnl, id = wx.ID_CANCEL) #label='Cancel')
+        self.cancel_button = wx.Button(self.pnl, id = wx.ID_CANCEL)
         self.SetAffirmativeId(wx.ID_SAVE)
         hbox.Add(self.ok_button, 0, wx.EXPAND | wx.ALL, 2)
         hbox.Add(self.cancel_button, 0, wx.EXPAND | wx.ALL, 2)
@@ -207,13 +206,11 @@ class LinkDialog(wx.Dialog):
         "bij OK: het geselecteerde (absolute) pad omzetten in een relatief pad"
         link = self.link_text.GetValue()
         if link:
-            print "link adres:", link
             if not link.startswith('http://'):
                 if self.parent.xmlfn:
                     whereami = self.parent.xmlfn
                 else:
                     whereami = os.path.join(os.getcwd(),'index.html')
-                print "whereamI:", whereami
                 link = ed.getrelativepath(link, whereami)
             if not link:
                 wx.MessageBox('Impossible to make this local link relative',
@@ -240,8 +237,8 @@ class ImageDialog(wx.Dialog):
     def __init__(self, parent):
         wx.Dialog.__init__(self, parent, title = 'Add Image')
         self.parent = parent
-        self.pnl = self # wx.Panel(self, -1)
-        vbox = wx.BoxSizer(wx.VERTICAL) # border=(15, 15, 15, 15))
+        self.pnl = self
+        vbox = wx.BoxSizer(wx.VERTICAL)
 
         box = wx.StaticBox(self.pnl, -1)
         sbox = wx.StaticBoxSizer(box, wx.VERTICAL)
@@ -273,9 +270,9 @@ class ImageDialog(wx.Dialog):
         vbox.Add(sbox, 0, wx.LEFT | wx.RIGHT | wx.TOP, 15)
 
         hbox = wx.BoxSizer(wx.HORIZONTAL)
-        self.ok_button = wx.Button(self.pnl, id = wx.ID_SAVE) # label='Save')
+        self.ok_button = wx.Button(self.pnl, id = wx.ID_SAVE)
         self.ok_button.Bind(wx.EVT_BUTTON, self.on_ok)
-        self.cancel_button = wx.Button(self.pnl, id = wx.ID_CANCEL) #label='Cancel')
+        self.cancel_button = wx.Button(self.pnl, id = wx.ID_CANCEL)
         self.SetAffirmativeId(wx.ID_SAVE)
         hbox.Add(self.ok_button, 0, wx.EXPAND | wx.ALL, 2)
         hbox.Add(self.cancel_button, 0, wx.EXPAND | wx.ALL, 2)
@@ -336,15 +333,14 @@ class ListDialog(wx.Dialog):
         self.dataitems = []
         wx.Dialog.__init__(self, parent, title = 'Add List',
             style = wx.DEFAULT_DIALOG_STYLE | wx.RESIZE_BORDER ,
-            ) #,action=("Cancel", self.on_cancel))
-        self.pnl = self # wx.Panel(self, -1)
-        vbox = wx.BoxSizer(wx.VERTICAL) # border=(15, 15, 15, 15))
+            )
+        self.pnl = self
+        vbox = wx.BoxSizer(wx.VERTICAL)
 
         box = wx.StaticBox(self.pnl, -1)
         sbox = wx.StaticBoxSizer(box, wx.VERTICAL)
 
-        ## tsizer = wx.TBox(2, 2,border=(2, 2, 20, 2),spacing_x=2,spacing_y=2)
-        tbox = wx.FlexGridSizer(2, 2, 2, 2)  # rows, cols, vgap, hgap
+        tbox = wx.FlexGridSizer(2, 2, 2, 2)
         lbl = wx.StaticText(self.pnl, -1, "choose type of list:")
         self.type_select = wx.ComboBox(self.pnl, -1, style = wx.CB_DROPDOWN, choices = [
             "unordered",
@@ -358,15 +354,12 @@ class ListDialog(wx.Dialog):
 
         lbl = wx.StaticText(self.pnl, -1, "initial number of items:")
         hbox = wx.BoxSizer(wx.HORIZONTAL)
-        #~ self.rows_text = wx.TextCtrl(self.pnl, -1,size=(20, -1))
         self.rows_text = wx.SpinCtrl(self.pnl, -1, size = (40, -1))
         self.rows_text.Bind(wx.EVT_SPINCTRL, self.on_text)
-        #~ self.rows_text.Bind(wx.EVT_TEXT, self.on_text)
         tbox.Add(lbl, 0, wx.ALIGN_CENTER_VERTICAL)
         tbox.Add(self.rows_text) ## hbox)
         sbox.Add(tbox, 0, wx.ALL, 5)
 
-        #~ hbox = wx.BoxSizer(wx.HORIZONTAL)
         tbl = wxgrid.Grid(self.pnl, -1, size = (340, 120))
         tbl.CreateGrid(0, 1)
         tbl.SetColLabelValue(0, 'list item')
@@ -376,8 +369,8 @@ class ListDialog(wx.Dialog):
         vbox.Add(sbox, 1, wx.EXPAND | wx.LEFT | wx.RIGHT | wx.TOP, 20)
 
         hbox = wx.BoxSizer(wx.HORIZONTAL)
-        self.ok_button = wx.Button(self.pnl, id = wx.ID_SAVE) # label='Save')
-        self.cancel_button = wx.Button(self.pnl, id = wx.ID_CANCEL) #label='Cancel')
+        self.ok_button = wx.Button(self.pnl, id = wx.ID_SAVE)
+        self.cancel_button = wx.Button(self.pnl, id = wx.ID_CANCEL)
         self.SetAffirmativeId(wx.ID_SAVE)
         hbox.Add(self.ok_button, 0, wx.EXPAND | wx.ALL, 2)
         hbox.Add(self.cancel_button, 0, wx.EXPAND | wx.ALL, 2)
@@ -416,7 +409,6 @@ class ListDialog(wx.Dialog):
         num_rows = self.list_table.GetNumberRows()
         if num_rows > cur_rows:
             for idx in xrange(num_rows-1, cur_rows-1, -1):
-                ## print idx
                 self.list_table.DeleteRows(idx)
         elif cur_rows > num_rows:
             for idx in xrange(num_rows, cur_rows):
@@ -429,16 +421,15 @@ class TableDialog(wx.Dialog):
     def __init__(self, parent):
         wx.Dialog.__init__(self, parent, -1, title = 'Add Table',
             style = wx.DEFAULT_DIALOG_STYLE | wx.RESIZE_BORDER ,
-            ) #,action=("Cancel", self.on_cancel))
-        self.pnl = self # wx.Panel(self, -1)
+            )
+        self.pnl = self
         self.headings = []
-        vbox = wx.BoxSizer(wx.VERTICAL) # border=(15, 15, 15, 15))
+        vbox = wx.BoxSizer(wx.VERTICAL)
 
         box = wx.StaticBox(self.pnl, -1)
         sbox = wx.StaticBoxSizer(box, wx.VERTICAL)
 
-        ## tbox = wx.TBox(2, 2,border=(2, 2, 20, 2),spacing_x=2,spacing_y=2)
-        tbox = wx.FlexGridSizer(3, 2, 2, 2)  # rows, cols, vgap, hgap
+        tbox = wx.FlexGridSizer(3, 2, 2, 2)
 
         lbl = wx.StaticText(self.pnl, -1, "summary (description):")
         tbox.Add(lbl)
@@ -473,8 +464,8 @@ class TableDialog(wx.Dialog):
         vbox.Add(sbox, 1, wx.EXPAND | wx.ALL, 20)
 
         hbox = wx.BoxSizer(wx.HORIZONTAL)
-        self.ok_button = wx.Button(self.pnl, id = wx.ID_SAVE) # label='Save')
-        self.cancel_button = wx.Button(self.pnl, id = wx.ID_CANCEL) #label='Cancel')
+        self.ok_button = wx.Button(self.pnl, id = wx.ID_SAVE)
+        self.cancel_button = wx.Button(self.pnl, id = wx.ID_CANCEL)
         self.SetAffirmativeId(wx.ID_SAVE)
         hbox.Add(self.ok_button, 0, wx.EXPAND | wx.ALL, 2)
         hbox.Add(self.cancel_button, 0, wx.EXPAND | wx.ALL, 2)
@@ -540,11 +531,10 @@ class ElementDialog(wx.Dialog):
     tevens kan worden aangegeven of het element "op commentaar gezet" moet zijn"""
 
     def __init__(self, parent, title = '', tag = None, attrs = None):
-        ## print "Elementdialog:", tag, attrs
         wx.Dialog.__init__(self, parent, -1, title = title,
             style = wx.DEFAULT_DIALOG_STYLE | wx.RESIZE_BORDER,
-            ) # action=("Cancel", self.on_cancel))
-        self.pnl = self # wx.Panel(self, -1)
+            )
+        self.pnl = self
         self.parent = parent
         vbox = wx.BoxSizer(wx.VERTICAL)
         hbox = wx.BoxSizer(wx.HORIZONTAL)
@@ -584,7 +574,6 @@ class ElementDialog(wx.Dialog):
                 tbl.SetCellValue(idx, 1, value)
         else:
             self.row = -1
-        ## tbl.bind(selchanged=self.on_sel)
         self.attr_table = tbl
         hbox.Add(self.attr_table, 1, wx.EXPAND)
         sbox.Add(hbox, 1, wx.ALL | wx.EXPAND, 5)
@@ -594,17 +583,15 @@ class ElementDialog(wx.Dialog):
         self.add_button.Bind(wx.EVT_BUTTON, self.on_add)
         self.delete_button = wx.Button(self.pnl, label = '&Delete Selected')
         self.delete_button.Bind(wx.EVT_BUTTON, self.on_del)
-        ## self.comment_button.Bind(wx.EVT_TOGGLEBUTTON, self.toggle_comment)
         hbox.Add(self.add_button, 0, wx.EXPAND | wx.ALL, 1)
         hbox.Add(self.delete_button, 0, wx.EXPAND | wx.ALL, 1)
-        sbox.Add(hbox, 0, wx.ALL | wx.ALIGN_CENTER_HORIZONTAL, 1) # , wx.EXPAND|wx.ALL,5)
-        vbox.Add(sbox, 1, wx.ALL | wx.EXPAND, 5) # , wx.LEFT | wx.RIGHT , 20)
+        sbox.Add(hbox, 0, wx.ALL | wx.ALIGN_CENTER_HORIZONTAL, 1)
+        vbox.Add(sbox, 1, wx.ALL | wx.EXPAND, 5)
 
         hbox = wx.BoxSizer(wx.HORIZONTAL)
-        self.ok_button = wx.Button(self.pnl, id = wx.ID_SAVE) # label='Save')
+        self.ok_button = wx.Button(self.pnl, id = wx.ID_SAVE)
         self.ok_button.Bind(wx.EVT_BUTTON, self.on_ok)
-        self.cancel_button = wx.Button(self.pnl, id = wx.ID_CANCEL) #label='Cancel')
-        ## self.cancel_button.Bind(wx.EVT_BUTTON, self.on_cancel)
+        self.cancel_button = wx.Button(self.pnl, id = wx.ID_CANCEL)
         self.SetAffirmativeId(wx.ID_SAVE)
         hbox.Add(self.ok_button, 0, wx.EXPAND | wx.ALL, 2)
         hbox.Add(self.cancel_button, 0, wx.EXPAND | wx.ALL, 2)
@@ -664,8 +651,8 @@ class TextDialog(wx.Dialog):
                 dummy, text = text.split(None, 1)
         wx.Dialog.__init__(self, parent, -1, title,
             style = wx.DEFAULT_DIALOG_STYLE | wx.RESIZE_BORDER ,
-            ) #,action=("Cancel", self.on_cancel))
-        self.pnl = self # wx.Panel(self, -1)
+            )
+        self.pnl = self
         vbox = wx.BoxSizer(wx.VERTICAL)
         hbox = wx.BoxSizer(wx.HORIZONTAL)
         self.comment_button = wx.CheckBox(self.pnl, label = '&Comment(ed)')
@@ -678,8 +665,8 @@ class TextDialog(wx.Dialog):
         hbox.Add(self.data_text, 1, wx.EXPAND | wx.ALL, 5)
         vbox.Add(hbox, 1, wx.EXPAND | wx.LEFT | wx.RIGHT | wx.TOP, 20)
         hbox = wx.BoxSizer(wx.HORIZONTAL)
-        self.ok_button = wx.Button(self.pnl, id = wx.ID_SAVE) # label='Save')
-        self.cancel_button = wx.Button(self.pnl, id = wx.ID_CANCEL) #label='Cancel')
+        self.ok_button = wx.Button(self.pnl, id = wx.ID_SAVE)
+        self.cancel_button = wx.Button(self.pnl, id = wx.ID_CANCEL)
         self.SetAffirmativeId(wx.ID_SAVE)
         hbox.Add(self.ok_button, 0, wx.EXPAND | wx.ALL, 2)
         hbox.Add(self.cancel_button, 0, wx.EXPAND | wx.ALL, 2)
@@ -707,7 +694,6 @@ class MainFrame(wx.Frame, ed.EditorMixin):
         dsp = wx.Display().GetClientArea()
         high = dsp.height if dsp.height < 900 else 900
         wide = dsp.width if dsp.width < 620 else 620
-        ## print "main: ", dsp.top, dsp.left, wi, hi
         wx.Frame.__init__(self, parent, _id,
             pos = (dsp.top, dsp.left),
             size = (wide, high)
@@ -729,6 +715,7 @@ class MainFrame(wx.Frame, ed.EditorMixin):
         self.tree.Bind(wx.EVT_LEFT_DCLICK, self.on_leftdclick)
         self.tree.Bind(wx.EVT_RIGHT_DOWN, self.on_rightdown)
         ## self.tree.Bind(wx.EVT_CONTEXT_MENU, self.onContextMenu)
+        self.tree.Bind(wx.EVT_CHAR, self.on_char)
         self.tree.Bind(wx.EVT_KEY_DOWN, self.on_key)
 
         self.sb = wx.StatusBar(self)
@@ -750,138 +737,78 @@ class MainFrame(wx.Frame, ed.EditorMixin):
         ed.EditorMixin.getsoup(self, fname)
 
     def setup_menu(self):
+        self.menulist = (
+            '&File', (
+                ('&New', 'N', 'C', "Start a new HTML document", self.newxml),
+                ('&Open', 'O', 'C', "Open an existing HTML document", self.openxml),
+                ('&Save', 'S', 'C', "Save the current document", self.savexml),
+                ('Save &As', 'S', 'SC', "Save the current document under a different name",
+                    self.savexmlas),
+                ('&Revert', 'R', 'C', "Discard all changes since the last save", self.reopenxml),
+                ('sep1', ),
+                ('Pre&view', '', '', "Render the HTML in a separate window", self.preview),
+                ('sep2', ),
+                ('E&xit', 'Q', 'C', 'Quit the application', self.quit),
+                ),
+                ), (
+            '&View', (
+                ('Expand All (sub)Levels', '+', 'C', "Show what's beneath the current element",
+                    self.expand, True),
+                ('Collapse All (sub)Levels', '-', 'C', "Hide what's beneath the current element",
+                    self.collapse, True),
+                ),
+                ), (
+            '&Edit', (
+                ('Edit', 'F2', '', 'Modify the element/text and/or its attributes', self.edit),
+                ('sep1', ),
+                ('Cut', 'X', 'C', 'Copy and delete the current element', self.cut),
+                ('Copy', 'C', 'C', 'Copy the current element', self.copy),
+                ('Paste Before', 'V', 'SC', 'Paste before of the current element', self.paste),
+                ('Paste After', 'V', 'CA', 'Paste after the current element', self.paste_aft),
+                ('Paste Under', 'V', 'C', 'Paste below the current element', self.paste_blw),
+                ('sep2', ),
+                ('Delete', 'Del', '', 'Delete the current element', self.delete),
+                ('Insert Text (under)', 'Ins', 'C', 'Add a text node under the current one',
+                    self.add_text),
+                ('Insert Element Before', 'Ins', 'S', 'Add a new element', self.insert),
+                ('Insert Element After', 'Ins', 'A', 'Add a new element', self.ins_aft),
+                ('Insert Element Under', 'Ins', '', 'Add a new element', self.ins_chld),
+                ),
+                ), (
+            "&HTML", (
+                ('Add DTD', '', '', 'Add a document type description', self.add_dtd),
+                ('Create link (under)', '', '', 'Add a link', self.add_link),
+                ('Add image (under)', '', '', 'Include an image', self.add_image),
+                ('Add list (under)', '', '', 'Create a list', self.add_list),
+                ('Add table (under)', '', '', 'Create a table', self.add_table),
+                ),
+                )
+        self.menu_id = {}
         menu_bar = wx.MenuBar()
-
-        self.filemenu = wx.Menu()
-        self.FM_NEW = wx.NewId()
-        self.FM_OPN = wx.NewId()
-        self.FM_SAV = wx.NewId()
-        self.FM_SAS = wx.NewId()
-        self.FM_ROP = wx.NewId()
-        self.FM_PVW = wx.NewId()
-        self.FM_XIT = wx.NewId()
-
-        self.filemenu.Append(self.FM_NEW, "&New      Ctrl-N",
-            "Start a new HTML document")
-        self.filemenu.Append(self.FM_OPN, "&Open     Ctrl-O",
-            "Open an existing HTML document")
-        self.filemenu.Append(self.FM_SAV, '&Save     Ctrl-S',
-            "Save the current document")
-        self.filemenu.Append(self.FM_SAS, 'Save &As  Shift-Ctrl-S',
-            "Save the current document under a different name")
-        self.filemenu.Append(self.FM_ROP, '&Revert   Ctrl-R',
-            "Discard are changes since the last save")
-        self.filemenu.AppendSeparator()
-        self.filemenu.Append(self.FM_PVW, 'Pre&view',
-            "Render the HTML")
-        self.filemenu.AppendSeparator()
-        self.filemenu.Append(self.FM_XIT, 'E&xit     Ctrl-Q, Alt-F4',
-            'Quit the application')
-        menu_bar.Append(self.filemenu, "&File")
-
-        self.viewmenu = wx.Menu()
-        self.VW_EXP = wx.NewId()
-        self.VW_CLP = wx.NewId()
-        self.viewmenu.Append(self.VW_EXP, "Expand All (sub)Levels    Ctrl +",
-            "Show what's beneath the current element")
-        self.viewmenu.Append(self.VW_CLP, "Collapse All (sub)Levels  Ctrl -",
-            "Hide what's beneath the current element")
-        menu_bar.Append(self.viewmenu, "&View")
-
-        self.editmenu = wx.Menu()
-        self.EM_EDT = wx.NewId()
-        self.EM_CUT = wx.NewId()
-        self.EM_CPY = wx.NewId()
-        self.EM_PB = wx.NewId()
-        self.EM_PA = wx.NewId()
-        self.EM_PU = wx.NewId()
-        self.EM_IT = wx.NewId()
-        self.EM_IB = wx.NewId()
-        self.EM_IA = wx.NewId()
-        self.EM_IU = wx.NewId()
-        self.EM_DEL = wx.NewId()
-        self.editmenu.Append(self.EM_EDT,
-            "Edit                    F2", "Modify the element/text and/or its attributes")
-        self.editmenu.AppendSeparator()
-        self.editmenu.Append(self.EM_CUT,
-            "Cut                     Ctrl-X", "Copy and delete the current element")
-        self.editmenu.Append(self.EM_CPY,
-            "Copy                    Ctrl-C", "Copy the current element")
-        self.pastebeforeitem = self.editmenu.Append(self.EM_PB,
-            "Paste Before            Shft-Ctrl-V", "Paste the copied element")
-        self.pasteafteritem = self.editmenu.Append(self.EM_PA,
-            "Paste After             Alt-Ctrl-V", "Paste the copied element")
-        self.pastebelowitem = self.editmenu.Append(self.EM_PU,
-            "Paste Under             Ctrl-V", "Paste the copied element")
-        self.editmenu.AppendSeparator()
-        self.editmenu.Append(self.EM_DEL,
-            "Delete                  Del", "Delete the current element")
-        self.editmenu.Append(self.EM_IT,
-            "Insert Text (under)     Ctrl-Ins", "Add a text node under the current one")
-        self.editmenu.Append(self.EM_IB,
-            'Insert Element Before   Shft-Ins', "Add a new element")
-        self.editmenu.Append(self.EM_IA,
-            'Insert Element After    Alt-Ins', "Add a new element")
-        self.editmenu.Append(self.EM_IU,
-            'Insert Element Under    Ins', "Add a new element")
-        ## self.pastebeforeitem.title = "Nothing to Paste"
-        ## self.pastebeforeitem.enable(False)
-        ## self.pasteafteritem.title = " "
-        ## self.pasteafteritem.enable(False)
-        ## self.pastebelowitem.title = " "
-        ## self.pastebelowitem.enable(False)
-        menu_bar.Append(self.editmenu, "&Edit")
-
-        # self.helpmenu.append('About', callback = self.about)
-        self.htmlmenu = wx.Menu()
-        self.HM_DTD = wx.NewId()
-        self.HM_LNK = wx.NewId()
-        self.HM_IMG = wx.NewId()
-        self.HM_LST = wx.NewId()
-        self.HM_TBL = wx.NewId()
-        self.dtdmenu = self.htmlmenu.Append(self.HM_DTD, "Add DTD",
-            "Add a document type description")
-        self.htmlmenu.Append(self.HM_LNK, "Create link (under)"
-            "Add a link")
-        self.htmlmenu.Append(self.HM_IMG, "Add image (under)",
-            "Include an image")
-        self.htmlmenu.Append(self.HM_LST, "Add list (under)",
-            "create a list")
-        self.htmlmenu.Append(self.HM_TBL, "Add table (under)",
-            "create a table")
-        menu_bar.Append(self.htmlmenu, "&HTML")
+        for menu_text, data in self.menulist:
+            menu = wx.Menu()
+            for item in data:
+                if len(item) > 1:
+                    menuitem_text, hotkey, modifiers, status_text, callback = item[:5]
+                    if 'A' in modifiers:
+                        hotkey = "-".join(("Alt",hotkey))
+                    if 'C' in modifiers:
+                        hotkey = "-".join(("Ctrl",hotkey))
+                    if 'S' in modifiers:
+                        hotkey = "-".join(("Shift",hotkey))
+                    self.menu_id[menuitem_text] = wx.NewId()
+                    caption = menuitem_text.ljust(40) + hotkey
+                    menu.Append(self.menu_id[menuitem_text], caption, status_text)
+                    self.Connect(self.menu_id[menuitem_text], -1, wx.wxEVT_COMMAND_MENU_SELECTED,
+                        callback)
+                else:
+                    menu.AppendSeparator()
+            menu_bar.Append(menu, menu_text)
         self.SetMenuBar(menu_bar)
-
-        self.Connect(self.FM_NEW, -1, wx.wxEVT_COMMAND_MENU_SELECTED, self.newxml)
-        self.Connect(self.FM_OPN, -1, wx.wxEVT_COMMAND_MENU_SELECTED, self.openxml)
-        self.Connect(self.FM_SAV, -1, wx.wxEVT_COMMAND_MENU_SELECTED, self.savexml)
-        self.Connect(self.FM_SAS, -1, wx.wxEVT_COMMAND_MENU_SELECTED, self.savexmlas)
-        self.Connect(self.FM_ROP, -1, wx.wxEVT_COMMAND_MENU_SELECTED, self.reopenxml)
-        self.Connect(self.FM_PVW, -1, wx.wxEVT_COMMAND_MENU_SELECTED, self.preview)
-        self.Connect(self.FM_XIT, -1, wx.wxEVT_COMMAND_MENU_SELECTED, self.quit)
-        self.Connect(self.VW_EXP, -1, wx.wxEVT_COMMAND_MENU_SELECTED, self.expand   )
-        self.Connect(self.VW_CLP, -1, wx.wxEVT_COMMAND_MENU_SELECTED, self.collapse )
-        self.Connect(self.EM_EDT, -1, wx.wxEVT_COMMAND_MENU_SELECTED, self.edit     )
-        self.Connect(self.EM_CUT, -1, wx.wxEVT_COMMAND_MENU_SELECTED, self.cut      )
-        self.Connect(self.EM_CPY, -1, wx.wxEVT_COMMAND_MENU_SELECTED, self.copy     )
-        self.Connect(self.EM_DEL, -1, wx.wxEVT_COMMAND_MENU_SELECTED, self.delete   )
-        self.Connect(self.EM_PB , -1, wx.wxEVT_COMMAND_MENU_SELECTED, self.paste    )
-        self.Connect(self.EM_PA , -1, wx.wxEVT_COMMAND_MENU_SELECTED, self.paste_aft)
-        self.Connect(self.EM_PU , -1, wx.wxEVT_COMMAND_MENU_SELECTED, self.paste_blw)
-        self.Connect(self.EM_IT , -1, wx.wxEVT_COMMAND_MENU_SELECTED, self.add_text )
-        self.Connect(self.EM_IB , -1, wx.wxEVT_COMMAND_MENU_SELECTED, self.insert   )
-        self.Connect(self.EM_IA , -1, wx.wxEVT_COMMAND_MENU_SELECTED, self.ins_aft  )
-        self.Connect(self.EM_IU , -1, wx.wxEVT_COMMAND_MENU_SELECTED, self.ins_chld )
-        self.Connect(self.HM_DTD, -1, wx.wxEVT_COMMAND_MENU_SELECTED, self.add_dtd  )
-        self.Connect(self.HM_LNK, -1, wx.wxEVT_COMMAND_MENU_SELECTED, self.add_link )
-        self.Connect(self.HM_IMG, -1, wx.wxEVT_COMMAND_MENU_SELECTED, self.add_image)
-        self.Connect(self.HM_LST, -1, wx.wxEVT_COMMAND_MENU_SELECTED, self.add_list )
-        self.Connect(self.HM_TBL, -1, wx.wxEVT_COMMAND_MENU_SELECTED, self.add_table)
 
     def check_tree(self):
         """vraag of de wijzigingen moet worden opgeslagen
         keuze uitvoeren en teruggeven (i.v.m. eventueel gekozen Cancel)"""
-        ## print "check_tree aangeroepen"
         if self.tree_dirty:
             hlp = wx.MessageBox("HTML data has been modified - save before continuing?",
                 self.title,
@@ -993,8 +920,8 @@ class MainFrame(wx.Frame, ed.EditorMixin):
 
     def about(self, evt = None):
         "toon programma info"
-        ed.EditorMixin.about(self)
-        wx.MessageBox(self.abouttext, self.title, wx.OK | wx.ICON_INFORMATION)
+        abouttext = ed.EditorMixin.about(self)
+        wx.MessageBox(abouttext, self.title, wx.OK | wx.ICON_INFORMATION)
 
     def addtreeitem(self, node, naam, data):
         """itemnaam en -data toevoegen aan de interne tree
@@ -1019,7 +946,6 @@ class MainFrame(wx.Frame, ed.EditorMixin):
         "interne tree omzetten in BeautifulSoup object"
         def expandnode(node, root, data, commented = False):
             "tree item (node) met inhoud (data) toevoegen aan BS node (root)"
-            ## print data, commented
             try:
                 for att in data:
                     root[att] = data[att]
@@ -1036,9 +962,7 @@ class MainFrame(wx.Frame, ed.EditorMixin):
                             is_comment = True
                             soup = bs.BeautifulSoup()
                             sub = bs.Tag(soup, text.split()[1])
-                            ## print "before:", elm, text, data
                             expandnode(elm, sub, data, is_comment)
-                            ## print "after:", sub
                             sub = bs.Comment(str(sub).decode("latin-1"))
                         else:
                             is_comment = False
@@ -1074,19 +998,6 @@ class MainFrame(wx.Frame, ed.EditorMixin):
                 expandnode(tag, root, data)
             tag, pos = self.tree.GetNextChild(self.top, pos)
 
-    ## def on_bdown(self, ev=None):
-        ## if wx.recon_context(self.tree, ev):
-            ## self.item = self.tree.selection
-            ## if self.item == self.top:
-                ## wx.context_menu(self, ev, self.filemenu)
-            ## elif self.item is not None:
-                ## wx.context_menu(self, ev, self.editmenu)
-            ## else:
-                ## wx.Message.ok(self.title,'You need to select a tree item first')
-                ## #menu.append()
-        ## else:
-            ## ev.skip()
-
     def on_leftdclick(self, evt = None):
         "start edit bij dubbelklikken tenzij op filenaam"
         item, flags = self.tree.HitTest(evt.GetPosition())
@@ -1106,44 +1017,31 @@ class MainFrame(wx.Frame, ed.EditorMixin):
     def on_rightdown(self, evt = None):
         "context menu bij rechtsklikken"
         item, flags = self.tree.HitTest(evt.GetPosition())
-        if item and item != self.top:
-            self.tree.SelectItem(item)
-            data = self.tree.GetItemText(item)
-            menu = wx.Menu()
-            menu.Append(self.VW_EXP, "Expand All (sub)Levels")
-            menu.Append(self.VW_CLP, "Collapse All (sub)Levels")
-            edit_menu = wx.Menu()
-            edit_menu.Append(self.EM_EDT, "Edit")
-            edit_menu.AppendSeparator()
-            edit_menu.Append(self.EM_CUT, "Cut")
-            edit_menu.Append(self.EM_CPY, "Copy")
-            edit_menu.Append(self.EM_PB, "Paste Before")
-            edit_menu.Append(self.EM_PA, "Paste After")
-            if data.startswith(ELSTART):
-                edit_menu.Append(self.EM_PU, "Paste Under")
-            edit_menu.AppendSeparator()
-            edit_menu.Append(self.EM_DEL, "Delete")
-            if data.startswith(ELSTART):
-                edit_menu.Append(self.EM_IT, "Insert Text (under)")
-            edit_menu.Append(self.EM_IB, 'Insert Element Before')
-            edit_menu.Append(self.EM_IA, 'Insert Element After')
-            if data.startswith(ELSTART):
-                edit_menu.Append(self.EM_IU, 'Insert Eledit_menuent Under')
-            menu.AppendMenu(-1, "Edit", edit_menu)
-            html_menu = wx.Menu()
-            html_menu.Append(self.HM_DTD, "Add DTD")
-            if data.startswith(ELSTART):
-                html_menu.Append(self.HM_LNK, "Create link (under)")
-                html_menu.Append(self.HM_IMG, "Add image (under)")
-                html_menu.Append(self.HM_LST, "Add list (under)")
-                html_menu.Append(self.HM_TBL, "Add table (under)")
-            menu.AppendMenu(-1, "HTML", html_menu)
-            self.PopupMenu(menu)
-            ## print "klaar met menu"
-            menu.Destroy()
-        ## pass
+        if item and item != self.top: # != self.top:
+            self.contextmenu(item)
 
-    def on_key(self, event):
+    def contextmenu(self, item, pos = None):
+        'we should be getting a menu now'
+        self.tree.SelectItem(item)
+        data = self.tree.GetItemText(item)
+        menu = wx.Menu()
+        for menu_item in self.menulist[1][1]:
+            menu.Append(self.menu_id[menu_item[0]], menu_item[0])
+        for menu_text, data in self.menulist[2:4]:
+            submenu = wx.Menu()
+            for item in data:
+                if len(item) == 1:
+                    submenu.AppendSeparator()
+                elif len(item) < 6 or data.startswith(ELSTART):
+                    submenu.Append(self.menu_id[item[0]], item[0])
+            menu.AppendMenu(-1, menu_text, submenu)
+        if pos:
+            self.PopupMenu(menu, pos = pos)
+        else:
+            self.PopupMenu(menu)
+        menu.Destroy()
+
+    def on_key_old(self, event):
         """afhandeling toetscombinaties"""
         ## pass # for now
         skip = True
@@ -1199,6 +1097,71 @@ class MainFrame(wx.Frame, ed.EditorMixin):
         if event and skip:
             event.Skip()
 
+    def on_key(self, event):
+        """afhandeling toetscombinaties"""
+        ## pass # for now
+        skip = True
+        keycode = event.GetKeyCode()
+        mods = event.GetModifiers()
+        mods_ok = {'': 0, 'C': wx.MOD_CONTROL, 'A': wx.MOD_ALT, 'S': wx.MOD_SHIFT,
+            'CA': wx.MOD_CONTROL | wx.MOD_ALT, 'SC': wx.MOD_CONTROL | wx.MOD_SHIFT}
+        win = event.GetEventObject()
+        ## if keycode == wx.WXK_ESCAPE:
+            ## print win
+            ## if isinstance(win, PreviewDialog):
+                ## win.Destroy()
+        if keycode == wx.WXK_MENU:
+            ## if win == self.tree:
+            item = self.tree.Selection
+            if item != self.top:
+                rect = self.tree.GetBoundingRect(item)
+                pos = (rect.GetLeft() + 20, rect.GetBottom())
+                self.contextmenu(item, pos = pos)
+                return
+        for menu, data in self.menulist:
+            for submenu in data:
+                if len(submenu) < 2 or submenu[1] == '':
+                    continue
+                if submenu[1] == 'F2':
+                    if keycode == wx.WXK_F2:
+                        go_on = True
+                elif submenu[1] == 'Ins':
+                    if keycode == wx.WXK_INSERT:
+                        go_on = True
+                elif submenu[1] == 'Del':
+                    if keycode == wx.WXK_DELETE:
+                        go_on = True
+                elif ord(submenu[1]) == keycode:
+                    go_on = True
+                else:
+                    go_on = False
+                if go_on and mods != mods_ok[submenu[2]]:
+                    go_on = False
+                if go_on:
+                    if keycode in (wx.WXK_DELETE, wx.WXK_INSERT, ord('X'), ord('C'), ord('+'),
+                            ord('-')) and win != self.tree:
+                        go_on = False
+                    else:
+                        submenu[4]()
+        if event and skip:
+            event.Skip()
+
+    def on_char(self, event):
+        """speciale afhandeling voor Ctrl-+.
+        Deze kan namelijk alleen worden geproduceerd met een modifier (shift of num_keypad)
+        en bij EVT_KEY_DOWN wordt de modifier opgevangen en niet de + waarde.
+        Daarom zit deze op de EVT_CHAR. Als enige, want het bleek dat de meeste andere dan
+        juist weer niet werken."""
+        skip = True
+        keycode = event.GetKeyCode()
+        mods = event.GetModifiers()
+        win = event.GetEventObject()
+        if keycode == ord("+") and win == self.tree:
+            if mods == wx.MOD_CONTROL or mods == wx.MOD_CONTROL | wx.MOD_SHIFT:
+                self.expand()
+        if skip:
+            event.Skip()
+
     def checkselection(self):
         "controleer of er wel iets geselecteerd is (behalve de filenaam)"
         sel = True
@@ -1238,11 +1201,9 @@ class MainFrame(wx.Frame, ed.EditorMixin):
         if DESKTOP and not self.checkselection():
             return
         data = self.tree.GetItemText(self.item)
-        print "edit:", data
         if data.startswith(ELSTART) or data.startswith(CMELSTART):
             attrdict = self.tree.GetItemData(self.item).GetData()
             was_commented = data.startswith(CMSTART)
-            print "element attrs:", attrdict
             edt = ElementDialog(self, title = 'Edit an element', tag = data,
                 attrs = attrdict)
             if edt.ShowModal() == wx.ID_SAVE:
@@ -1254,17 +1215,13 @@ class MainFrame(wx.Frame, ed.EditorMixin):
                 if tag != data or attrs != attrdict:
                     self.tree.SetItemText(self.item, ed.getelname(tag, attrs,
                         commented))
-                ## print self.tree.GetItemText(self.item)
-                ## print "voor:", self.tree.GetItemData(self.item).GetData()
                 self.tree.SetPyData(self.item, attrs)
-                ## print "na:", self.tree.GetItemData(self.item).GetData()
                 if commented != was_commented:
                     comment_out(self.item, commented)
                 self.tree_dirty = True
         else:
             txt = CMSTART + " " if data.startswith(CMSTART) else ""
             data = self.tree.GetItemData(self.item).GetData()
-            print "text:", txt, data
             edt = TextDialog(self, title='Edit Text', text = txt + data)
             if edt.ShowModal() == wx.ID_SAVE:
                 txt = edt.data_text.GetValue()
@@ -1278,24 +1235,15 @@ class MainFrame(wx.Frame, ed.EditorMixin):
         "start copy/cut/delete actie"
         def push_el(elm, result):
             "subitem(s) toevoegen aan copy buffer"
-            ## print "start: ",result
             text = self.tree.GetItemText(elm)
             data = self.tree.GetItemPyData(elm)
             atrlist = []
-            ## print "before looping over contents:",text,y
             if text.startswith(ELSTART):
                 node, pos = self.tree.GetFirstChild(elm)
                 while node.IsOk():
-                    ## print "\tbefore going down:",y
                     x = push_el(node, atrlist)
-                    ## print "\t", self.tree.GetItemText(x), z
-                    ## print y
-                    ## y.append(z) # geeft die ellipsis aan het eind - is blijkbaar ook niet nodig
-                    ## print "\tafter going down: ",y
                     node, pos = self.tree.GetNextChild(elm, pos)
-            ## print "after  looping over contents: ",text,y
             result.append((text, data, atrlist))
-            ## print "end:  ",result
             return result
         if DESKTOP and not self.checkselection():
             return
@@ -1309,7 +1257,6 @@ class MainFrame(wx.Frame, ed.EditorMixin):
             if text.startswith(ELSTART):
                 self.cut_el = []
                 self.cut_el = push_el(self.item, self.cut_el)
-                ## print "copy: get_them", self.cut_el
                 self.cut_txt = None
             else:
                 if data.startswith(DTDSTART):
@@ -1335,22 +1282,12 @@ class MainFrame(wx.Frame, ed.EditorMixin):
                 if self.cut_txt.startswith(DTDSTART):
                     self.has_dtd = False
             except AttributeError:
-            ## except ValueError:
                 pass
-        ## self.pastebeforeitem.text="Paste Before"
-        ## self.pastebeforeitem.enable(True)
-        ## self.pasteafteritem.text="Paste After"
-        ## self.pasteafteritem.enable(True)
-        ## self.pastebelowitem.text ="Paste Under"
-        ## self.pastebelowitem.enable(True)
 
     def paste(self, evt = None, before = True, below = False):
         "start paste actie"
         def zetzeronder(node, elm, pos = -1):
             "paste copy buffer into tree"
-            ## print "zetzeronder", pos
-            ## print node
-            ## print el
             if pos == -1:
                 subnode = self.tree.AppendItem(node, elm[0])
                 self.tree.SetPyData(subnode, elm[1])
@@ -1377,20 +1314,12 @@ class MainFrame(wx.Frame, ed.EditorMixin):
             else:
                 wx.MessageBox("Pasting as first element below root", self.title)
                 below = True
-        #if self.cut:
-        #    self.pastebeforeitem.set_text = "Nothing to Paste"
-        #    self.pastebeforeitem.enable(False)
-        #    self.pasteafteritem.set_text = " "
-        #    self.pasteafteritem.enable(False)
-        #    self.pastebelowitem.set_text = " "
-        #    self.pastebelowitem.enable(False)
         if self.cut_txt:
             item = ed.getshortname(self.cut_txt)
             data = self.cut_txt
             if below:
                 node = self.tree.AppendItem(self.item, item)
                 self.tree.SetPyData(node, data)
-                ## i = len(node)
             else:
                 add_to = self.tree.GetItemParent(self.item)
                 added = False
@@ -1423,9 +1352,6 @@ class MainFrame(wx.Frame, ed.EditorMixin):
                     item, pos = self.tree.GetNextChild(node, pos)
                 if idx == cnt:
                     idx -= 1
-            ## print "paste element"
-            ## print node
-            ## print self.cut_el
             zetzeronder(node, self.cut_el[0], idx)
         self.tree_dirty = True
 
@@ -1442,11 +1368,8 @@ class MainFrame(wx.Frame, ed.EditorMixin):
             new_item = self.tree.AppendItem(self.item, ed.getshortname(txt,
                 edt.comment_button.GetValue()))
             self.tree.SetPyData(new_item, txt)
-            # om te testen:
-            ## text = self.tree.GetItemText(new_item)
-            ## data = self.tree.GetItemPyData(new_item)
-            ## print text,data
             self.tree_dirty = True
+            self.tree.Expand(self.item)
         edt.Destroy()
 
     def insert(self, evt = None, before = True, below = False):
@@ -1462,7 +1385,6 @@ class MainFrame(wx.Frame, ed.EditorMixin):
                 wx.MessageBox("Can't insert below text", self.title)
                 return
             under_comment = text.startswith(CMSTART)
-            print "under comment:", under_comment
             where = "under"
         elif before:
             where = "before"
@@ -1477,16 +1399,14 @@ class MainFrame(wx.Frame, ed.EditorMixin):
             data = attrs
             commented = edt.comment_button.GetValue()
             if below:
-                print "commented, under_comment:", commented, under_comment
                 text = ed.getelname(tag, data, commented or under_comment)
-                print text
                 item = self.tree.AppendItem(self.item, text)
                 self.tree.SetPyData(item, data)
+                self.tree.Expand(self.item)
             else:
                 parent = self.tree.GetItemParent(self.item)
                 text = self.tree.GetItemText(parent)
                 under_comment = text.startswith(CMSTART)
-                print "commented, under_comment:", commented, under_comment
                 text = ed.getelname(tag, data, commented or under_comment)
                 item = self.item if not before else self.tree.GetPrevSibling(self.item)
                 node = self.tree.InsertItem(parent, item, text)
@@ -1623,6 +1543,7 @@ class MainFrame(wx.Frame, ed.EditorMixin):
 def main_gui(args):
     "start main GUI"
     app = wx.App(redirect = True, filename = "ashe.log")
+    print "\n-- new entry --\n"
     if len(args) > 1:
         frm = MainFrame(None, -1, fname = args[1])
     else:
