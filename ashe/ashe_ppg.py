@@ -1,13 +1,28 @@
-﻿import os,sys,shutil,copy
+﻿"PocketPyGui versie van een op een treeview gebaseerde HTML-editor"
+
+import os
+import sys
+if os.name == 'ce':
+    import ppygui as gui
+    DESKTOP = False
+else:
+    import ppygui.api as gui
+    DESKTOP = True
+import ashe_mixin as ed
 import BeautifulSoup as bs
-ELSTART = '<>'
-DTDSTART = "<!DOCTYPE"
-BL = "&nbsp;"
+
+PPATH = os.path.split(__file__)[0]
 TITEL = "Albert's Simple HTML-editor"
 HMASK = "HTML files (*.htm,*.html)|*.htm;*.html|All files (*.*)|*.*"
 IMASK = "All files|*.*"
+## DESKTOP = ed.DESKTOP
+CMSTART = ed.CMSTART
+ELSTART = ed.ELSTART
+CMELSTART = ed.CMELSTART
+DTDSTART = ed.DTDSTART
+BL = ed.BL
+TITEL = ed.TITEL
 
-import ashe_mixin as ed
 todo = """\
 Bij saven volgt het volgende:
 Traceback (most recent call last):
@@ -30,13 +45,6 @@ Traceback (most recent call last):
     for att,val in dic:
 TypeError: 'NoneType' object is not iterable
 """
-
-if os.name == 'ce':
-    import ppygui as gui
-    DESKTOP = False
-else:
-    import ppygui.api as gui
-    DESKTOP = True
 
 class PreviewDialog(gui.Dialog):
     def __init__(self,data):
@@ -650,7 +658,7 @@ class MainFrame(gui.CeFrame,ed.editormixin):
         sizer.add(self.tree)
         self.sizer = sizer
 
-        ed.editormixin.init_fn(self)
+        ed.editormixin.getsoup(self, fname)
 
         # context menu doesn't work in PC version, cb_menu doesn't in WM2003
         if DESKTOP:
@@ -663,30 +671,89 @@ class MainFrame(gui.CeFrame,ed.editormixin):
             self.editmenu.append_menu("View",self.viewmenu)
             self.editmenu.append_menu("Html",self.htmlmenu)
 
+    def check_tree(self):
+        """vraag of de wijzigingen moet worden opgeslagen
+        keuze uitvoeren en teruggeven (i.v.m. eventueel gekozen Cancel)"""
+        ## print "check_tree aangeroepen"
+        if self.tree_dirty:
+            hlp = gui.Message.yesnocancel(self.title,
+                "HTML data has been modified - save before continuing?")
+            if hlp == 'yes':
+                self.savexml()
+            return hlp
+
     def quit(self,ev=None):
         self.destroy()
 
-    def preview(self,ev=None):
-        self.maakhtml()
-        edt = PreviewDialog(self.bs)
-        edt.popup(self)
+    def newxml(self, evt = None):
+        """kijken of er wijzigingen opgeslagen moeten worden
+        daarna nieuwe html aanmaken"""
+        if self.check_tree() != 'cancel':
+            try:
+                ed.EditorMixin.getsoup(self, fname = None)
+                ## self.sb.SetStatusText("started new document")
+            except Exception as err:
+                gui.Message(self.title, err)
 
-    def savexmlas(self,ev=None):
+    def openxml(self, evt = None):
+        """kijken of er wijzigingen opgeslagen moeten worden
+        daarna een html bestand kiezen"""
+        if self.check_tree() != 'cancel':
+            loc = os.path.dirname(self.xmlfn) if self.xmlfn else os.getcwd()
+            h = gui.FileDialog.open(wildcards={"HTML files": "*.html"})
+            if h:
+                try:
+                    ed.EditorMixin.getsoup(self, fname = h))
+                    ## self.sb.SetStatusText("loaded {}".format(self.xmlfn))
+                except Exception as err:
+                    gui.Message(self.title, err)
+
+    def savexml(self, evt = None):
+        "save html to file"
+        if self.xmlfn == '':
+            self.savexmlas()
+        else:
+            self.data2soup()
+            try:
+                self.soup2file()
+            except IOError as err:
+                gui.Message(self.title, err)
+                return
+            ## self.sb.SetStatusText("saved {}".format(self.xmlfn))
+
+    def savexmlas(self, evt = None):
+        """vraag bestand om html op te slaan
+        bestand opslaan en naam in titel en root element zetten"""
         h = gui.FileDialog.save(filename=self.xmlfn,wildcards={"HTML files": "*.html"})
         if h is not None:
             self.xmlfn = h
-            self.savexmlfile(saveas=True)
+            self.xmlfn = dlg.GetPath()
+            self.data2soup()
+            try:
+                self.soup2file(saveas = True)
+            except IOError as err:
+                gui.Message(self.title, err)
+                return
+            ## self.SetTitle(" - ".join((os.path.basename(self.xmlfn), TITEL)))
+            ## self.sb.SetStatusText("saved as {}".format(self.xmlfn))
             self.tree.roots[0].text = self.xmlfn
 
-    def about(self,ev=None):
-        ed.editormixin.about(self)
-        gui.Message.ok(self.title,self.abouttext)
+    def reopenxml(self, evt = None):
+        """onvoorwaardelijk html bestand opnieuw laden"""
+        try:
+            ed.EditorMixin.getsoup(self, fname = self.xmlfn)
+            ## self.sb.SetStatusText("reloaded {}".format(self.xmlfn))
+        except Exception as err:
+            gui.Message(self.title, err)
 
-    def openfile(self):
-        h = gui.FileDialog.open(wildcards={"HTML files": "*.html"})
-        if h:
-            if not ed.editormixin.openfile(self,h):
-                h = gui.Message.ok(self.title,'html parsing error')
+    def preview(self,ev=None):
+        self.data2soup()
+        edt = PreviewDialog(self.soup)
+        edt.popup(self)
+
+    def about(self,ev=None):
+        abouttext = ed.editormixin.about(self)
+        gui.Message.ok(self.title, abouttext)
 
     def addtreeitem(self,node,naam,data):
         return node.append(naam,data)
@@ -699,18 +766,7 @@ class MainFrame(gui.CeFrame,ed.editormixin):
         self.tree.delete_all()
         ed.editormixin.init_tree(self,name)
 
-    def savexmlfile(self,saveas=False):
-        if not saveas:
-            try:
-                shutil.copyfile(self.xmlfn,self.xmlfn + '.bak')
-            except IOError,mld:
-                gui.msgBox(self,title,mld)
-        self.maakhtml()
-        f = open(self.xmlfn,"w")
-        f.write(str(self.bs))
-        f.close()
-
-    def maakhtml(self):
+    def data2soup(self):
         def expandnode(node,root):
             print node.get_text()
             try:
