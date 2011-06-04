@@ -48,7 +48,7 @@ class PreviewDialog(wx.Dialog):
             )
         if "gtk2" in wx.PlatformInfo:
             self.html.SetStandardFonts()
-        ## self.Bind(wx.EVT_KEY_DOWN, self.on_key)
+        self.html.Bind(wx.EVT_KEY_UP, self.on_key)
 
         self.html.LoadPage(self.data_file)
         hbox.Add(self.html, 1)
@@ -59,13 +59,14 @@ class PreviewDialog(wx.Dialog):
         vbox.Fit(self.pnl)
         vbox.SetSizeHints(self.pnl)
         self.pnl.Layout()
+        self.html.SetFocus()
+        wx.MessageBox('Hit [Escape] to dismiss preview', self.parent.title)
 
-    ## def on_key(self, event):
-        ## keycode = event.GetKeyCode()
-        ## print keycode
-        ## if keycode == wx.WXK_ESCAPE:
-            ## self.Unbind(wx.EVT_KEY_DOWN)
-            ## self.Destroy()
+    def on_key(self, event):
+        keycode = event.GetKeyCode()
+        if keycode == wx.WXK_ESCAPE:
+            self.html.Unbind(wx.EVT_KEY_UP)
+            self.Destroy()
 
 class DTDDialog(wx.Dialog):
     "dialoog om het toe te voegen dtd te selecteren"
@@ -716,7 +717,7 @@ class MainFrame(wx.Frame, ed.EditorMixin):
         self.tree.Bind(wx.EVT_RIGHT_DOWN, self.on_rightdown)
         ## self.tree.Bind(wx.EVT_CONTEXT_MENU, self.onContextMenu)
         self.tree.Bind(wx.EVT_CHAR, self.on_char)
-        self.tree.Bind(wx.EVT_KEY_DOWN, self.on_key)
+        self.tree.Bind(wx.EVT_KEY_UP, self.on_key)
 
         self.sb = wx.StatusBar(self)
         self.SetStatusBar(self.sb)
@@ -917,6 +918,8 @@ class MainFrame(wx.Frame, ed.EditorMixin):
         edt = PreviewDialog(self)
         edt.ShowModal()
         edt.Destroy()
+        ## self.tree.Bind(wx.EVT_KEY_UP, self.on_key)
+        self.tree.SetFocus()
 
     def about(self, evt = None):
         "toon programma info"
@@ -1041,75 +1044,18 @@ class MainFrame(wx.Frame, ed.EditorMixin):
             self.PopupMenu(menu)
         menu.Destroy()
 
-    def on_key_old(self, event):
-        """afhandeling toetscombinaties"""
-        ## pass # for now
-        skip = True
-        keycode = event.GetKeyCode()
-        mods = event.GetModifiers()
-        win = event.GetEventObject()
-        if keycode == wx.WXK_INSERT and win == self.tree:
-            if mods == wx.MOD_CONTROL:
-                self.add_text()
-            elif mods == wx.MOD_SHIFT:
-                self.insert()
-            elif mods == wx.MOD_ALT:
-                self.ins_aft()
-            else:
-                self.ins_chld()
-        elif keycode == ord("V"):
-            if mods == wx.MOD_CONTROL:
-                self.paste_blw()
-            elif mods == wx.MOD_CONTROL | wx.MOD_SHIFT:
-                self.paste()
-            elif mods == wx.MOD_CONTROL | wx.MOD_ALT:
-                self.paste_aft()
-        elif keycode == ord("S"):
-            if mods == wx.MOD_CONTROL:
-                self.savexml()
-            elif mods == wx.MOD_CONTROL | wx.MOD_SHIFT:
-                self.savexmlas()
-        elif mods == wx.MOD_CONTROL:
-            if keycode == ord("O"):
-                self.openxml()
-            elif keycode == ord("N"):
-                self.newxml()
-            elif keycode == ord("R"):
-                self.reopenxml()
-            elif keycode == ord("Q"):
-                self.quit()
-            elif keycode == ord("X") and win == self.tree:
-                self.cut()
-            elif keycode == ord("C") and win == self.tree:
-                self.copy()
-            elif keycode == ord("+") and win == self.tree:
-                self.expand()
-            elif keycode == ord("-") and win == self.tree:
-                self.collapse()
-        ## elif keycode == wx.WXK_F1:
-            ## self.help_page()
-        elif keycode == wx.WXK_F2: # and win == self.tree:
-            self.edit()
-        elif keycode == wx.WXK_DELETE and win == self.tree:
-            self.delete()
-        ## elif keycode == wx.WXK_ESCAPE:
-            ## self.afsl()
-        if event and skip:
-            event.Skip()
-
     def on_key(self, event):
         """afhandeling toetscombinaties"""
-        ## pass # for now
         skip = True
         keycode = event.GetKeyCode()
         mods = event.GetModifiers()
         mods_ok = {'': 0, 'C': wx.MOD_CONTROL, 'A': wx.MOD_ALT, 'S': wx.MOD_SHIFT,
             'CA': wx.MOD_CONTROL | wx.MOD_ALT, 'SC': wx.MOD_CONTROL | wx.MOD_SHIFT}
         win = event.GetEventObject()
-        ## if keycode == wx.WXK_ESCAPE:
-            ## print win
-            ## if isinstance(win, PreviewDialog):
-                ## win.Destroy()
+        ## if keycode == wx.WXK_ESCAPE and isinstance(win, html.HtmlWindow):
+            ## win.Unbind(wx.EVT_KEY_UP)
+            ## self.tree.Bind(wx.EVT_KEY_UP, self.on_key)
+            ## event.Skip()
         if keycode == wx.WXK_MENU:
             ## if win == self.tree:
             item = self.tree.Selection
