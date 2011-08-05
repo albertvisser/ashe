@@ -20,54 +20,6 @@ DTDSTART = ed.DTDSTART
 BL = ed.BL
 TITEL = ed.TITEL
 
-class PreviewDialog(wx.Dialog):
-    "dialoog waarin de gerenderde html getoond wordt"
-
-    def __init__(self, parent):
-        "html aanmaken/opslaan in een tijdelijk html file en dit renderen"
-        self.parent = parent
-        dsp = wx.Display().GetClientArea()
-        high = dsp.height if dsp.height < 800 else 800
-        wide = dsp.width if dsp.width < 1024 else 1024
-        wx.Dialog.__init__(self, parent, title = 'Preview HTML',
-            pos = (dsp.top, dsp.left), size=(wide, high),
-            style = wx.DEFAULT_DIALOG_STYLE | wx.RESIZE_BORDER ,
-            )
-        self.pnl = self
-
-        self.parent.data2soup()
-        self.data_file = "tempfile.html"
-        with open(self.data_file,"w") as f_out:
-            f_out.write(str(self.parent.soup))
-
-
-        vbox = wx.BoxSizer(wx.VERTICAL)
-        hbox = wx.BoxSizer(wx.HORIZONTAL)
-        self.html = html.HtmlWindow(self.pnl, -1,
-            size = (wide, high - 30)
-            )
-        if "gtk2" in wx.PlatformInfo:
-            self.html.SetStandardFonts()
-        self.html.Bind(wx.EVT_KEY_UP, self.on_key)
-
-        self.html.LoadPage(self.data_file)
-        hbox.Add(self.html, 1)
-        vbox.Add(hbox, 1)
-
-        self.pnl.SetSizer(vbox)
-        self.pnl.SetAutoLayout(True)
-        vbox.Fit(self.pnl)
-        vbox.SetSizeHints(self.pnl)
-        self.pnl.Layout()
-        self.html.SetFocus()
-        wx.MessageBox('Hit [Escape] to dismiss preview', self.parent.title)
-
-    def on_key(self, event):
-        keycode = event.GetKeyCode()
-        if keycode == wx.WXK_ESCAPE:
-            self.html.Unbind(wx.EVT_KEY_UP)
-            self.Destroy()
-
 class DTDDialog(wx.Dialog):
     "dialoog om het toe te voegen dtd te selecteren"
     dtd_list = [
@@ -694,7 +646,7 @@ class MainFrame(wx.Frame, ed.EditorMixin):
             ## self.xmlfn = ''
         dsp = wx.Display().GetClientArea()
         high = dsp.height if dsp.height < 900 else 900
-        wide = dsp.width if dsp.width < 620 else 620
+        wide = dsp.width if dsp.width < 1020 else 1020
         wx.Frame.__init__(self, parent, _id,
             pos = (dsp.top, dsp.left),
             size = (wide, high)
@@ -703,7 +655,8 @@ class MainFrame(wx.Frame, ed.EditorMixin):
 
         self.setup_menu()
 
-        self.pnl = wx.Panel(self, -1)
+        self.pnl = wx.SplitterWindow(self, -1, style=wx.NO_3D)
+        self.pnl.SetMinimumPaneSize (1)
 
         self.tree = wx.TreeCtrl(self.pnl, -1)
         ## isz = (16, 16)
@@ -718,6 +671,15 @@ class MainFrame(wx.Frame, ed.EditorMixin):
         ## self.tree.Bind(wx.EVT_CONTEXT_MENU, self.onContextMenu)
         self.tree.Bind(wx.EVT_CHAR, self.on_char)
         self.tree.Bind(wx.EVT_KEY_UP, self.on_key)
+
+        self.html = html.HtmlWindow(self.pnl, -1,
+            ## size = (wide, high - 30)
+            )
+        if "gtk2" in wx.PlatformInfo:
+            self.html.SetStandardFonts()
+
+        self.pnl.SplitVertically(self.tree, self.html)
+        self.pnl.SetSashPosition(400, True)
 
         self.sb = wx.StatusBar(self)
         self.SetStatusBar(self.sb)
@@ -747,8 +709,6 @@ class MainFrame(wx.Frame, ed.EditorMixin):
                     self.savexmlas),
                 ('&Revert', 'R', 'C', "Discard all changes since the last save", self.reopenxml),
                 ('sep1', ),
-                ('Pre&view', '', '', "Render the HTML in a separate window", self.preview),
-                ('sep2', ),
                 ('E&xit', 'Q', 'C', 'Quit the application', self.quit),
                 ),
                 ), (
@@ -831,6 +791,7 @@ class MainFrame(wx.Frame, ed.EditorMixin):
             try:
                 ed.EditorMixin.getsoup(self, fname = None)
                 self.sb.SetStatusText("started new document")
+                self.refresh_preview()
             except Exception as err:
                 dlg = wx.MessageBox(self.title, err, wx.OK | wx.INFORMATION)
                 dlg.ShowModal()
@@ -851,9 +812,10 @@ class MainFrame(wx.Frame, ed.EditorMixin):
                 try:
                     ed.EditorMixin.getsoup(self, fname = dlg.GetPath())
                     self.sb.SetStatusText("loaded {}".format(self.xmlfn))
+                    self.refresh_preview()
                 except Exception as err:
                     dlg.Destroy()
-                    dlg = wx.MessageBox(self.title, err, wx.OK | wx.INFORMATION)
+                    dlg = wx.MessageBox(str(err), self.title, wx.OK) # | wx.INFORMATION)
                     dlg.ShowModal()
                     dlg.Destroy()
 
@@ -908,17 +870,18 @@ class MainFrame(wx.Frame, ed.EditorMixin):
         try:
             ed.EditorMixin.getsoup(self, fname = self.xmlfn)
             self.sb.SetStatusText("reloaded {}".format(self.xmlfn))
+            self.refresh_preview()
         except Exception as err:
             dlg = wx.MessageBox(self.title, err, wx.OK | wx.INFORMATION)
             dlg.ShowModal()
             dlg.Destroy()
 
-    def preview(self, evt = None):
-        "toon preview dialoog"
-        edt = PreviewDialog(self)
-        edt.ShowModal()
-        edt.Destroy()
-        ## self.tree.Bind(wx.EVT_KEY_UP, self.on_key)
+    def refresh_preview(self):
+        self.data2soup()
+        self.data_file = "tempfile.html"
+        with open(self.data_file,"w") as f_out:
+            f_out.write(str(self.soup))
+        self.html.LoadPage(self.data_file)
         self.tree.SetFocus()
 
     def about(self, evt = None):
@@ -1164,7 +1127,6 @@ class MainFrame(wx.Frame, ed.EditorMixin):
                 self.tree.SetPyData(self.item, attrs)
                 if commented != was_commented:
                     comment_out(self.item, commented)
-                self.tree_dirty = True
         else:
             txt = CMSTART + " " if data.startswith(CMSTART) else ""
             data = self.tree.GetItemData(self.item).GetData()
@@ -1174,7 +1136,8 @@ class MainFrame(wx.Frame, ed.EditorMixin):
                 self.tree.SetItemText(self.item, ed.getshortname(txt,
                     edt.comment_button.GetValue()))
                 self.tree.SetPyData(self.item, txt)
-                self.tree_dirty = True
+        self.tree_dirty = True
+        self.refresh_preview()
         edt.Destroy()
 
     def copy(self, evt = None, cut = False, retain = True):
@@ -1224,6 +1187,7 @@ class MainFrame(wx.Frame, ed.EditorMixin):
         if cut:
             self.tree.Delete(self.item)
             self.tree_dirty = True
+            self.refresh_preview()
             try:
                 if self.cut_txt.startswith(DTDSTART):
                     self.has_dtd = False
@@ -1300,6 +1264,7 @@ class MainFrame(wx.Frame, ed.EditorMixin):
                     idx -= 1
             zetzeronder(node, self.cut_el[0], idx)
         self.tree_dirty = True
+        self.refresh_preview()
 
     def add_text(self, evt = None):
         "tekst toevoegen onder huidige element"
@@ -1315,6 +1280,7 @@ class MainFrame(wx.Frame, ed.EditorMixin):
                 edt.comment_button.GetValue()))
             self.tree.SetPyData(new_item, txt)
             self.tree_dirty = True
+            self.refresh_preview()
             self.tree.Expand(self.item)
         edt.Destroy()
 
@@ -1358,6 +1324,7 @@ class MainFrame(wx.Frame, ed.EditorMixin):
                 node = self.tree.InsertItem(parent, item, text)
                 self.tree.SetPyData(node, data)
             self.tree_dirty = True
+            self.refresh_preview()
         edt.Destroy()
 
     def add_dtd(self, evt = None):
@@ -1370,6 +1337,7 @@ class MainFrame(wx.Frame, ed.EditorMixin):
                     self.tree.SetPyData(node, dtd)
                     self.has_dtd = True
                     self.tree_dirty = True
+                    self.refresh_preview()
                     break
         edt.Destroy()
 
@@ -1392,6 +1360,7 @@ class MainFrame(wx.Frame, ed.EditorMixin):
             new_item = self.tree.AppendItem(node, ed.getshortname(txt))
             self.tree.SetPyData(new_item, txt)
             self.tree_dirty = True
+            self.refresh_preview()
         edt.Destroy()
 
     def add_image(self, evt = None):
@@ -1411,6 +1380,7 @@ class MainFrame(wx.Frame, ed.EditorMixin):
             node = self.tree.AppendItem(self.item, ed.getelname('img', data))
             self.tree.SetPyData(node, data)
             self.tree_dirty = True
+            self.refresh_preview()
         edt.Destroy()
 
     def add_list(self, evt = None):
@@ -1448,6 +1418,7 @@ class MainFrame(wx.Frame, ed.EditorMixin):
                     ## rr = self.tree.AppendItem(new_data,ed.getshortname(text))
                     ## self.tree.SetPyData(rr,text)
             self.tree_dirty = True
+            self.refresh_preview()
         edt.Destroy()
 
     def add_table(self, evt = None):
@@ -1484,6 +1455,7 @@ class MainFrame(wx.Frame, ed.EditorMixin):
                     node = self.tree.AppendItem(new_cell, ed.getshortname(text))
                     self.tree.SetPyData(node, text)
             self.tree_dirty = True
+            self.refresh_preview()
         edt.Destroy()
 
 def main_gui(args):
@@ -1505,5 +1477,4 @@ def main_gui(args):
     app.MainLoop()
 
 if __name__ == "__main__":
-    print sys.argv
     main_gui(sys.argv)
