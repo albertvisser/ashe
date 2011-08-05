@@ -698,6 +698,7 @@ class MainFrame(wx.Frame, ed.EditorMixin):
         self.tree.SetFocus()
 
         ed.EditorMixin.getsoup(self, fname)
+        self.refresh_preview()
 
     def setup_menu(self):
         self.menulist = (
@@ -890,7 +891,7 @@ class MainFrame(wx.Frame, ed.EditorMixin):
         self.data2soup()
         self.data_file = "tempfile.html"
         with open(self.data_file,"w") as f_out:
-            f_out.write(str(self.soup))
+            f_out.write(str(self.soup).replace('%SOUP-ENCODING%','utf-8'))
         self.html.LoadPage(self.data_file)
         self.tree.SetFocus()
 
@@ -961,7 +962,8 @@ class MainFrame(wx.Frame, ed.EditorMixin):
                         sub = bs.Comment(data.decode("latin-1"))
                     root.append(sub) # data.decode("latin-1")) # insert(0,sub)
                 elm, pos = self.tree.GetNextChild(node, pos)
-        self.soup = bs.BeautifulSoup()
+        print self.root.originalEncoding
+        self.soup = bs.BeautifulSoup(fromEncoding="") # self.root.originalEncoding)
         tag, pos = self.tree.GetFirstChild(self.top)
         while tag.IsOk():
             text = self.tree.GetItemText(tag)

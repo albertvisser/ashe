@@ -100,6 +100,7 @@ class EditorMixin(object):
             print err
             raise
         else:
+            ## print root.originalEncoding
             self.root = root
             self.xmlfn = fname
             self.init_tree(fname)
