@@ -1488,10 +1488,18 @@ class MainFrame(wx.Frame, ed.EditorMixin):
 
 def main_gui(args):
     "start main GUI"
+    fname = ''
+    if len(args) > 1:
+        fname = args[1]
+        ## if len(args) > 2:
+            ## print args[2]
+        if not os.path.exists(fname):
+            ## fname = os.path.join(args[2], args[1])
+            print('Kan file niet openen, geef s.v.p. een absoluut pad op\n')
     app = wx.App(redirect = True, filename = "ashe.log")
     print "\n-- new entry --\n"
-    if len(args) > 1:
-        frm = MainFrame(None, -1, fname = args[1])
+    if fname:
+        frm = MainFrame(None, -1, fname = fname)
     else:
         frm = MainFrame(None, -1)
     app.MainLoop()
