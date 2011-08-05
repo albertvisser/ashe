@@ -724,16 +724,26 @@ class MainFrame(wx.Frame, ed.EditorMixin):
                 ('sep1', ),
                 ('Cut', 'X', 'C', 'Copy and delete the current element', self.cut),
                 ('Copy', 'C', 'C', 'Copy the current element', self.copy),
-                ('Paste Before', 'V', 'SC', 'Paste before of the current element', self.paste),
-                ('Paste After', 'V', 'CA', 'Paste after the current element', self.paste_aft),
-                ('Paste Under', 'V', 'C', 'Paste below the current element', self.paste_blw),
+                ('Paste Before', 'V', 'SC', 'Paste before of the current element',
+                    self.paste),
+                ('Paste After', 'V', 'CA', 'Paste after the current element',
+                    self.paste_aft),
+                ('Paste Under', 'V', 'C', 'Paste below the current element',
+                    self.paste_blw),
                 ('sep2', ),
                 ('Delete', 'Del', '', 'Delete the current element', self.delete),
-                ('Insert Text (under)', 'Ins', 'C', 'Add a text node under the current one',
-                    self.add_text),
-                ('Insert Element Before', 'Ins', 'S', 'Add a new element', self.insert),
-                ('Insert Element After', 'Ins', 'A', 'Add a new element', self.ins_aft),
-                ('Insert Element Under', 'Ins', '', 'Add a new element', self.ins_chld),
+                ('Insert Text (under)', 'Ins', 'S',
+                    'Add a text node under the current one', self.add_textchild),
+                ('Insert Text before', 'Ins', 'SC',
+                    'Add a text node before the current one', self.add_text),
+                ('Insert Text after', 'Ins', 'SA',
+                    'Add a text node after the current one', self.add_text_aft),
+                ('Insert Element Before', 'Ins', 'C',
+                    'Add a new element in front of the current', self.insert),
+                ('Insert Element After', 'Ins', 'A',
+                    'Add a new element after the current', self.ins_aft),
+                ('Insert Element Under', 'Ins', '',
+                    'Add a new element under the current', self.ins_chld),
                 ),
                 ), (
             "&HTML", (
@@ -1013,7 +1023,8 @@ class MainFrame(wx.Frame, ed.EditorMixin):
         keycode = event.GetKeyCode()
         mods = event.GetModifiers()
         mods_ok = {'': 0, 'C': wx.MOD_CONTROL, 'A': wx.MOD_ALT, 'S': wx.MOD_SHIFT,
-            'CA': wx.MOD_CONTROL | wx.MOD_ALT, 'SC': wx.MOD_CONTROL | wx.MOD_SHIFT}
+            'CA': wx.MOD_CONTROL | wx.MOD_ALT, 'SC': wx.MOD_CONTROL | wx.MOD_SHIFT,
+            'SA': wx.MOD_SHIFT | wx.MOD_ALT,}
         win = event.GetEventObject()
         ## if keycode == wx.WXK_ESCAPE and isinstance(win, html.HtmlWindow):
             ## win.Unbind(wx.EVT_KEY_UP)
@@ -1266,18 +1277,29 @@ class MainFrame(wx.Frame, ed.EditorMixin):
         self.tree_dirty = True
         self.refresh_preview()
 
-    def add_text(self, evt = None):
+    def add_text(self, evt = None, before = True, below = False):
         "tekst toevoegen onder huidige element"
         if DESKTOP and not self.checkselection():
             return
-        if not self.tree.GetItemText(self.item).startswith(ELSTART):
+        if below and not self.tree.GetItemText(self.item).startswith(ELSTART):
             wx.MessageBox("Can't insert below text", self.title)
             return
         edt = TextDialog(self, title="New Text")
         if edt.ShowModal() == wx.ID_SAVE:
             txt = edt.data_text.GetValue()
-            new_item = self.tree.AppendItem(self.item, ed.getshortname(txt,
-                edt.comment_button.GetValue()))
+            commented = edt.comment_button.GetValue()
+            if below:
+                text = self.tree.GetItemText(self.item)
+                under_comment = text.startswith(CMSTART)
+                text = ed.getshortname(txt, commented or under_comment)
+                new_item = self.tree.AppendItem(self.item, text)
+            else:
+                parent = self.tree.GetItemParent(self.item)
+                text = self.tree.GetItemText(parent)
+                under_comment = text.startswith(CMSTART)
+                text = ed.getshortname(txt, commented or under_comment)
+                item = self.item if not before else self.tree.GetPrevSibling(self.item)
+                new_item = self.tree.InsertItem(parent, item, text)
             self.tree.SetPyData(new_item, txt)
             self.tree_dirty = True
             self.refresh_preview()
@@ -1311,6 +1333,8 @@ class MainFrame(wx.Frame, ed.EditorMixin):
             data = attrs
             commented = edt.comment_button.GetValue()
             if below:
+                text = self.tree.GetItemText(self.item)
+                under_comment = text.startswith(CMSTART)
                 text = ed.getelname(tag, data, commented or under_comment)
                 item = self.tree.AppendItem(self.item, text)
                 self.tree.SetPyData(item, data)

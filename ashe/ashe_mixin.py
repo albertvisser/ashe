@@ -17,7 +17,9 @@ DTDSTART = "<!DOCTYPE"
 BL = "&nbsp;"
 
 def getrelativepath(path, refpath):
-    "return path made relative to refpath, or empty string"
+    """return path made relative to refpath, or empty string
+
+    er is ook een functie os.path.relpath(path [,start])"""
     if path.startswith('./') or path.startswith('../') or os.path.sep not in path:
         return path # already relative
     common = os.path.commonprefix([path, refpath]).rsplit(os.path.sep, 1)[0] + os.path.sep
@@ -197,9 +199,18 @@ class EditorMixin(object):
         "insert belof instead of before"
         self.insert(below=True)
 
-    def add_text(self, evt = None):
+    def add_text(self, evt = None, before = True, below = False):
         "placeholder for gui-specific method"
         pass
+
+    def add_text_aft(self, evt = None):
+        "placeholder for gui-specific method"
+        self.add_text(before=False)
+
+    def add_textchild(self, evt = None):
+        "placeholder for gui-specific method"
+        self.add_text(below=True)
+
     def about(self, evt = None):
         "wordt niet gebruikt?"
         return """\
