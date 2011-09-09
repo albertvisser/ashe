@@ -10,7 +10,10 @@ import ashe_mixin as ed
 import BeautifulSoup as bs
 
 PPATH = os.path.split(__file__)[0]
-HMASK = "HTML files (*.htm,*.html)|*.htm;*.html|All files (*.*)|*.*"
+if os.name == "nt":
+    HMASK = "HTML files (*.htm,*.html)|*.htm;*.html|All files (*.*)|*.*"
+elif os.name == "posix":
+    HMASK = "HTML files (*.htm,*.HTM,*.html,*.HTML)|*.htm;*.HTM;*.html;*.HTML|All files (*.*)|*.*"
 IMASK = "All files|*.*"
 DESKTOP = ed.DESKTOP
 CMSTART = ed.CMSTART
@@ -889,7 +892,7 @@ class MainFrame(wx.Frame, ed.EditorMixin):
 
     def refresh_preview(self):
         self.data2soup()
-        self.data_file = "tempfile.html"
+        self.data_file = os.path.join(PPATH, "tempfile.html")
         with open(self.data_file,"w") as f_out:
             f_out.write(str(self.soup).replace('%SOUP-ENCODING%','utf-8'))
         self.html.LoadPage(self.data_file)
