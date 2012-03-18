@@ -9,3 +9,4 @@ syntax: glob
 *htm*
 afrift*.ini
 pylint*
+archive.zip
