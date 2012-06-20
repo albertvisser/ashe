@@ -104,6 +104,8 @@ class EditorMixin(object):
             self.root = root
             self.xmlfn = fname
             self.init_tree(fname)
+        self.advance_selection_on_add = True
+
 
     def init_tree(self, name = ''):
         """build internal tree representation of the html

@@ -706,6 +706,7 @@ class MainFrame(wx.Frame, ed.EditorMixin):
         self.tree.SetFocus()
 
         ed.EditorMixin.getsoup(self, fname)
+        self.adv_menu.Check()
         self.refresh_preview()
 
     def setup_menu(self):
@@ -714,18 +715,24 @@ class MainFrame(wx.Frame, ed.EditorMixin):
                 ('&New', 'N', 'C', "Start a new HTML document", self.newxml),
                 ('&Open', 'O', 'C', "Open an existing HTML document", self.openxml),
                 ('&Save', 'S', 'C', "Save the current document", self.savexml),
-                ('Save &As', 'S', 'SC', "Save the current document under a different name",
+                ('Save &As', 'S', 'SC',
+                    "Save the current document under a different name",
                     self.savexmlas),
-                ('&Revert', 'R', 'C', "Discard all changes since the last save", self.reopenxml),
+                ('&Revert', 'R', 'C', "Discard all changes since the last save",
+                    self.reopenxml),
                 ('sep1', ),
                 ('E&xit', 'Q', 'C', 'Quit the application', self.quit),
                 ),
                 ), (
             '&View', (
-                ('Expand All (sub)Levels', '+', 'C', "Show what's beneath the current element",
-                    self.expand, True),
-                ('Collapse All (sub)Levels', '-', 'C', "Hide what's beneath the current element",
-                    self.collapse, True),
+                ('Expand All (sub)Levels', '+', 'C',
+                    "Show what's beneath the current element", self.expand, True),
+                ('Collapse All (sub)Levels', '-', 'C',
+                    "Hide what's beneath the current element", self.collapse, True),
+                ('sep1', ),
+                ('Advance selection on add/insert', '', '',
+                    "Move the selection to the added/pasted item",
+                    self.advance_selection_onoff),
                 ),
                 ), (
             '&Edit', (
@@ -778,7 +785,12 @@ class MainFrame(wx.Frame, ed.EditorMixin):
                         hotkey = "-".join(("Shift",hotkey))
                     self.menu_id[menuitem_text] = wx.NewId()
                     caption = menuitem_text.ljust(40) + hotkey
-                    menu.Append(self.menu_id[menuitem_text], caption, status_text)
+                    if menuitem_text.startswith('Advance selection'):
+                        self.adv_menu = menu.Append(self.menu_id[menuitem_text],
+                            caption, status_text, True) # checkable=True)
+                    else:
+                        menu.Append(self.menu_id[menuitem_text], caption,
+                            status_text)
                     self.Connect(self.menu_id[menuitem_text], -1, wx.wxEVT_COMMAND_MENU_SELECTED,
                         callback)
                 else:
@@ -809,6 +821,7 @@ class MainFrame(wx.Frame, ed.EditorMixin):
         if self.check_tree() != wx.CANCEL:
             try:
                 ed.EditorMixin.getsoup(self, fname = None)
+                self.adv_menu.Check()
                 self.sb.SetStatusText("started new document")
                 self.refresh_preview()
             except Exception as err:
@@ -830,6 +843,7 @@ class MainFrame(wx.Frame, ed.EditorMixin):
             if dlg.ShowModal() == wx.ID_OK:
                 try:
                     ed.EditorMixin.getsoup(self, fname = dlg.GetPath())
+                    self.adv_menu.Check()
                     self.sb.SetStatusText("loaded {}".format(self.xmlfn))
                     self.refresh_preview()
                 except Exception as err:
@@ -888,12 +902,18 @@ class MainFrame(wx.Frame, ed.EditorMixin):
         """onvoorwaardelijk html bestand opnieuw laden"""
         try:
             ed.EditorMixin.getsoup(self, fname = self.xmlfn)
+            self.adv_menu.Check()
             self.sb.SetStatusText("reloaded {}".format(self.xmlfn))
             self.refresh_preview()
         except Exception as err:
             dlg = wx.MessageBox(self.title, err, wx.OK | wx.INFORMATION)
             dlg.ShowModal()
             dlg.Destroy()
+
+
+    def advance_selection_onoff(self, event=None):
+        self.advance_selection_on_add = not self.advance_selection_on_add
+        self.adv_menu.Check(self.advance_selection_on_add)
 
     def refresh_preview(self):
         self.data2soup()
@@ -1268,7 +1288,8 @@ class MainFrame(wx.Frame, ed.EditorMixin):
                 if not added:
                     node = self.tree.AppendItem(add_to, item)
                     self.tree.SetPyData(node, data)
-            self.tree.SelectItem(node)
+            if self.advance_selection_on_add:
+                self.tree.SelectItem(node)
         else:
             if below:
                 node = self.item
@@ -1286,7 +1307,8 @@ class MainFrame(wx.Frame, ed.EditorMixin):
                 if idx == cnt:
                     idx -= 1
             new_item = zetzeronder(node, self.cut_el[0], idx)
-            self.tree.SelectItem(new_item)
+            if self.advance_selection_on_add:
+                self.tree.SelectItem(new_item)
         self.tree_dirty = True
         self.refresh_preview()
 
@@ -1313,7 +1335,8 @@ class MainFrame(wx.Frame, ed.EditorMixin):
                 text = ed.getshortname(txt, commented or under_comment)
                 item = self.item if not before else self.tree.GetPrevSibling(self.item)
                 new_item = self.tree.InsertItem(parent, item, text)
-            self.tree.SelectItem(new_item)
+            if self.advance_selection_on_add:
+                self.tree.SelectItem(new_item)
             self.tree.SetPyData(new_item, txt)
             self.tree_dirty = True
             self.refresh_preview()
@@ -1353,7 +1376,8 @@ class MainFrame(wx.Frame, ed.EditorMixin):
                 item = self.tree.AppendItem(self.item, text)
                 self.tree.SetPyData(item, data)
                 self.tree.Expand(self.item)
-                self.tree.SelectItem(item)
+                if self.advance_selection_on_add:
+                    self.tree.SelectItem(item)
             else:
                 parent = self.tree.GetItemParent(self.item)
                 text = self.tree.GetItemText(parent)
@@ -1362,7 +1386,8 @@ class MainFrame(wx.Frame, ed.EditorMixin):
                 item = self.item if not before else self.tree.GetPrevSibling(self.item)
                 node = self.tree.InsertItem(parent, item, text)
                 self.tree.SetPyData(node, data)
-                self.tree.SelectItem(node)
+                if self.advance_selection_on_add:
+                    self.tree.SelectItem(node)
             self.tree_dirty = True
             self.refresh_preview()
         edt.Destroy()
