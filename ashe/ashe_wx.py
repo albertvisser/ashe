@@ -520,7 +520,7 @@ class ElementDialog(wx.Dialog):
         tbl.CreateGrid(0, 2)
         tbl.SetColLabelValue(0, 'attribute')
         tbl.SetColLabelValue(1, 'value')
-        tbl.SetColSize(1, 160)
+        tbl.SetColSize(1, tbl.Size[0] - 162) # 178) # 160)
         if attrs:
             for attr, value in attrs.items():
                 tbl.AppendRows(1)
@@ -554,6 +554,7 @@ class ElementDialog(wx.Dialog):
         vbox.Add(hbox, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM |
             wx.ALIGN_CENTER_HORIZONTAL | wx.ALIGN_CENTER_VERTICAL, 20)
 
+        ## self.Bind(wx.EVT_SIZE, self.on_resize)
         self.pnl.SetSizer(vbox)
         self.pnl.SetAutoLayout(True)
         vbox.Fit(self.pnl)
@@ -561,6 +562,10 @@ class ElementDialog(wx.Dialog):
         self.pnl.Layout()
         self.tag_text.SetFocus()
         ## self.Show(True)
+
+    ## def on_resize(self, evt=None):
+        ## self.attr_table.SetColSize(1, tbl.GetSize()[0] - 162) # 178) # 160)
+        ## self.attr_table.ForceRefresh()
 
     def on_add(self, evt = None):
         "attribuut toevoegen"
@@ -1222,6 +1227,7 @@ class MainFrame(wx.Frame, ed.EditorMixin):
                 self.tree.SetPyData(subnode, elm[1])
             for item in elm[2]:
                 zetzeronder(subnode, item)
+            return subnode
         if DESKTOP and not self.checkselection():
             return
         data = self.tree.GetItemPyData(self.item)
@@ -1262,6 +1268,7 @@ class MainFrame(wx.Frame, ed.EditorMixin):
                 if not added:
                     node = self.tree.AppendItem(add_to, item)
                     self.tree.SetPyData(node, data)
+            self.tree.SelectItem(node)
         else:
             if below:
                 node = self.item
@@ -1278,7 +1285,8 @@ class MainFrame(wx.Frame, ed.EditorMixin):
                     item, pos = self.tree.GetNextChild(node, pos)
                 if idx == cnt:
                     idx -= 1
-            zetzeronder(node, self.cut_el[0], idx)
+            new_item = zetzeronder(node, self.cut_el[0], idx)
+            self.tree.SelectItem(new_item)
         self.tree_dirty = True
         self.refresh_preview()
 
@@ -1305,6 +1313,7 @@ class MainFrame(wx.Frame, ed.EditorMixin):
                 text = ed.getshortname(txt, commented or under_comment)
                 item = self.item if not before else self.tree.GetPrevSibling(self.item)
                 new_item = self.tree.InsertItem(parent, item, text)
+            self.tree.SelectItem(new_item)
             self.tree.SetPyData(new_item, txt)
             self.tree_dirty = True
             self.refresh_preview()
@@ -1344,6 +1353,7 @@ class MainFrame(wx.Frame, ed.EditorMixin):
                 item = self.tree.AppendItem(self.item, text)
                 self.tree.SetPyData(item, data)
                 self.tree.Expand(self.item)
+                self.tree.SelectItem(item)
             else:
                 parent = self.tree.GetItemParent(self.item)
                 text = self.tree.GetItemText(parent)
@@ -1352,6 +1362,7 @@ class MainFrame(wx.Frame, ed.EditorMixin):
                 item = self.item if not before else self.tree.GetPrevSibling(self.item)
                 node = self.tree.InsertItem(parent, item, text)
                 self.tree.SetPyData(node, data)
+                self.tree.SelectItem(node)
             self.tree_dirty = True
             self.refresh_preview()
         edt.Destroy()
