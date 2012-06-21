@@ -704,6 +704,7 @@ class MainFrame(wx.Frame, ed.EditorMixin):
         self.pnl.Layout()
         self.Show(True)
         self.tree.SetFocus()
+        self.Bind(wx.EVT_CLOSE, self.exit)
 
         ed.EditorMixin.getsoup(self, fname)
         self.adv_menu.Check()
@@ -810,10 +811,14 @@ class MainFrame(wx.Frame, ed.EditorMixin):
             return hlp
 
     def quit(self, evt = None):
+        ## if self.check_tree() != wx.CANCEL:
+        self.Close()
+
+    def exit(self, evt=None):
         """kijken of er wijzigingen opgeslagen moeten worden
         daarna afsluiten"""
         if self.check_tree() != wx.CANCEL:
-            self.Close()
+            self.Destroy()
 
     def newxml(self, evt = None):
         """kijken of er wijzigingen opgeslagen moeten worden
