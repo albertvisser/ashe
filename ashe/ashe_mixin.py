@@ -106,6 +106,8 @@ class EditorMixin(object):
             self.init_tree(fname)
         self.advance_selection_on_add = True
 
+    def mark_dirty(self, state):
+        self.tree_dirty = state
 
     def init_tree(self, name = ''):
         """build internal tree representation of the html
@@ -147,7 +149,7 @@ class EditorMixin(object):
             titel = '[untitled]'
         self.addtreetop(titel, " - ".join((os.path.basename(titel), TITEL)))
         add_to_tree(self.top, self.root)
-        self.tree_dirty = False
+        self.mark_dirty(False)
 
     def soup2file(self, saveas = False):
         if not saveas:
@@ -160,7 +162,7 @@ class EditorMixin(object):
                 f_out.write(str(self.soup))
         except IOError as err:
             raise
-        self.tree_dirty = False
+        self.mark_dirty(False)
 
     def edit(self, evt = None):
         "placeholder for gui-specific method"

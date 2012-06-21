@@ -915,6 +915,15 @@ class MainFrame(wx.Frame, ed.EditorMixin):
         self.advance_selection_on_add = not self.advance_selection_on_add
         self.adv_menu.Check(self.advance_selection_on_add)
 
+    def mark_dirty(self, state):
+        ed.EditorMixin.mark_dirty(self, state)
+        title = self.GetTitle()
+        if state:
+            title = title + ' *'
+        else:
+            title = title.rstrip(' *')
+        self.SetTitle(title)
+
     def refresh_preview(self):
         self.data2soup()
         self.data_file = os.path.join(PPATH, "tempfile.html")
@@ -1177,7 +1186,7 @@ class MainFrame(wx.Frame, ed.EditorMixin):
                 self.tree.SetItemText(self.item, ed.getshortname(txt,
                     edt.comment_button.GetValue()))
                 self.tree.SetPyData(self.item, txt)
-        self.tree_dirty = True
+        self.mark_dirty(True)
         self.refresh_preview()
         edt.Destroy()
 
@@ -1227,7 +1236,7 @@ class MainFrame(wx.Frame, ed.EditorMixin):
                 self.cut_txt = data
         if cut:
             self.tree.Delete(self.item)
-            self.tree_dirty = True
+            self.mark_dirty(True)
             self.refresh_preview()
             try:
                 if self.cut_txt.startswith(DTDSTART):
@@ -1309,7 +1318,7 @@ class MainFrame(wx.Frame, ed.EditorMixin):
             new_item = zetzeronder(node, self.cut_el[0], idx)
             if self.advance_selection_on_add:
                 self.tree.SelectItem(new_item)
-        self.tree_dirty = True
+        self.mark_dirty(True)
         self.refresh_preview()
 
     def add_text(self, evt = None, before = True, below = False):
@@ -1338,7 +1347,7 @@ class MainFrame(wx.Frame, ed.EditorMixin):
             if self.advance_selection_on_add:
                 self.tree.SelectItem(new_item)
             self.tree.SetPyData(new_item, txt)
-            self.tree_dirty = True
+            self.mark_dirty(True)
             self.refresh_preview()
             self.tree.Expand(self.item)
         edt.Destroy()
@@ -1388,7 +1397,7 @@ class MainFrame(wx.Frame, ed.EditorMixin):
                 self.tree.SetPyData(node, data)
                 if self.advance_selection_on_add:
                     self.tree.SelectItem(node)
-            self.tree_dirty = True
+            self.mark_dirty(True)
             self.refresh_preview()
         edt.Destroy()
 
@@ -1401,7 +1410,7 @@ class MainFrame(wx.Frame, ed.EditorMixin):
                     node = self.tree.InsertItemBefore(self.top, 0, ed.getshortname(dtd))
                     self.tree.SetPyData(node, dtd)
                     self.has_dtd = True
-                    self.tree_dirty = True
+                    self.mark_dirty(True)
                     self.refresh_preview()
                     break
         edt.Destroy()
@@ -1424,7 +1433,7 @@ class MainFrame(wx.Frame, ed.EditorMixin):
             txt = edt.text_text.GetValue()
             new_item = self.tree.AppendItem(node, ed.getshortname(txt))
             self.tree.SetPyData(new_item, txt)
-            self.tree_dirty = True
+            self.mark_dirty(True)
             self.refresh_preview()
         edt.Destroy()
 
@@ -1444,7 +1453,7 @@ class MainFrame(wx.Frame, ed.EditorMixin):
                 }
             node = self.tree.AppendItem(self.item, ed.getelname('img', data))
             self.tree.SetPyData(node, data)
-            self.tree_dirty = True
+            self.mark_dirty(True)
             self.refresh_preview()
         edt.Destroy()
 
@@ -1482,7 +1491,7 @@ class MainFrame(wx.Frame, ed.EditorMixin):
                     ## text = edt.items
                     ## rr = self.tree.AppendItem(new_data,ed.getshortname(text))
                     ## self.tree.SetPyData(rr,text)
-            self.tree_dirty = True
+            self.mark_dirty(True)
             self.refresh_preview()
         edt.Destroy()
 
@@ -1519,7 +1528,7 @@ class MainFrame(wx.Frame, ed.EditorMixin):
                     text = edt.table_table.GetCellValue(row, col)
                     node = self.tree.AppendItem(new_cell, ed.getshortname(text))
                     self.tree.SetPyData(node, text)
-            self.tree_dirty = True
+            self.mark_dirty(True)
             self.refresh_preview()
         edt.Destroy()
 
