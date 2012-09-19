@@ -13,8 +13,35 @@ TITEL = "Albert's Simple HTML-editor"
 CMSTART = "<!>"
 ELSTART = '<>'
 CMELSTART = ' '.join((CMSTART, ELSTART))
-DTDSTART = "<!DOCTYPE"
+DTDSTART = "DOCTYPE"
 BL = "&nbsp;"
+dtdlist = [
+        ['HTML 4.1 Strict',
+        """DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN"
+        "http://www.w3.org/TR/html4/strict.dtd" """],
+        ['HTML 4.1 Transitional',
+        """DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
+        "http://www.w3.org/TR/html4/loose.dtd" """],
+        ['HTML 4.1 Frameset',
+        """DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Frameset//EN"
+        "http://www.w3.org/TR/html4/frameset.dtd" """],
+        ['', '', ''],
+        ['HTML 5', 'DOCTYPE html'],
+        ['', '', ''],
+        ['XHTML 1.0 Strict',
+        """DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
+        "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd" """],
+        ['XHTML 1.0 Transitional',
+        """DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+        "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd" """],
+        ['XHTML 1.0 Frameset',
+        """DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Frameset//EN"
+        "http://www.w3.org/TR/xhtml1/DTD/xhtml1-frameset.dtd" """],
+        ['', '', ''],
+        ['XHTML 1.1',
+        """DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.1//EN"
+        "http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd" """]
+            ]
 
 def getrelativepath(path, refpath):
     """return path made relative to refpath, or empty string
@@ -130,8 +157,8 @@ class EditorMixin(object):
                 elif isinstance(subnode, bs.Declaration):
                     if subnode.startswith(DTDSTART):
                         self.has_dtd = True
+                    subnode = str(subnode)[2:-1]
                     newitem = self.addtreeitem(item, getshortname(subnode), subnode)
-                    # moet hier niet ook nog add_to_tree op volgen?
                 elif isinstance(subnode, bs.Comment):
                     ## print subitem.string
                     newnode = bs.BeautifulSoup(subnode.string)
@@ -139,7 +166,6 @@ class EditorMixin(object):
                 else:
                     newitem = self.addtreeitem(item, getshortname(str(subnode),
                         commented), str(subnode))
-                    # moet hier niet ook nog add_to_tree op volgen?
         self.has_dtd = False
         if name:
             titel = name
@@ -153,15 +179,10 @@ class EditorMixin(object):
 
     def soup2file(self, saveas = False):
         if not saveas:
-            try:
+            if os.path.exists(self.xmlfn):
                 shutil.copyfile(self.xmlfn, self.xmlfn + '.bak')
-            except IOError as mld:
-                raise
-        try:
-            with open(self.xmlfn,"w") as f_out:
-                f_out.write(str(self.soup))
-        except IOError as err:
-            raise
+        with open(self.xmlfn, "w") as f_out:
+            f_out.write(str(self.soup))
         self.mark_dirty(False)
 
     def edit(self, evt = None):

@@ -25,26 +25,7 @@ TITEL = ed.TITEL
 
 class DTDDialog(wx.Dialog):
     "dialoog om het toe te voegen dtd te selecteren"
-    dtd_list = [
-        ['HTML 4.1 Strict',
-        """<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN"
-        "http://www.w3.org/TR/html4/strict.dtd">"""],
-        ['HTML 4.1 Transitional',
-        """<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
-        "http://www.w3.org/TR/html4/loose.dtd">"""],
-        ['HTML 4.1 Frameset',
-        """<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Frameset//EN"
-        "http://www.w3.org/TR/html4/frameset.dtd">"""],
-        ['XHTML 1.0 Strict',
-        """<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
-        "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">"""],
-        ['XHTML 1.0 Transitional',
-        """<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
-        "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">"""],
-        ['XHTML 1.0 Frameset',
-        """<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Frameset//EN"
-        "http://www.w3.org/TR/xhtml1/DTD/xhtml1-frameset.dtd">"""],
-            ]
+    dtd_list = ed.dtdlist
 
     def __init__(self, parent):
         wx.Dialog.__init__(self, parent, title="Add DTD")
@@ -60,20 +41,19 @@ class DTDDialog(wx.Dialog):
 
         hbox = wx.BoxSizer(wx.HORIZONTAL)
         vbox2 = wx.BoxSizer(wx.VERTICAL)
-        for i, x in enumerate(self.dtd_list[:3]):
-            if i == 0:
+        first = True
+        for x in self.dtd_list:
+            if not x[0]:
+                hbox.Add(vbox2)
+                sbox.Add(hbox, 0, wx.ALL, 10)
+                hbox = wx.BoxSizer(wx.HORIZONTAL)
+                vbox2 = wx.BoxSizer(wx.VERTICAL)
+                continue
+            if first:
                 radio = wx.RadioButton(self.pnl, -1, x[0], style = wx.RB_GROUP)
+                first = False
             else:
                 radio = wx.RadioButton(self.pnl, -1, x[0])
-            x.append(radio)
-            vbox2.Add(radio, 0, wx.ALL, 2)
-        hbox.Add(vbox2)
-        sbox.Add(hbox, 0, wx.ALL, 10)
-
-        hbox = wx.BoxSizer(wx.HORIZONTAL)
-        vbox2 = wx.BoxSizer(wx.VERTICAL)
-        for x in self.dtd_list[3:]:
-            radio = wx.RadioButton(self.pnl, -1, x[0])
             x.append(radio)
             vbox2.Add(radio, 0, wx.ALL, 2)
         hbox.Add(vbox2)
@@ -790,8 +770,10 @@ class MainFrame(wx.Frame, ed.EditorMixin):
                         self.adv_menu = menu.Append(self.menu_id[menuitem_text],
                             caption, status_text, True) # checkable=True)
                     else:
-                        menu.Append(self.menu_id[menuitem_text], caption,
+                        mnu = menu.Append(self.menu_id[menuitem_text], caption,
                             status_text)
+                        if menuitem_text == 'Add DTD':
+                            self.dtd_menu = mnu
                     self.Connect(self.menu_id[menuitem_text], -1, wx.wxEVT_COMMAND_MENU_SELECTED,
                         callback)
                 else:
@@ -891,7 +873,7 @@ class MainFrame(wx.Frame, ed.EditorMixin):
             self.xmlfn = dlg.GetPath()
             self.data2soup()
             try:
-                self.soup2file(saveas = True)
+                self.soup2file(saveas=True)
             except IOError as err:
                 dlg.Destroy()
                 dlg = wx.MessageBox(self.title, err, wx.OK | wx.ICON_INFORMATION)
@@ -924,7 +906,8 @@ class MainFrame(wx.Frame, ed.EditorMixin):
         ed.EditorMixin.mark_dirty(self, state)
         title = self.GetTitle()
         if state:
-            title = title + ' *'
+            if not title.endswith(' *'):
+                title = title + ' *'
         else:
             title = title.rstrip(' *')
         self.SetTitle(title)
@@ -958,6 +941,7 @@ class MainFrame(wx.Frame, ed.EditorMixin):
         "nieuwe tree initialiseren"
         self.tree.DeleteAllItems()
         ed.EditorMixin.init_tree(self, name)
+        self.adjust_dtd_menu()
         if DESKTOP:
             self.tree.SelectItem(self.top)
 
@@ -1007,14 +991,17 @@ class MainFrame(wx.Frame, ed.EditorMixin):
         print self.root.originalEncoding
         self.soup = bs.BeautifulSoup(fromEncoding="") # self.root.originalEncoding)
         tag, pos = self.tree.GetFirstChild(self.top)
+        place = 0
         while tag.IsOk():
             text = self.tree.GetItemText(tag)
             data = self.tree.GetItemPyData(tag)
-            if text.startswith(ELSTART):
-                ## sub = bs.Declaration(data)
-            ## else:
-                root = bs.Tag(self.soup, text.split(None, 2)[1])
+            if text.startswith(DTDSTART):
+                root = bs.Declaration(data)
                 self.soup.insert(0, root)
+                place += 1
+            elif text.startswith(ELSTART):
+                root = bs.Tag(self.soup, text.split(None, 2)[1])
+                self.soup.insert(place, root)
                 expandnode(tag, root, data)
             tag, pos = self.tree.GetNextChild(self.top, pos)
 
@@ -1040,20 +1027,35 @@ class MainFrame(wx.Frame, ed.EditorMixin):
         if item and item != self.top: # != self.top:
             self.contextmenu(item)
 
+    def adjust_dtd_menu(self):
+        if self.has_dtd:
+            self.dtd_menu.SetText('Remove DTD')
+            self.dtd_menu.SetHelp('Remove the document type declaration')
+        else:
+            self.dtd_menu.SetText('Add DTD')
+            self.dtd_menu.SetHelp('Add a document type description')
+        ## value = not self.has_dtd
+        ## self.dtd_menu.Enable(value)
+
     def contextmenu(self, item, pos = None):
-        'we should be getting a menu now'
+        'show context menu'
         self.tree.SelectItem(item)
         data = self.tree.GetItemText(item)
         menu = wx.Menu()
         for menu_item in self.menulist[1][1]:
-            menu.Append(self.menu_id[menu_item[0]], menu_item[0])
+            if menu_item[0].startswith('sep'):
+                menu.AppendSeparator()
+            elif not menu_item[0].startswith('Advance selection'):
+                menu.Append(self.menu_id[menu_item[0]], menu_item[0])
         for menu_text, data in self.menulist[2:4]:
             submenu = wx.Menu()
             for item in data:
                 if len(item) == 1:
                     submenu.AppendSeparator()
                 elif len(item) < 6 or data.startswith(ELSTART):
-                    submenu.Append(self.menu_id[item[0]], item[0])
+                    menu = submenu.Append(self.menu_id[item[0]], item[0])
+                    if item[0] == 'Add DTD' and self.has_dtd:
+                        menu.Enable(False)
             menu.AppendMenu(-1, menu_text, submenu)
         if pos:
             self.PopupMenu(menu, pos = pos)
@@ -1217,37 +1219,21 @@ class MainFrame(wx.Frame, ed.EditorMixin):
         if data == self.root:
             wx.MessageBox("Can't %s the root" % txt, self.title)
             return
+        if data.startswith(DTDSTART):
+            wx.MessageBox("use the HTML menu's DTD option", self.title)
+            return
         if retain:
             if text.startswith(ELSTART):
                 self.cut_el = []
                 self.cut_el = push_el(self.item, self.cut_el)
                 self.cut_txt = None
             else:
-                if data.startswith(DTDSTART):
-                    if cut:
-                        wx.MessageBox(
-                            'The DTD cannot be *paste*d, only *add*ed from the menu',
-                            'Warning',
-                            wx.ICON_INFORMATION
-                            )
-                    else:
-                        wx.MessageBox(
-                            "You can't *copy* the DTD, only *cut* it",
-                            'Error',
-                            wx.ICON_ERROR
-                            )
-                        return
                 self.cut_el = None
                 self.cut_txt = data
         if cut:
             self.tree.Delete(self.item)
             self.mark_dirty(True)
             self.refresh_preview()
-            try:
-                if self.cut_txt.startswith(DTDSTART):
-                    self.has_dtd = False
-            except AttributeError:
-                pass
 
     def paste(self, evt = None, before = True, below = False):
         "start paste actie"
@@ -1408,13 +1394,24 @@ class MainFrame(wx.Frame, ed.EditorMixin):
 
     def add_dtd(self, evt = None):
         "start toevoegen dtd m.b.v. dialoog"
+        if self.has_dtd:
+            item, pos = self.tree.GetFirstChild(self.top)
+            ## print self.tree.GetItemText(item)
+            self.tree.Delete(item)
+            self.mark_dirty(True)
+            self.has_dtd = False
+            self.adjust_dtd_menu()
+            self.refresh_preview()
+            return
         edt = DTDDialog(self)
         if edt.ShowModal() == wx.ID_SAVE:
             for cap, dtd, radio in edt.dtd_list:
-                if radio.GetValue():
-                    node = self.tree.InsertItemBefore(self.top, 0, ed.getshortname(dtd))
-                    self.tree.SetPyData(node, dtd)
+                if radio and radio.GetValue():
+                    node = self.tree.InsertItemBefore(self.top, 0,
+                        ed.getshortname(dtd))
+                    self.tree.SetPyData(node, dtd.rstrip())
                     self.has_dtd = True
+                    self.adjust_dtd_menu()
                     self.mark_dirty(True)
                     self.refresh_preview()
                     break
