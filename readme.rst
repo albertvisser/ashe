@@ -18,3 +18,11 @@ Along the way I decided to go for a html editor based on the same code,
 and try a hand at building a way to turn various programs for various gui toolkits
 into one program "plugging in" the gui code depending on the toolkit available.
 
+Requirements
+............
+
+- Python
+- BeautifulSoup
+- wxPython for the current GUI version
+- Tkinter and Gene Cash's Tree module for an older GUI version
+- PocketPyGUI for a PocketPC version
