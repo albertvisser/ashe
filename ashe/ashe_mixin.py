@@ -150,6 +150,10 @@ class EditorMixin(object):
                 if isinstance(subnode, bs.Tag):
                     data = subnode.attrs
                     dic = dict(data)
+                    for key, value in dic.iteritems():
+                        if '%SOUP-ENCODING%' in value:
+                            dic[key] = value.replace('%SOUP-ENCODING%',
+                                self.root.originalEncoding)
                     ## print data,dic
                     naam = getelname(subnode.name, dic, commented)
                     newitem = self.addtreeitem(item, naam, dic)

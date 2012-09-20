@@ -1,4 +1,6 @@
-﻿"wxPython versie van een op een treeview gebaseerde HTML-editor"
+﻿# -*- coding: utf-8 -*-
+
+"wxPython versie van een op een treeview gebaseerde HTML-editor"
 
 import os
 import sys
@@ -988,8 +990,7 @@ class MainFrame(wx.Frame, ed.EditorMixin):
                         sub = bs.Comment(data.decode("latin-1"))
                     root.append(sub) # data.decode("latin-1")) # insert(0,sub)
                 elm, pos = self.tree.GetNextChild(node, pos)
-        print self.root.originalEncoding
-        self.soup = bs.BeautifulSoup(fromEncoding="") # self.root.originalEncoding)
+        self.soup = bs.BeautifulSoup() # self.root.originalEncoding)
         tag, pos = self.tree.GetFirstChild(self.top)
         place = 0
         while tag.IsOk():
@@ -1167,12 +1168,14 @@ class MainFrame(wx.Frame, ed.EditorMixin):
         if DESKTOP and not self.checkselection():
             return
         data = self.tree.GetItemText(self.item)
+        modified = False
         if data.startswith(ELSTART) or data.startswith(CMELSTART):
             attrdict = self.tree.GetItemData(self.item).GetData()
             was_commented = data.startswith(CMSTART)
             edt = ElementDialog(self, title = 'Edit an element', tag = data,
                 attrs = attrdict)
             if edt.ShowModal() == wx.ID_SAVE:
+                modified = True
                 tag = edt.tag_text.GetValue()
                 commented = edt.comment_button.GetValue()
                 attrs = {}
@@ -1189,12 +1192,14 @@ class MainFrame(wx.Frame, ed.EditorMixin):
             data = self.tree.GetItemData(self.item).GetData()
             edt = TextDialog(self, title='Edit Text', text = txt + data)
             if edt.ShowModal() == wx.ID_SAVE:
+                modified = True
                 txt = edt.data_text.GetValue()
                 self.tree.SetItemText(self.item, ed.getshortname(txt,
                     edt.comment_button.GetValue()))
                 self.tree.SetPyData(self.item, txt)
-        self.mark_dirty(True)
-        self.refresh_preview()
+        if modified:
+            self.mark_dirty(True)
+            self.refresh_preview()
         edt.Destroy()
 
     def copy(self, evt = None, cut = False, retain = True):
