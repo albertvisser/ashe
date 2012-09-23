@@ -144,7 +144,7 @@ class LinkDialog(wx.Dialog):
         "bij OK: het geselecteerde (absolute) pad omzetten in een relatief pad"
         link = self.link_text.GetValue()
         if link:
-            if not link.startswith('http://'):
+            if not link.startswith('http://') and not link.startswith('/'):
                 if self.parent.xmlfn:
                     whereami = self.parent.xmlfn
                 else:
@@ -238,7 +238,7 @@ class ImageDialog(wx.Dialog):
         "bij OK: het geselecteerde (absolute) pad omzetten in een relatief pad"
         link = self.link_text.GetValue()
         if link:
-            if not link.startswith('http://'):
+            if not link.startswith('http://') and not link.startswith('/'):
                 if self.parent.xmlfn:
                     whereami = self.parent.xmlfn
                 else:
