@@ -477,7 +477,7 @@ class ElementDialog(wx.Dialog):
         vbox = wx.BoxSizer(wx.VERTICAL)
         hbox = wx.BoxSizer(wx.HORIZONTAL)
         lbl = wx.StaticText(self.pnl, -1, "element name:")
-        self.tag_text = wx.TextCtrl(self.pnl, -1)
+        self.tag_text = wx.TextCtrl(self.pnl, -1, size=(150, -1))
         self.comment_button = wx.CheckBox(self.pnl, label = '&Comment(ed)')
         iscomment = False
         if tag:
@@ -546,7 +546,7 @@ class ElementDialog(wx.Dialog):
         ## self.Show(True)
 
     ## def on_resize(self, evt=None):
-        ## self.attr_table.SetColSize(1, tbl.GetSize()[0] - 162) # 178) # 160)
+        ## self.attr_table.SetColSize(1, self.attr_table.GetSize()[0] - 162) # 178) # 160)
         ## self.attr_table.ForceRefresh()
 
     def on_add(self, evt = None):
@@ -1054,9 +1054,9 @@ class MainFrame(wx.Frame, ed.EditorMixin):
                 if len(item) == 1:
                     submenu.AppendSeparator()
                 elif len(item) < 6 or data.startswith(ELSTART):
-                    menu = submenu.Append(self.menu_id[item[0]], item[0])
+                    menu_item = submenu.Append(self.menu_id[item[0]], item[0])
                     if item[0] == 'Add DTD' and self.has_dtd:
-                        menu.Enable(False)
+                        menu_item.Enable(False)
             menu.AppendMenu(-1, menu_text, submenu)
         if pos:
             self.PopupMenu(menu, pos = pos)
@@ -1089,6 +1089,7 @@ class MainFrame(wx.Frame, ed.EditorMixin):
             for submenu in data:
                 if len(submenu) < 2 or submenu[1] == '':
                     continue
+                go_on = False
                 if submenu[1] == 'F2':
                     if keycode == wx.WXK_F2:
                         go_on = True
@@ -1100,8 +1101,6 @@ class MainFrame(wx.Frame, ed.EditorMixin):
                         go_on = True
                 elif ord(submenu[1]) == keycode:
                     go_on = True
-                else:
-                    go_on = False
                 if go_on and mods != mods_ok[submenu[2]]:
                     go_on = False
                 if go_on:
@@ -1224,7 +1223,7 @@ class MainFrame(wx.Frame, ed.EditorMixin):
         if data == self.root:
             wx.MessageBox("Can't %s the root" % txt, self.title)
             return
-        if data.startswith(DTDSTART):
+        if isinstance(data, str) and data.startswith(DTDSTART):
             wx.MessageBox("use the HTML menu's DTD option", self.title)
             return
         if retain:
@@ -1539,7 +1538,7 @@ class MainFrame(wx.Frame, ed.EditorMixin):
             self.refresh_preview()
         edt.Destroy()
 
-def main_gui(args):
+def ashe_gui(args):
     "start main GUI"
     fname = ''
     if len(args) > 1:
@@ -1549,7 +1548,7 @@ def main_gui(args):
         if not os.path.exists(fname):
             ## fname = os.path.join(args[2], args[1])
             print('Kan file niet openen, geef s.v.p. een absoluut pad op\n')
-    app = wx.App(redirect = True, filename = "ashe.log")
+    app = wx.App(redirect = True, filename = "/home/albert/htmledit/ashe/ashe.log")
     print "\n-- new entry --\n"
     if fname:
         frm = MainFrame(None, -1, fname = fname)
@@ -1558,4 +1557,4 @@ def main_gui(args):
     app.MainLoop()
 
 if __name__ == "__main__":
-    main_gui(sys.argv)
+    ashe_gui(sys.argv)
