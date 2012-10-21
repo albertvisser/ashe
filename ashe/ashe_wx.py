@@ -8,6 +8,7 @@ import string
 import wx
 import wx.grid as wxgrid
 import wx.html as  html
+from wx.lib.dialogs import ScrolledMessageDialog
 import ashe_mixin as ed
 import BeautifulSoup as bs
 
@@ -751,6 +752,8 @@ class MainFrame(wx.Frame, ed.EditorMixin):
                 ('Add image (under)', '', '', 'Include an image', self.add_image),
                 ('Add list (under)', '', '', 'Create a list', self.add_list),
                 ('Add table (under)', '', '', 'Create a table', self.add_table),
+                ('sep1', ),
+                ('Check syntax', '', '', 'Validate HTML with Tidy', self.validate),
                 ),
                 )
         self.menu_id = {}
@@ -1537,6 +1540,21 @@ class MainFrame(wx.Frame, ed.EditorMixin):
             self.mark_dirty(True)
             self.refresh_preview()
         edt.Destroy()
+    def validate(self, evt=None):
+        if self.tree_dirty or not self.xmlfn:
+            htmlfile = '/tmp/ashe_check.html'
+            fromdisk = False
+            self.data2soup()
+            with open(htmlfile, "w") as f_out:
+                f_out.write(str(self.soup))
+        else:
+            htmlfile = self.xmlfn
+            fromdisk = True
+        data = ed.EditorMixin.validate(self, htmlfile, fromdisk)
+        dlg = ScrolledMessageDialog(self, data, "Validation output", size=(600, -1),
+            style= wx.RESIZE_BORDER
+            )
+        dlg.Show() # in plaats van ShowModal(), om openhouden tijdens aanpassen mogelijk te maken
 
 def ashe_gui(args):
     "start main GUI"

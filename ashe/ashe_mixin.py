@@ -4,6 +4,8 @@ voor de zaken die gui-toolkit onafhankelijk zijn
 """
 import os
 import shutil
+import subprocess as sp
+import linecache
 import BeautifulSoup as bs
 if os.name == 'ce':
     DESKTOP = False
@@ -249,3 +251,38 @@ class EditorMixin(object):
             Started in 2008 by Albert Visser
             Versions for PC and PDA available"""
 
+    def validate(self, htmlfile, fromdisk):
+        output = '/tmp/ashe_check'
+        with open(output, 'w') as f_out:
+            pass
+        cmd = 'tidy -e -f "{}" "{}"'.format(output, htmlfile)
+        retval = sp.call(cmd, shell=True)
+        data = ""
+        with open(output) as f_in:
+            if fromdisk:
+                data = "\n".join(("Validation results are for the file on disk",
+                    "some errors/warnings may already have been corrected in the "
+                    "file in memory",
+                    "by BeautifulSoup (you'll know when you save it back to disk)",
+                    "", "")) + f_in.read()
+            else:
+                for line in f_in:
+                    if ' - ' not in line:
+                        data += line
+                        continue
+                    loc, meld = line.strip().split(' - ', 1)
+                    ## print loc
+                    ## print meld
+                    where = loc.split()
+                    lineno, column = where[1], where[3]
+                    ## print lineno, column
+                    sourceline = linecache.getline(htmlfile, int(lineno)).rstrip()
+                    ## print sourceline
+                    tag = ""
+                    for char in sourceline[int(column)-1:]:
+                        tag += char
+                        if char == ">":
+                            break
+                    data += "gevonden bij tag: {}\n    {}\n".format(tag, meld)
+                linecache.clearcache()
+        return data
