@@ -1238,8 +1238,14 @@ class MainFrame(wx.Frame, ed.EditorMixin):
                 self.cut_el = None
                 self.cut_txt = data
         if cut:
+            prev = self.tree.GetPrevSibling(self.item)
+            if not prev.IsOk():
+                prev = self.tree.GetItemParent(self.item)
+                if self.tree.GetItemPyData(prev) == self.root:
+                    prev = self.tree.GetNextSibling(self.item)
             self.tree.Delete(self.item)
             self.mark_dirty(True)
+            self.tree.SelectItem(prev)
             self.refresh_preview()
 
     def paste(self, evt = None, before = True, below = False):
