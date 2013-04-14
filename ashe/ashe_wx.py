@@ -755,6 +755,10 @@ class MainFrame(wx.Frame, ed.EditorMixin):
                 ('sep1', ),
                 ('Check syntax', '', '', 'Validate HTML with Tidy', self.validate),
                 ),
+                ), (
+            "Help", (
+                ('&About', '', '', 'Info about this application', self.about),
+                ),
                 )
         self.menu_id = {}
         menu_bar = wx.MenuBar()
@@ -1490,10 +1494,10 @@ class MainFrame(wx.Frame, ed.EditorMixin):
                 data = edt.list_table.GetCellValue(row, 0)
                 node = self.tree.AppendItem(new_subitem, ed.getshortname(data))
                 self.tree.SetPyData(node, data)
-                if type == "dl":
-                    new_item = self.tree.AppendItem(new_subitem, ed.getelname('dd'))
+                if list_type == "dl":
+                    new_subitem = self.tree.AppendItem(new_item, ed.getelname('dd'))
                     data = edt.list_table.GetCellValue(row, 1)
-                    node = self.tree.AppendItem(new_item, ed.getshortname(data))
+                    node = self.tree.AppendItem(new_subitem, ed.getshortname(data))
                     self.tree.SetPyData(node, data)
 
             ## for i,data in enumerate(edt.dataitems):
