@@ -4,7 +4,6 @@
 
 import os
 import sys
-import string
 import wx
 import wx.grid as wxgrid
 import wx.html as  html
@@ -571,7 +570,7 @@ class ElementDialog(wx.Dialog):
         "controle bij OK aanklikken"
         tag = self.tag_text.GetValue()
         okay = True
-        test = string.ascii_letters + string.digits
+        test = ed.tagtest
         for letter in tag:
             if letter not in test:
                 okay = False

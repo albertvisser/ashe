@@ -7,6 +7,9 @@ import shutil
 import subprocess as sp
 import linecache
 import BeautifulSoup as bs
+import string
+tagtest = string.ascii_letters + string.digits
+
 if os.name == 'ce':
     DESKTOP = False
 else:
@@ -17,6 +20,7 @@ ELSTART = '<>'
 CMELSTART = ' '.join((CMSTART, ELSTART))
 DTDSTART = "DOCTYPE"
 BL = "&nbsp;"
+
 dtdlist = [
         ['HTML 4.1 Strict',
         """DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN"
