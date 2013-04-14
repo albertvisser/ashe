@@ -8,7 +8,7 @@ import PyQt4.QtGui as gui
 import PyQt4.QtCore as core
 import PyQt4.QtWebKit as webkit
 import ashe_mixin as ed
-import BeautifulSoup as bs
+import bs4 as bs # BeautifulSoup as bs
 
 PPATH = os.path.split(__file__)[0]
 if os.name == "nt":
@@ -1104,6 +1104,7 @@ class MainFrame(gui.QMainWindow, ed.EditorMixin):
         "interne tree omzetten in BeautifulSoup object"
         def expandnode(node, root, data, commented = False):
             "tree item (node) met inhoud (data) toevoegen aan BS node (root)"
+            ## print data
             try:
                 for att in data:
                     root[str(att)] = str(data[att])
@@ -1112,7 +1113,9 @@ class MainFrame(gui.QMainWindow, ed.EditorMixin):
             for ix in range(node.childCount()):
                 elm = node.child(ix)
                 text = str(elm.text(0))
-                data = elm.data(0, core.Qt.UserRole).toPyObject()
+                data = elm.data(0, core.Qt.UserRole)
+                if sys.version < '3':
+                    data = data.toPyObject()
                 if text.startswith(ELSTART) or text.startswith(CMELSTART):
                     # data is een dict: leeg of een mapping van data op attributen
                     if text.startswith(CMSTART):
@@ -1120,38 +1123,40 @@ class MainFrame(gui.QMainWindow, ed.EditorMixin):
                         if not commented:
                             is_comment = True
                             soup = bs.BeautifulSoup()
-                            sub = bs.Tag(soup, text.split()[1])
+                            sub = soup.new_tag(text.split()[1])
                             expandnode(elm, sub, data, is_comment)
-                            sub = bs.Comment(str(sub).decode("utf-8"))
+                            sub = bs.Comment(str(sub)) # .decode("utf-8")) niet voor Py3
                         else:
                             is_comment = False
-                            sub = bs.Tag(self.soup, text.split()[1])
+                            sub = self.soup.new_tag(text.split()[1])
                     else:
                         is_comment = False
-                        sub = bs.Tag(self.soup, text.split()[1])
+                        sub = self.soup.new_tag(text.split()[1])
                     root.append(sub) # insert(0,sub)
                     if not is_comment:
                         expandnode(elm, sub, data, commented)
                 else:
-                    # data is o een string,
-                    sub = bs.NavigableString(str(data).decode("utf-8"))
+                    sub = bs.NavigableString(str(data)) #.decode("utf-8")) niet voor Py3
                     if text.startswith(CMSTART) and not commented:
-                        sub = bs.Comment(data.decode("utf-8"))
+                        sub = bs.Comment(data) # .decode("utf-8")) niet voor Py3
                     root.append(sub) # data.decode("latin-1")) # insert(0,sub)
         self.soup = bs.BeautifulSoup() # self.root.originalEncoding)
         count = self.top.childCount()
-        place = 0
         for ix in range(count):
             tag = self.top.child(ix)
             text = str(tag.text(0))
-            data = tag.data(0, core.Qt.UserRole).toPyObject()
+            ## print tag, text
+            ## print text.split(None, 1)[1]
+            ## print text.split(None, 2)[1]
+            data = tag.data(0, core.Qt.UserRole)
+            if sys.version < '3':
+                data = data.toPyObject()
             if text.startswith(DTDSTART):
                 root = bs.Declaration(str(data))
-                self.soup.insert(0, root)
-                place += 1
+                self.soup.append(root)
             elif text.startswith(ELSTART):
-                root = bs.Tag(self.soup, text.split(None, 2)[1])
-                self.soup.insert(place, root)
+                root = self.soup.new_tag(text.split(None, 2)[1])
+                self.soup.append(root)
                 expandnode(tag, root, data)
 
     def adjust_dtd_menu(self):

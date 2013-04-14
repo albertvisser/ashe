@@ -9,7 +9,7 @@ import wx.grid as wxgrid
 import wx.html as  html
 from wx.lib.dialogs import ScrolledMessageDialog
 import ashe_mixin as ed
-import BeautifulSoup as bs
+import bs4 as bs # BeautifulSoup as bs
 
 PPATH = os.path.split(__file__)[0]
 if os.name == "nt":
@@ -972,15 +972,15 @@ class MainFrame(wx.Frame, ed.EditorMixin):
                         if not commented:
                             is_comment = True
                             soup = bs.BeautifulSoup()
-                            sub = bs.Tag(soup, text.split()[1])
+                            sub = soup.new_tag(text.split()[1])
                             expandnode(elm, sub, data, is_comment)
                             sub = bs.Comment(str(sub).decode("latin-1"))
                         else:
                             is_comment = False
-                            sub = bs.Tag(self.soup, text.split()[1])
+                            sub = self.soup.new_tag(text.split()[1])
                     else:
                         is_comment = False
-                        sub = bs.Tag(self.soup, text.split()[1])
+                        sub = self.soup.new_tag(text.split()[1])
                     root.append(sub) # insert(0,sub)
                     if not is_comment:
                         expandnode(elm, sub, data, commented)
@@ -998,17 +998,15 @@ class MainFrame(wx.Frame, ed.EditorMixin):
                 elm, pos = self.tree.GetNextChild(node, pos)
         self.soup = bs.BeautifulSoup() # self.root.originalEncoding)
         tag, pos = self.tree.GetFirstChild(self.top)
-        place = 0
         while tag.IsOk():
             text = self.tree.GetItemText(tag)
             data = self.tree.GetItemPyData(tag)
             if text.startswith(DTDSTART):
                 root = bs.Declaration(data)
-                self.soup.insert(0, root)
-                place += 1
+                self.soup.append(root)
             elif text.startswith(ELSTART):
-                root = bs.Tag(self.soup, text.split(None, 2)[1])
-                self.soup.insert(place, root)
+                root = self.soup.new_tag(text.split(None, 2)[1])
+                self.soup.append(root)
                 expandnode(tag, root, data)
             tag, pos = self.tree.GetNextChild(self.top, pos)
 

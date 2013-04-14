@@ -6,7 +6,7 @@ import os
 import shutil
 import subprocess as sp
 import linecache
-import BeautifulSoup as bs
+import bs4 as bs # BeautifulSoup as bs
 import string
 tagtest = string.ascii_letters + string.digits
 
@@ -130,7 +130,7 @@ class EditorMixin(object):
         try:
             root = bs.BeautifulSoup(html)
         except Exception as err:
-            print err
+            print(err)
             raise
         else:
             ## print root.originalEncoding
@@ -155,11 +155,14 @@ class EditorMixin(object):
                 ## print idx, subnode
                 if isinstance(subnode, bs.Tag):
                     data = subnode.attrs
+                    ## print data
                     dic = dict(data)
-                    for key, value in dic.iteritems():
+                    for key, value in dic.items():
                         if '%SOUP-ENCODING%' in value:
                             dic[key] = value.replace('%SOUP-ENCODING%',
                                 self.root.originalEncoding)
+                        elif isinstance(value, list): # hack i.v.. nieuwe versie
+                            dic[key] = ' '.join(value)
                     ## print data,dic
                     naam = getelname(subnode.name, dic, commented)
                     newitem = self.addtreeitem(item, naam, dic)
