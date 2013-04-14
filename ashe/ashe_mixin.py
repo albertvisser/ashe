@@ -244,9 +244,8 @@ class EditorMixin(object):
         self.add_text(below=True)
 
     def about(self, evt = None):
-        "wordt niet gebruikt?"
         return """\
-            "Simple tree-based HTML editor
+            Tree-based HTML editor with simultaneous preview
 
             Started in 2008 by Albert Visser
             Versions for PC and PDA available"""
@@ -276,7 +275,7 @@ class EditorMixin(object):
                     where = loc.split()
                     lineno, column = where[1], where[3]
                     ## print lineno, column
-                    sourceline = linecache.getline(htmlfile, int(lineno)).rstrip()
+                    sourceline = linecache.getline(htmlfile, int(lineno))
                     ## print sourceline
                     tag = ""
                     for char in sourceline[int(column)-1:]:
