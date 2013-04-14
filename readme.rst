@@ -14,9 +14,13 @@ slowly falling more in love with this toolkit.
 But somehow I couldn't run it on Windows anymore (except when using an emulator,
 but I wanted a real Windows app) so i decided to build a wxPython version as well.
 
-Along the way I decided to go for a html editor based on the same code,
+Along the way I decided to go for a HTML editor based on the same code,
 and try a hand at building a way to turn various programs for various gui toolkits
-into one program "plugging in" the gui code depending on the toolkit available.
+into one program "plugging in" the gui code depending on the toolkit available -
+or in this case having gui-dependent versions importing the gui-independent common
+stuff because that seemed a bit less contrived at the time.
+
+The HTML editor contains some HTML-specific functions like adding a dtd, link, image, list or table, and presents a non-css preview alongside the tree.
 
 Requirements
 ............
