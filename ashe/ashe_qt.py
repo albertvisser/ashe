@@ -24,9 +24,22 @@ DTDSTART = ed.DTDSTART
 BL = ed.BL
 TITEL = ed.TITEL
 
+def comment_out(node, commented):
+    "subitem(s) (ook) op commentaar zetten"
+    count = node.childCount()
+    for idx in range(count):
+        subnode = node.child(idx)
+        txt = str(subnode.text(0))
+        if commented:
+            if not txt.startswith(CMSTART):
+                subnode.setText(0, " ".join((CMSTART, txt)))
+        else:
+            if txt.startswith(CMSTART):
+                subnode.setText(0, txt.split(None, 1)[1])
+        comment_out(subnode, commented)
+
 class DTDDialog(gui.QDialog):
     "dialoog om het toe te voegen dtd te selecteren"
-    dtd_list = ed.dtdlist
 
     def __init__(self, parent):
         self._parent = parent
@@ -49,7 +62,8 @@ class DTDDialog(gui.QDialog):
         vhsbox = gui.QVBoxLayout()
         first = True
         button_groups = []
-        for idx, x in enumerate(self.dtd_list):
+        self.dtd_list = []
+        for idx, x in enumerate(ed.dtdlist):
             if not x[0]:
                 vhsbox.addSpacing(8) #  = gui.QVBoxLayout()
                 continue
@@ -60,7 +74,7 @@ class DTDDialog(gui.QDialog):
             radio = gui.QRadioButton(x[0], self)
             if idx == 4:
                 radio.setChecked(True)
-            x.append(radio)
+            self.dtd_list.append((x[0], x[1], radio))
             grp.addButton(radio)
             vhsbox.addWidget(radio)
         hsbox.addLayout(vhsbox)
@@ -89,6 +103,7 @@ class DTDDialog(gui.QDialog):
         gui.QDialog.done(self, gui.QDialog.Rejected)
 
     def on_ok(self):
+        print(self.dtd_list)
         for cap, dtd, radio in self.dtd_list:
         ## for item in self.dtd_list:
             ## print item
@@ -406,10 +421,10 @@ class ListDialog(gui.QDialog):
             return
         num_rows = self.list_table.rowCount()
         if num_rows > cur_rows:
-            for idx in xrange(num_rows-1, cur_rows-1, -1):
+            for idx in range(num_rows-1, cur_rows-1, -1):
                 self.list_table.removeRow(idx)
         elif cur_rows > num_rows:
-            for idx in xrange(num_rows, cur_rows):
+            for idx in range(num_rows, cur_rows):
                 self.list_table.insertRow(idx)
                 ## self.list_table.SetRowLabelValue(idx, '')
 
@@ -513,10 +528,10 @@ class TableDialog(gui.QDialog):
             return
         num_rows = self.table_table.rowCount()
         if num_rows > cur_rows:
-            for idx in xrange(num_rows-1, cur_rows-1, -1):
+            for idx in range(num_rows-1, cur_rows-1, -1):
                 self.table_table.removeRow(idx)
         elif cur_rows > num_rows:
-            for idx in xrange(num_rows, cur_rows):
+            for idx in range(num_rows, cur_rows):
                 self.table_table.insertRow(idx)
                 ## self.table_table.itemAt(idx, 0).setBackgroundColor(core.Qt.darkGray)
                 ## self.table_table.SetRowLabelValue(idx, '')
@@ -531,11 +546,11 @@ class TableDialog(gui.QDialog):
             return
         num_cols = self.table_table.columnCount()
         if num_cols > cur_cols:
-            for idx in xrange(num_cols-1, cur_cols-1, -1):
+            for idx in range(num_cols-1, cur_cols-1, -1):
                 self.table_table.removeColumn(idx)
                 self.headings.pop()
         elif cur_cols > num_cols:
-            for idx in xrange(num_cols, cur_cols):
+            for idx in range(num_cols, cur_cols):
                 self.table_table.insertColumn(idx)
                 self.headings.append('')
                 self.table_table.setHorizontalHeaderLabels(self.headings)
@@ -678,7 +693,7 @@ class ElementDialog(gui.QDialog):
     def on_del(self, evt=None):
         "attribuut verwijderen"
         row = self.attr_table.currentRow()
-        if row:
+        if row or row == 0:
             self.attr_table.removeRow(row)
         else:
             gui.QMessageBox.information(self, 'Delete attribute',
@@ -691,11 +706,11 @@ class ElementDialog(gui.QDialog):
         "controle bij OK aanklikken"
         tag = str(self.tag_text.text())
         okay = True
-        test = string.ascii_letters + string.digits
+        test = ed.tagtest
         for letter in tag:
             if letter not in test:
                 okay = False
-                gui.QMessageBox.information(self, self.parent.title,
+                gui.QMessageBox.information(self, self._parent.title,
                     'Illegal character(s) in tag name')
                 break
         commented = self.comment_button.checkState()
@@ -718,19 +733,20 @@ class TextDialog(gui.QDialog):
 
     def __init__(self, parent, title='', text=None):
         self._parent = parent
+        gui.QDialog.__init__(self, parent)
+        self.setWindowTitle(title)
+        vbox = gui.QVBoxLayout()
+        hbox = gui.QHBoxLayout()
+        self.comment_button = gui.QCheckBox('&Comment(ed)', self)
+        ## self.comment_button.setCheckState(iscomment)
         iscomment = False
         if text is None:
             text = ''
         else:
             if text.startswith(CMSTART):
                 iscomment = True
+                self.comment_button.toggle()
                 dummy, text = text.split(None, 1)
-        gui.QDialog.__init__(self, parent)
-        self.setWindowTitle(title)
-        vbox = gui.QVBoxLayout()
-        hbox = gui.QHBoxLayout()
-        self.comment_button = gui.QCheckBox('&Comment(ed)', self)
-        self.comment_button.setCheckState(iscomment)
         hbox.addWidget(self.comment_button)
         vbox.addLayout(hbox)
 
@@ -817,7 +833,7 @@ class ScrolledTextDialog(gui.QDialog):
 class MainFrame(gui.QMainWindow, ed.EditorMixin):
     "Main GUI"
 
-    def __init__(self, parent, _id, fname = ''):
+    def __init__(self, parent, _id, fname=''):
         self.parent = parent
         self.title = "(untitled) - Albert's Simple HTML Editor"
         self.xmlfn = fname
@@ -885,7 +901,10 @@ class MainFrame(gui.QMainWindow, ed.EditorMixin):
                 ),
                 ), (
             '&Edit', (
-                ('Edit', 'F2', '', 'Modify the element/text and/or its attributes', self.edit),
+                ('Edit', 'F2', '', 'Modify the element/text and/or its attributes',
+                    self.edit),
+                ('Comment/Uncomment', '#', 'C', 'Comment (out) the current item and '
+                    'everything below', self.comment),
                 ('sep1', ),
                 ('Cut', 'X', 'C', 'Copy and delete the current element', self.cut),
                 ('Copy', 'C', 'C', 'Copy the current element', self.copy),
@@ -983,7 +1002,7 @@ class MainFrame(gui.QMainWindow, ed.EditorMixin):
         if self._check_tree() != -1:
             gui.QMainWindow.close(self)
 
-    def newxml(self, evt = None):
+    def newxml(self, evt=None):
         """kijken of er wijzigingen opgeslagen moeten worden
         daarna nieuwe html aanmaken"""
         if self._check_tree() != -1:
@@ -995,7 +1014,7 @@ class MainFrame(gui.QMainWindow, ed.EditorMixin):
             except Exception as err:
                 gui.QMessageBox.information(self, self.title, str(err))
 
-    def openxml(self, evt = None):
+    def openxml(self, evt=None):
         """kijken of er wijzigingen opgeslagen moeten worden
         daarna een html bestand kiezen"""
         if self._check_tree() != -1:
@@ -1011,7 +1030,7 @@ class MainFrame(gui.QMainWindow, ed.EditorMixin):
                 ## except Exception as err:
                     ## gui.QMessageBox.information(self, self.title, str(err))
 
-    def savexml(self, evt = None):
+    def savexml(self, evt=None):
         "save html to file"
         if self.xmlfn == '':
             self.savexmlas()
@@ -1024,7 +1043,7 @@ class MainFrame(gui.QMainWindow, ed.EditorMixin):
                 return
             self.sb.showMessage("saved {}".format(self.xmlfn))
 
-    def savexmlas(self, evt = None):
+    def savexmlas(self, evt=None):
         """vraag bestand om html op te slaan
         bestand opslaan en naam in titel en root element zetten"""
         name = gui.QFileDialog.getSaveFileName(self, "Save file as ...",
@@ -1042,7 +1061,7 @@ class MainFrame(gui.QMainWindow, ed.EditorMixin):
             self.setWindowTitle(" - ".join((os.path.basename(self.xmlfn), TITEL)))
             self.sb.showMessage("saved as {}".format(self.xmlfn))
 
-    def reopenxml(self, evt = None):
+    def reopenxml(self, evt=None):
         """onvoorwaardelijk html bestand opnieuw laden"""
         try:
             ed.EditorMixin.getsoup(self, fname = self.xmlfn)
@@ -1070,7 +1089,7 @@ class MainFrame(gui.QMainWindow, ed.EditorMixin):
         self.html.setHtml(str(self.soup).replace('%SOUP-ENCODING%','utf-8'))
         self.tree.setFocus()
 
-    def about(self, evt = None):
+    def about(self, evt=None):
         "toon programma info"
         abouttext = ed.EditorMixin.about(self)
         gui.QMessageBox.information(self, self.title, abouttext)
@@ -1191,7 +1210,7 @@ class MainFrame(gui.QMainWindow, ed.EditorMixin):
             sel = False
         return sel
 
-    def expand(self, evt = None):
+    def expand(self, evt=None):
         "expandeer tree vanaf huidige item"
         def expand_all(item):
             for ix in range(item.childCount()):
@@ -1202,7 +1221,7 @@ class MainFrame(gui.QMainWindow, ed.EditorMixin):
         self.tree.expandItem(item)
         expand_all(item)
 
-    def collapse(self, evt = None):
+    def collapse(self, evt=None):
         "collapse huidige item en daaronder"
         def collapse_all(item):
             for ix in range(item.childCount()):
@@ -1213,33 +1232,52 @@ class MainFrame(gui.QMainWindow, ed.EditorMixin):
         collapse_all(item)
         self.tree.collapseItem(item)
 
-    def edit(self, evt = None):
+    def comment(self, evt=None):
+        "(un)comment zonder de edit dialoog"
+        if DESKTOP and not self.checkselection():
+            return
+        tag = str(self.item.text(0))
+        attrs = self.item.data(0, core.Qt.UserRole)
+        if sys.version < '3':
+            attrs = attrs.toPyObject()
+        commented = tag.startswith(CMSTART)
+        if commented:
+            _, tag = tag.split(None, 1) # CMSTART eraf halen
+        under_comment = str(self.item.parent().text(0)).startswith(CMELSTART)
+        commented = not commented # het (un)commenten uitvoeren
+        if under_comment:
+            commented = True
+        print("in comment:", tag, attrs)
+        if tag.startswith(ELSTART):
+            _, tag = tag.split(None, 1) # ELSTART eraf halen
+            self.item.setText(0, ed.getelname(tag, attrs, commented))
+            self.item.setData(0, core.Qt.UserRole, attrs)
+            comment_out(self.item, commented)
+        else:
+            ## txt = CMSTART + " " + tag if commented else tag
+            self.item.setText(0, ed.getshortname(tag, commented))
+            self.item.setData(0, core.Qt.UserRole, tag)
+
+    def edit(self, evt=None):
         "start edit m.b.v. dialoog"
-        def comment_out(node, commented):
-            "subitem(s) (ook) op commentaar zetten"
-            count = node.childCount()
-            for idx in range(count):
-                subnode = node.child(idx)
-                txt = subnode.text(0)
-                if commented:
-                    if not txt.startswith(CMSTART):
-                        subnode.setText(0, " ".join((CMSTART, txt)))
-                else:
-                    if txt.startswith(CMSTART):
-                        subnode.setText(0, txt.split(None, 1)[1])
-                comment_out(subnode, commented)
         if DESKTOP and not self.checkselection():
             return
         data = str(self.item.text(0))
+        under_comment = str(self.item.parent().text(0)).startswith(CMELSTART)
         modified = False
         if data.startswith(ELSTART) or data.startswith(CMELSTART):
-            attrdict = self.item.data(0, core.Qt.UserRole).toPyObject()
+            attrdict = self.item.data(0, core.Qt.UserRole)
+            if sys.version < '3':
+                attrdict = attrdict.toPyObject()
             was_commented = data.startswith(CMSTART)
             edt = ElementDialog(self, title = 'Edit an element', tag = data,
                 attrs = attrdict).exec_()
             if edt == gui.QDialog.Accepted:
                 modified = True
                 tag, attrs, commented = self.dialog_data
+                if under_comment:
+                    commented = True
+                print("in edit:", attrs)
                 if tag != data or attrs != attrdict:
                     self.item.setText(0, ed.getelname(tag, attrs, commented))
                 self.item.setData(0, core.Qt.UserRole, attrs)
@@ -1247,23 +1285,29 @@ class MainFrame(gui.QMainWindow, ed.EditorMixin):
                     comment_out(self.item, commented)
         else:
             txt = CMSTART + " " if data.startswith(CMSTART) else ""
-            data = str(self.item.data(0, core.Qt.UserRole).toPyObject())
+            data = self.item.data(0, core.Qt.UserRole)
+            if sys.version < '3':
+                data = str(data.toPyObject())
             edt = TextDialog(self, title='Edit Text', text = txt + data).exec_()
             if edt == gui.QDialog.Accepted:
                 modified = True
                 txt, commented = self.dialog_data
+                if under_comment:
+                    commented = True
                 self.item.setText(0, ed.getshortname(txt, commented))
                 self.item.setData(0, core.Qt.UserRole, txt)
         if modified:
             self.mark_dirty(True)
             self.refresh_preview()
 
-    def copy(self, evt = None, cut = False, retain = True):
+    def copy(self, evt=None, cut=False, retain=True):
         "start copy/cut/delete actie"
         def push_el(elm, result):
             "subitem(s) toevoegen aan copy buffer"
             text = str(elm.text(0))
-            data = elm.data(0, core.Qt.UserRole).toPyObject()
+            data = elm.data(0, core.Qt.UserRole)
+            if sys.version < '3':
+                data = data.toPyObject()
             atrlist = []
             if text.startswith(ELSTART):
                 num = elm.childCount()
@@ -1278,7 +1322,9 @@ class MainFrame(gui.QMainWindow, ed.EditorMixin):
             gui.QMessageBox.information(self, self.title, "Can't %s the root" % txt)
             return
         text = str(self.item.text(0))
-        data = self.item.data(0, core.Qt.UserRole).toPyObject()
+        data = self.item.data(0, core.Qt.UserRole)
+        if sys.version < '3':
+            data = data.toPyObject()
         txt = 'cut' if cut else 'copy'
         ## try:
         if str(data).startswith(DTDSTART):
@@ -1308,7 +1354,7 @@ class MainFrame(gui.QMainWindow, ed.EditorMixin):
             self.tree.setCurrentItem(prev)
             self.refresh_preview()
 
-    def paste(self, evt = None, before = True, below = False):
+    def paste(self, evt=None, before=True, below=False):
         "start paste actie"
         def zetzeronder(node, elm, pos = -1):
             "paste copy buffer into tree"
@@ -1324,7 +1370,9 @@ class MainFrame(gui.QMainWindow, ed.EditorMixin):
             return subnode
         if DESKTOP and not self.checkselection():
             return
-        data = self.item.data(0, core.Qt.UserRole).toPyObject()
+        data = self.item.data(0, core.Qt.UserRole)
+        if sys.version < '3':
+            data = data.toPyObject()
         if below:
             text = str(self.item.text(0))
             if text.startswith(CMSTART):
@@ -1379,7 +1427,7 @@ class MainFrame(gui.QMainWindow, ed.EditorMixin):
         self.mark_dirty(True)
         self.refresh_preview()
 
-    def add_text(self, evt = None, before = True, below = False):
+    def add_text(self, evt=None, before=True, below=False):
         "tekst toevoegen onder huidige element"
         if DESKTOP and not self.checkselection():
             return
@@ -1415,7 +1463,7 @@ class MainFrame(gui.QMainWindow, ed.EditorMixin):
             self.refresh_preview()
             self.item.setExpanded(True)
 
-    def insert(self, evt = None, before = True, below = False):
+    def insert(self, evt=None, before=True, below=False):
         "start invoeg actie"
         if DESKTOP and not self.checkselection():
             return
@@ -1466,7 +1514,7 @@ class MainFrame(gui.QMainWindow, ed.EditorMixin):
             self.refresh_preview()
             self.item.setExpanded(True)
 
-    def add_dtd(self, evt = None):
+    def add_dtd(self, evt=None):
         "start toevoegen dtd m.b.v. dialoog"
         if self.has_dtd:
             self.top.removeChild(self.top.child(0))
@@ -1486,7 +1534,7 @@ class MainFrame(gui.QMainWindow, ed.EditorMixin):
         self.refresh_preview()
         self.tree.scrollToItem(self.top.child(0))
 
-    def add_link(self, evt = None):
+    def add_link(self, evt=None):
         "start toevoegen link m.b.v. dialoog"
         if DESKTOP and not self.checkselection():
             return
@@ -1507,7 +1555,7 @@ class MainFrame(gui.QMainWindow, ed.EditorMixin):
             self.mark_dirty(True)
             self.refresh_preview()
 
-    def add_image(self, evt = None):
+    def add_image(self, evt=None):
         "start toevoegen image m.b.v. dialoog"
         if DESKTOP and not self.checkselection():
             return
@@ -1524,7 +1572,7 @@ class MainFrame(gui.QMainWindow, ed.EditorMixin):
             self.mark_dirty(True)
             self.refresh_preview()
 
-    def add_list(self, evt = None):
+    def add_list(self, evt=None):
         "start toevoegen list m.b.v. dialoog"
         if DESKTOP and not self.checkselection():
             return
@@ -1560,7 +1608,7 @@ class MainFrame(gui.QMainWindow, ed.EditorMixin):
             self.mark_dirty(True)
             self.refresh_preview()
 
-    def add_table(self, evt = None):
+    def add_table(self, evt=None):
         "start toevoegen tabel m.b.v. dialoog"
         if DESKTOP and not self.checkselection():
             return

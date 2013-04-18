@@ -25,6 +25,20 @@ DTDSTART = ed.DTDSTART
 BL = ed.BL
 TITEL = ed.TITEL
 
+def comment_out(node, commented, tree):
+    "subitem(s) (ook) op commentaar zetten"
+    subnode, pos = tree.GetFirstChild(node)
+    while subnode.IsOk():
+        txt = tree.GetItemText(subnode)
+        if commented:
+            if not txt.startswith(CMSTART):
+                tree.SetItemText(subnode, " ".join((CMSTART, txt)))
+        else:
+            if txt.startswith(CMSTART):
+                tree.SetItemText(subnode, txt.split(None, 1)[1])
+        comment_out(subnode, commented, tree)
+        subnode, pos = tree.GetNextChild(node, pos)
+
 class DTDDialog(wx.Dialog):
     "dialoog om het toe te voegen dtd te selecteren"
     dtd_list = ed.dtdlist
@@ -130,7 +144,7 @@ class LinkDialog(wx.Dialog):
         self.pnl.Layout()
         self.title_text.SetFocus()
 
-    def kies(self, evt = None):
+    def kies(self, evt=None):
         "methode om het te linken document te selecteren"
         dlg = wx.FileDialog(
             self, message = "Choose a file",
@@ -140,7 +154,7 @@ class LinkDialog(wx.Dialog):
             self.link_text.SetValue(dlg.GetPath())
         dlg.Destroy()
 
-    def on_ok(self, evt = None):
+    def on_ok(self, evt=None):
         "bij OK: het geselecteerde (absolute) pad omzetten in een relatief pad"
         link = self.link_text.GetValue()
         if link:
@@ -159,7 +173,7 @@ class LinkDialog(wx.Dialog):
         else:
             wx.MessageBox("link opgeven of cancel kiezen s.v.p",'')
 
-    def set_text(self, evt = None):
+    def set_text(self, evt=None):
         'indien leeg link tekst gelijk maken aan link adres'
         if evt.EventObject == self.link_text:
             linktxt = self.link_text.GetValue()
@@ -224,7 +238,7 @@ class ImageDialog(wx.Dialog):
         self.pnl.Layout()
         self.title_text.SetFocus()
 
-    def kies(self, evt = None):
+    def kies(self, evt=None):
         "methode om het te linken image te selecteren"
         dlg = wx.FileDialog(
             self, message="Choose a file",
@@ -234,7 +248,7 @@ class ImageDialog(wx.Dialog):
             self.link_text.SetValue(dlg.GetPath())
         dlg.Destroy()
 
-    def on_ok(self, evt = None):
+    def on_ok(self, evt=None):
         "bij OK: het geselecteerde (absolute) pad omzetten in een relatief pad"
         link = self.link_text.GetValue()
         if link:
@@ -253,7 +267,7 @@ class ImageDialog(wx.Dialog):
         else:
             wx.MessageBox("image link opgeven of cancel kiezen s.v.p", self.parent.title)
 
-    def set_text(self, evt = None):
+    def set_text(self, evt=None):
         'indien leeg link tekst gelijk maken aan link adres'
         if evt.EventObject == self.link_text:
             linktxt = self.link_text.GetValue()
@@ -322,7 +336,7 @@ class ListDialog(wx.Dialog):
         self.pnl.Layout()
         self.type_select.SetFocus()
 
-    def on_type(self, evt = None):
+    def on_type(self, evt=None):
         "geselecteerde list type toepassen"
         sel = self.type_select.GetValue()
         numcols = self.list_table.GetNumberCols()
@@ -337,7 +351,7 @@ class ListDialog(wx.Dialog):
             self.list_table.SetColLabelValue(0, 'list item')
             self.list_table.SetColSize(0, 240)
 
-    def on_text(self, evt = None):
+    def on_text(self, evt=None):
         "controle en actie bij invullen/aanpassen aantal regels"
         try:
             cur_rows = int(self.rows_text.GetValue())
@@ -417,7 +431,7 @@ class TableDialog(wx.Dialog):
         self.pnl.Layout()
         self.title_text.SetFocus()
 
-    def on_rows(self, evt = None):
+    def on_rows(self, evt=None):
         "controle en actie bij opgeven aantal regels"
         try:
             cur_rows = int(self.rows_text.GetValue())
@@ -434,7 +448,7 @@ class TableDialog(wx.Dialog):
                 self.table_table.AppendRows(1)
                 self.table_table.SetRowLabelValue(idx, '')
 
-    def on_cols(self, evt = None):
+    def on_cols(self, evt=None):
         "controle en actie bij opgeven aantal kolommen"
         try:
             cur_cols = int(self.cols_text.GetValue())
@@ -451,7 +465,7 @@ class TableDialog(wx.Dialog):
                 self.table_table.AppendCols(1)
                 self.table_table.SetColLabelValue(idx,'')
 
-    def on_title(self, evt = None):
+    def on_title(self, evt=None):
         "opgeven titel bij klikken op kolomheader mogelijk maken"
         if evt:
             col = evt.GetCol()
@@ -549,13 +563,13 @@ class ElementDialog(wx.Dialog):
         ## self.attr_table.SetColSize(1, self.attr_table.GetSize()[0] - 162) # 178) # 160)
         ## self.attr_table.ForceRefresh()
 
-    def on_add(self, evt = None):
+    def on_add(self, evt=None):
         "attribuut toevoegen"
         self.attr_table.AppendRows(1)
         idx = self.attr_table.GetNumberRows() - 1
         self.attr_table.SetRowLabelValue(idx, '')
 
-    def on_del(self, evt = None):
+    def on_del(self, evt=None):
         "attribuut verwijderen"
         rows = self.attr_table.GetSelectedRows()
         if rows:
@@ -566,7 +580,7 @@ class ElementDialog(wx.Dialog):
             wx.MessageBox("Select a row by clicking on the row heading",
                 'Selection is empty', wx.ICON_INFORMATION)
 
-    def on_ok(self, evt = None):
+    def on_ok(self, evt=None):
         "controle bij OK aanklikken"
         tag = self.tag_text.GetValue()
         okay = True
@@ -626,7 +640,7 @@ class TextDialog(wx.Dialog):
 class MainFrame(wx.Frame, ed.EditorMixin):
     "Main GUI"
 
-    def __init__(self, parent, _id, fname = ''):
+    def __init__(self, parent, _id, fname=''):
         self.parent = parent
         self.title = "(untitled) - Albert's Simple HTML Editor"
         self.xmlfn = fname
@@ -719,7 +733,10 @@ class MainFrame(wx.Frame, ed.EditorMixin):
                 ),
                 ), (
             '&Edit', (
-                ('Edit', 'F2', '', 'Modify the element/text and/or its attributes', self.edit),
+                ('Edit', 'F2', '', 'Modify the element/text and/or its attributes',
+                    self.edit),
+                ('Comment/Uncomment', '#', 'C', 'Comment (out) the current item and '
+                    'everything below', self.comment),
                 ('sep1', ),
                 ('Cut', 'X', 'C', 'Copy and delete the current element', self.cut),
                 ('Copy', 'C', 'C', 'Copy the current element', self.copy),
@@ -800,7 +817,7 @@ class MainFrame(wx.Frame, ed.EditorMixin):
                 self.savexml()
             return hlp
 
-    def quit(self, evt = None):
+    def quit(self, evt=None):
         ## if self.check_tree() != wx.CANCEL:
         self.Close()
 
@@ -810,7 +827,7 @@ class MainFrame(wx.Frame, ed.EditorMixin):
         if self.check_tree() != wx.CANCEL:
             self.Destroy()
 
-    def newxml(self, evt = None):
+    def newxml(self, evt=None):
         """kijken of er wijzigingen opgeslagen moeten worden
         daarna nieuwe html aanmaken"""
         if self.check_tree() != wx.CANCEL:
@@ -824,7 +841,7 @@ class MainFrame(wx.Frame, ed.EditorMixin):
                 dlg.ShowModal()
                 dlg.Destroy()
 
-    def openxml(self, evt = None):
+    def openxml(self, evt=None):
         """kijken of er wijzigingen opgeslagen moeten worden
         daarna een html bestand kiezen"""
         if self.check_tree() != wx.CANCEL:
@@ -847,7 +864,7 @@ class MainFrame(wx.Frame, ed.EditorMixin):
                     dlg.ShowModal()
                     dlg.Destroy()
 
-    def savexml(self, evt = None):
+    def savexml(self, evt=None):
         "save html to file"
         if self.xmlfn == '':
             self.savexmlas()
@@ -862,7 +879,7 @@ class MainFrame(wx.Frame, ed.EditorMixin):
                 return
             self.sb.SetStatusText("saved {}".format(self.xmlfn))
 
-    def savexmlas(self, evt = None):
+    def savexmlas(self, evt=None):
         """vraag bestand om html op te slaan
         bestand opslaan en naam in titel en root element zetten"""
         if self.xmlfn:
@@ -893,7 +910,7 @@ class MainFrame(wx.Frame, ed.EditorMixin):
             self.sb.SetStatusText("saved as {}".format(self.xmlfn))
         dlg.Destroy()
 
-    def reopenxml(self, evt = None):
+    def reopenxml(self, evt=None):
         """onvoorwaardelijk html bestand opnieuw laden"""
         try:
             ed.EditorMixin.getsoup(self, fname = self.xmlfn)
@@ -928,7 +945,7 @@ class MainFrame(wx.Frame, ed.EditorMixin):
         self.html.LoadPage(self.data_file)
         self.tree.SetFocus()
 
-    def about(self, evt = None):
+    def about(self, evt=None):
         "toon programma info"
         abouttext = ed.EditorMixin.about(self)
         wx.MessageBox(abouttext, self.title, wx.OK | wx.ICON_INFORMATION)
@@ -1010,7 +1027,7 @@ class MainFrame(wx.Frame, ed.EditorMixin):
                 expandnode(tag, root, data)
             tag, pos = self.tree.GetNextChild(self.top, pos)
 
-    def on_leftdclick(self, evt = None):
+    def on_leftdclick(self, evt=None):
         "start edit bij dubbelklikken tenzij op filenaam"
         item, flags = self.tree.HitTest(evt.GetPosition())
         if item:
@@ -1026,7 +1043,7 @@ class MainFrame(wx.Frame, ed.EditorMixin):
             self.edit()
         evt.Skip()
 
-    def on_rightdown(self, evt = None):
+    def on_rightdown(self, evt=None):
         "context menu bij rechtsklikken"
         item, flags = self.tree.HitTest(evt.GetPosition())
         if item and item != self.top: # != self.top:
@@ -1042,7 +1059,7 @@ class MainFrame(wx.Frame, ed.EditorMixin):
         ## value = not self.has_dtd
         ## self.dtd_menu.Enable(value)
 
-    def contextmenu(self, item, pos = None):
+    def contextmenu(self, item, pos=None):
         'show context menu'
         self.tree.SelectItem(item)
         data = self.tree.GetItemText(item)
@@ -1107,6 +1124,8 @@ class MainFrame(wx.Frame, ed.EditorMixin):
                     go_on = True
                 if go_on and mods != mods_ok[submenu[2]]:
                     go_on = False
+                if submenu[1] == '#' and keycode == 51 and mods == mods_ok['SC']:
+                    go_on = True
                 if go_on:
                     if keycode in (wx.WXK_DELETE, wx.WXK_INSERT, ord('X'), ord('C'), ord('+'),
                             ord('-')) and win != self.tree:
@@ -1141,36 +1160,52 @@ class MainFrame(wx.Frame, ed.EditorMixin):
             sel = False
         return sel
 
-    def expand(self, evt = None):
+    def expand(self, evt=None):
         "expandeer tree vanaf huidige item"
         item = self.tree.Selection
         if item:
             self.tree.ExpandAllChildren(item)
 
-    def collapse(self, evt = None):
+    def collapse(self, evt=None):
         "collapse huidige item en daaronder"
         item = self.tree.Selection
         if item:
             self.tree.CollapseAllChildren(item)
 
-    def edit(self, evt = None):
+    def comment(self, evt=None):
+        "(un)comment zonder de edit dialoog"
+        if DESKTOP and not self.checkselection():
+            return
+        tag = self.tree.GetItemText(self.item)
+        attrs = self.tree.GetItemData(self.item).GetData()
+        commented = tag.startswith(CMSTART)
+        if commented:
+            _, tag = tag.split(None, 1) # CMSTART eraf halen
+        parent = self.tree.GetItemParent(self.item)
+        text = self.tree.GetItemText(parent)
+        under_comment = text.startswith(CMSTART)
+        commented = not commented # het (un)commenten uitvoeren
+        if under_comment:
+            commented = True
+        print("in comment:", tag, attrs)
+        if tag.startswith(ELSTART):
+            _, tag = tag.split(None, 1) # ELSTART eraf halen
+            self.tree.SetItemText(self.item, ed.getelname(tag, attrs, commented))
+            self.tree.SetPyData(self.item, attrs)
+            comment_out(self.item, commented, self.tree)
+        else:
+            ## txt = CMSTART + " " + tag if commented else tag
+            self.tree.SetItemText(self.item, ed.getshortname(tag, commented))
+            self.tree.SetPyData(self.item, tag)
+
+    def edit(self, evt=None):
         "start edit m.b.v. dialoog"
-        def comment_out(node, commented):
-            "subitem(s) (ook) op commentaar zetten"
-            subnode, pos = self.tree.GetFirstChild(node)
-            while subnode.IsOk():
-                txt = self.tree.GetItemText(subnode)
-                if commented:
-                    if not txt.startswith(CMSTART):
-                        self.tree.SetItemText(subnode, " ".join((CMSTART, txt)))
-                else:
-                    if txt.startswith(CMSTART):
-                        self.tree.SetItemText(subnode, txt.split(None, 1)[1])
-                comment_out(subnode, commented)
-                subnode, pos = self.tree.GetNextChild(node, pos)
         if DESKTOP and not self.checkselection():
             return
         data = self.tree.GetItemText(self.item)
+        parent = self.tree.GetItemParent(self.item)
+        text = self.tree.GetItemText(parent)
+        under_comment = text.startswith(CMSTART)
         modified = False
         if data.startswith(ELSTART) or data.startswith(CMELSTART):
             attrdict = self.tree.GetItemData(self.item).GetData()
@@ -1184,28 +1219,32 @@ class MainFrame(wx.Frame, ed.EditorMixin):
                 attrs = {}
                 for i in range(edt.attr_table.GetNumberRows()):
                     attrs[edt.attr_table.GetCellValue(i, 0)] = edt.attr_table.GetCellValue(i, 1)
+                if under_comment:
+                    commented = True
                 if tag != data or attrs != attrdict:
                     self.tree.SetItemText(self.item, ed.getelname(tag, attrs,
                         commented))
                 self.tree.SetPyData(self.item, attrs)
                 if commented != was_commented:
-                    comment_out(self.item, commented)
+                    comment_out(self.item, commented, self.tree)
         else:
-            txt = CMSTART + " " if data.startswith(CMSTART) else ""
+            txt = CMSTART + " " if data.startswith(CMSTART) or under_comment else ""
             data = self.tree.GetItemData(self.item).GetData()
             edt = TextDialog(self, title='Edit Text', text = txt + data)
             if edt.ShowModal() == wx.ID_SAVE:
                 modified = True
                 txt = edt.data_text.GetValue()
-                self.tree.SetItemText(self.item, ed.getshortname(txt,
-                    edt.comment_button.GetValue()))
+                commented = edt.comment_button.GetValue()
+                if under_comment:
+                    commented = True
+                self.tree.SetItemText(self.item, ed.getshortname(txt, commented))
                 self.tree.SetPyData(self.item, txt)
         if modified:
             self.mark_dirty(True)
             self.refresh_preview()
         edt.Destroy()
 
-    def copy(self, evt = None, cut = False, retain = True):
+    def copy(self, evt=None, cut=False, retain=True):
         "start copy/cut/delete actie"
         def push_el(elm, result):
             "subitem(s) toevoegen aan copy buffer"
@@ -1249,7 +1288,7 @@ class MainFrame(wx.Frame, ed.EditorMixin):
             self.tree.SelectItem(prev)
             self.refresh_preview()
 
-    def paste(self, evt = None, before = True, below = False):
+    def paste(self, evt=None, before=True, below=False):
         "start paste actie"
         def zetzeronder(node, elm, pos = -1):
             "paste copy buffer into tree"
@@ -1326,7 +1365,7 @@ class MainFrame(wx.Frame, ed.EditorMixin):
         self.mark_dirty(True)
         self.refresh_preview()
 
-    def add_text(self, evt = None, before = True, below = False):
+    def add_text(self, evt=None, before=True, below=False):
         "tekst toevoegen onder huidige element"
         if DESKTOP and not self.checkselection():
             return
@@ -1357,7 +1396,7 @@ class MainFrame(wx.Frame, ed.EditorMixin):
             self.tree.Expand(self.item)
         edt.Destroy()
 
-    def insert(self, evt = None, before = True, below = False):
+    def insert(self, evt=None, before=True, below=False):
         "start invoeg actie"
         if DESKTOP and not self.checkselection():
             return
@@ -1406,7 +1445,7 @@ class MainFrame(wx.Frame, ed.EditorMixin):
             self.refresh_preview()
         edt.Destroy()
 
-    def add_dtd(self, evt = None):
+    def add_dtd(self, evt=None):
         "start toevoegen dtd m.b.v. dialoog"
         if self.has_dtd:
             item, pos = self.tree.GetFirstChild(self.top)
@@ -1431,7 +1470,7 @@ class MainFrame(wx.Frame, ed.EditorMixin):
                     break
         edt.Destroy()
 
-    def add_link(self, evt = None):
+    def add_link(self, evt=None):
         "start toevoegen link m.b.v. dialoog"
         if DESKTOP and not self.checkselection():
             return
@@ -1453,7 +1492,7 @@ class MainFrame(wx.Frame, ed.EditorMixin):
             self.refresh_preview()
         edt.Destroy()
 
-    def add_image(self, evt = None):
+    def add_image(self, evt=None):
         "start toevoegen image m.b.v. dialoog"
         if DESKTOP and not self.checkselection():
             return
@@ -1473,7 +1512,7 @@ class MainFrame(wx.Frame, ed.EditorMixin):
             self.refresh_preview()
         edt.Destroy()
 
-    def add_list(self, evt = None):
+    def add_list(self, evt=None):
         "start toevoegen list m.b.v. dialoog"
         if DESKTOP and not self.checkselection():
             return
@@ -1511,7 +1550,7 @@ class MainFrame(wx.Frame, ed.EditorMixin):
             self.refresh_preview()
         edt.Destroy()
 
-    def add_table(self, evt = None):
+    def add_table(self, evt=None):
         "start toevoegen tabel m.b.v. dialoog"
         if DESKTOP and not self.checkselection():
             return
