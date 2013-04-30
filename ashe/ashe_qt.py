@@ -7,7 +7,7 @@ import sys
 import PyQt4.QtGui as gui
 import PyQt4.QtCore as core
 import PyQt4.QtWebKit as webkit
-import ashe_mixin as ed
+import ashe.ashe_mixin as ed
 import bs4 as bs # BeautifulSoup as bs
 
 PPATH = os.path.split(__file__)[0]
