@@ -785,6 +785,11 @@ class VisualTree(gui.QTreeWidget):
     def __init__(self, parent):
         self._parent = parent
         gui.QTreeWidget.__init__(self)
+        self.setAcceptDrops(True)
+        self.setDragEnabled(True)
+        self.setSelectionMode(self.SingleSelection)
+        self.setDragDropMode(self.InternalMove)
+        self.setDropIndicatorShown(True)
 
     def mouseDoubleClickEvent(self, event):
         item = self.itemAt(event.x(), event.y())
@@ -804,6 +809,20 @@ class VisualTree(gui.QTreeWidget):
                 menu.exec_(core.QPoint(xc, yc))
                 return
         gui.QTreeWidget.mouseReleaseEvent(self, event)
+
+    def dropEvent(self, event):
+        """wordt aangeroepen als een versleept item (dragitem) losgelaten wordt over
+        een ander (dropitem)
+        Het komt er altijd *onder* te hangen als laatste item
+        deze methode breidt de Treewidget methode uit met wat visuele zaken
+        """
+        dragitem = self.selectedItems()[0]
+        gui.QTreeWidget.dropEvent(self, event)
+        self._parent.tree_dirty = True
+        dropitem = dragitem.parent()
+        self.setCurrentItem(dragitem)
+        dropitem.setExpanded(True)
+        self._parent.refresh_preview()
 
 class ScrolledTextDialog(gui.QDialog):
     """dialoog voor het tonen van validatieoutput
