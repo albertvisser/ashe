@@ -685,10 +685,11 @@ class ElementDialog(gui.QDialog):
         pos = self.attr_table.rowCount()
         item = gui.QTableWidgetItem('')
         self.attr_table.setItem(pos, 0, item)
-        self.attr_table.setFocus()
+        # onderstaande zaken werken niet om de focus op het nieuwe attribuut te krijgen
+        ## self.attr_table.editItem(self.attr_table.item(pos, 0))
         ## self.attr_table.setCurrentItem(item)
-        # onderstaande werkt nog niet om de focus op het nieuwe attribuut te krijgen
-        self.attr_table.editItem(self.attr_table.item(pos, 0))
+        ## self.attr_table.setCurrentCell(pos, 0)
+        self.attr_table.setFocus()
 
     def on_del(self, evt=None):
         "attribuut verwijderen"
@@ -768,6 +769,7 @@ class TextDialog(gui.QDialog):
         vbox.addLayout(hbox)
 
         self.setLayout(vbox)
+        self.data_text.setFocus()
 
     def on_cancel(self):
         gui.QDialog.done(self, gui.QDialog.Rejected)
