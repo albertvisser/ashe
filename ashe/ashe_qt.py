@@ -870,6 +870,7 @@ class MainFrame(gui.QMainWindow, ed.EditorMixin):
             # pos = (dsp.top, dsp.left),
             # size = (wide, high)
         self.setWindowIcon(gui.QIcon(os.path.join(PPATH,"ashe.ico")))
+        self.resize(1020, 900)
 
         self._setup_menu()
         act = gui.QAction(self)
@@ -877,6 +878,7 @@ class MainFrame(gui.QMainWindow, ed.EditorMixin):
         self.connect(act, core.SIGNAL('triggered()'), self.contextmenu)
 
         self.pnl = gui.QSplitter(self)
+        ## self.pnl.moveSplitter(400, 1)
         self.setCentralWidget(self.pnl)
 
         self.tree = VisualTree(self)
@@ -888,6 +890,7 @@ class MainFrame(gui.QMainWindow, ed.EditorMixin):
 
         self.sb = self.statusBar()
 
+        self.tree.resize(500, 100)
         self.tree.setFocus()
         # self.Bind(gui.QEVT_CLOSE, self.exit) reimplement self.closeEvent()
 
