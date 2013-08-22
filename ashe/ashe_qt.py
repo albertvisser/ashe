@@ -103,7 +103,6 @@ class DTDDialog(gui.QDialog):
         gui.QDialog.done(self, gui.QDialog.Rejected)
 
     def on_ok(self):
-        print(self.dtd_list)
         for cap, dtd, radio in self.dtd_list:
         ## for item in self.dtd_list:
             ## print item
@@ -1195,7 +1194,7 @@ class MainFrame(gui.QMainWindow, ed.EditorMixin):
             if sys.version < '3':
                 data = data.toPyObject()
             if text.startswith(DTDSTART):
-                root = bs.Declaration(str(data))
+                root = bs.Doctype(str(data)) # Declaration(str(data))
                 self.soup.append(root)
             elif text.startswith(ELSTART):
                 root = self.soup.new_tag(text.split(None, 2)[1])
@@ -1287,6 +1286,10 @@ class MainFrame(gui.QMainWindow, ed.EditorMixin):
         if DESKTOP and not self.checkselection():
             return
         data = str(self.item.text(0))
+        if data.startswith(DTDSTART):
+            gui.QMessageBox.information(self, self.title, 'Please use the menu'
+                ' to edit the DTD')
+            return
         under_comment = str(self.item.parent().text(0)).startswith(CMELSTART)
         modified = False
         if data.startswith(ELSTART) or data.startswith(CMELSTART):

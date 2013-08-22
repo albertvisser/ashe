@@ -167,7 +167,7 @@ class EditorMixin(object):
                     naam = getelname(subnode.name, dic, commented)
                     newitem = self.addtreeitem(item, naam, dic)
                     add_to_tree(newitem, subnode, commented)
-                elif isinstance(subnode, bs.Declaration):
+                elif isinstance(subnode, bs.Doctype): # Declaration):
                     if subnode.startswith(DTDSTART):
                         self.has_dtd = True
                     subnode = str(subnode)[2:-1]
