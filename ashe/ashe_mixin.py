@@ -266,11 +266,7 @@ class EditorMixin(object):
         data = ""
         with open(output) as f_in:
             if fromdisk:
-                data = "\n".join(("Validation results are for the file on disk",
-                    "some errors/warnings may already have been corrected in the "
-                    "file in memory",
-                    "by BeautifulSoup (you'll know when you save it back to disk)",
-                    "", "")) + f_in.read()
+                data = f_in.read()
             else:
                 for line in f_in:
                     if ' - ' not in line:

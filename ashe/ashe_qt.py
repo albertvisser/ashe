@@ -7,6 +7,7 @@ import sys
 import PyQt4.QtGui as gui
 import PyQt4.QtCore as core
 import PyQt4.QtWebKit as webkit
+import PyQt4.Qsci as sci # scintilla
 import ashe.ashe_mixin as ed
 import bs4 as bs # BeautifulSoup as bs
 
@@ -835,6 +836,10 @@ class ScrolledTextDialog(gui.QDialog):
         self.resize(size[0], size[1])
         vbox = gui.QVBoxLayout()
         hbox = gui.QHBoxLayout()
+        self.message = gui.QLabel(self)
+        hbox.addWidget(self.message)
+        vbox.addLayout(hbox)
+        hbox = gui.QHBoxLayout()
         text = gui.QTextEdit(self)
         text.setPlainText(data)
         text.setReadOnly(True)
@@ -849,6 +854,82 @@ class ScrolledTextDialog(gui.QDialog):
         hbox.addStretch()
         vbox.addLayout(hbox)
         self.setLayout(vbox)
+
+class CodeViewDialog(gui.QDialog):
+    """dialoog voor het tonen van de broncode
+
+    aanroepen met show() om openhouden tijdens aanpassen mogelijk te maken
+    """
+    ## ARROW_MARKER_NUM = 8
+
+    def __init__(self, parent, title='', data='', size=(600, 400)):
+        "create a window with a scintilla text widget and an ok button"
+        self._parent = parent
+        gui.QDialog.__init__(self, parent)
+        self.setWindowTitle(title)
+        self.resize(size[0], size[1])
+        vbox = gui.QVBoxLayout()
+        hbox = gui.QHBoxLayout()
+        hbox.addWidget(gui.QLabel("Let op: de tekst wordt niet ververst "
+            "bij wijzigingen in het hoofdvenster", self))
+        vbox.addLayout(hbox)
+        hbox = gui.QHBoxLayout()
+        self.text = sci.QsciScintilla(self)
+        self.setup_text()
+        self.text.setText(data)
+        self.text.setReadOnly(True)
+        hbox.addWidget(self.text)
+        vbox.addLayout(hbox)
+        hbox = gui.QHBoxLayout()
+        ok_button = gui.QPushButton('&Ok', self)
+        ok_button.clicked.connect(self.close)
+        ok_button.setDefault(True)
+        hbox.addStretch()
+        hbox.addWidget(ok_button)
+        hbox.addStretch()
+        vbox.addLayout(hbox)
+        self.setLayout(vbox)
+
+    def setup_text(self):
+        "define the scintilla widget's properties"
+        # Set the default font
+        font = gui.QFont()
+        font.setFamily('Courier')
+        font.setFixedPitch(True)
+        font.setPointSize(10)
+        self.text.setFont(font)
+        self.text.setMarginsFont(font)
+
+        # Margin 0 is used for line numbers
+        fontmetrics = gui.QFontMetrics(font)
+        self.text.setMarginsFont(font)
+        self.text.setMarginWidth(0, fontmetrics.width("00000"))
+        self.text.setMarginLineNumbers(0, True)
+        self.text.setMarginsBackgroundColor(gui.QColor("#cccccc"))
+
+        ## # Clickable margin 1 for showing markers
+        ## self.text.setMarginSensitivity(1, True)
+        ## self.connect(self.text,
+            ## core.SIGNAL('marginClicked(int, int, Qt::KeyboardModifiers)'),
+            ## self.text.on_margin_clicked)
+        ## self.text.markerDefine(sci.QsciScintilla.RightArrow,
+            ## self.ARROW_MARKER_NUM)
+        ## self.text.setMarkerBackgroundColor(gui.QColor("#ee1111"),
+            ## self.ARROW_MARKER_NUM)
+
+        # Enable brace matching, auto-indent, code-folding
+        self.text.setBraceMatching(sci.QsciScintilla.SloppyBraceMatch)
+        self.text.setAutoIndent(True)
+        self.text.setFolding(sci.QsciScintilla.PlainFoldStyle)
+
+        # Current line visible with special background color
+        self.text.setCaretLineVisible(True)
+        self.text.setCaretLineBackgroundColor(gui.QColor("#ffe4e4"))
+
+        # Set HTML lexer
+        lexer = sci.QsciLexerHTML()
+        lexer.setDefaultFont(font)
+        self.text.setLexer(lexer)
 
 class MainFrame(gui.QMainWindow, ed.EditorMixin):
     "Main GUI"
@@ -960,6 +1041,7 @@ class MainFrame(gui.QMainWindow, ed.EditorMixin):
                 ('Add l&ist (under)', '', '', 'Create a list', self.add_list),
                 ('Add &table (under)', '', '', 'Create a table', self.add_table),
                 ('sep1', ),
+                ('&View code', '', '', 'Shows the html pretty-printed', self.view_code),
                 ('&Check syntax', '', '', 'Validate HTML with Tidy', self.validate),
                 ),
                 ), (
@@ -1689,7 +1771,20 @@ class MainFrame(gui.QMainWindow, ed.EditorMixin):
             htmlfile = self.xmlfn
             fromdisk = True
         data = ed.EditorMixin.validate(self, htmlfile, fromdisk)
-        dlg = ScrolledTextDialog(self, "Validation output", data).show()
+        dlg = ScrolledTextDialog(self, "Validation output", data)
+        if fromdisk:
+            dlg.message.setText("\n".join((
+                "Validation results are for the file on disk",
+                "some errors/warnings may already have been corrected by "
+                    "BeautifulSoup",
+                "(you'll know when they don't show up inthe tree or text view",
+                " or when you save the file in memory back to disk)")))
+        dlg.show()
+
+    def view_code(self, evt=None):
+        self.data2soup()
+        dlg = CodeViewDialog(self, "Validation output", self.soup.prettify())
+        dlg.show()
 
 def ashe_gui(args):
     "start main GUI"
