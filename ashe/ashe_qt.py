@@ -688,8 +688,11 @@ class ElementDialog(gui.QDialog):
         # onderstaande zaken werken niet om de focus op het nieuwe attribuut te krijgen
         ## self.attr_table.editItem(self.attr_table.item(pos, 0))
         ## self.attr_table.setCurrentItem(item)
+        ## self.attr_table.setItemSelected(item)
+        ## self.attr_table.setItemSelected(item)
         ## self.attr_table.setCurrentCell(pos, 0)
         self.attr_table.setFocus()
+        item.setFocus()
 
     def on_del(self, evt=None):
         "attribuut verwijderen"
