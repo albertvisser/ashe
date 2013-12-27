@@ -628,6 +628,7 @@ class ElementDialog(gui.QDialog):
         ## hdr.setMinimumSectionSize(340)
         hdr.resizeSection(0, 102)
         hdr.resizeSection(1, 152)
+        hdr.setStretchLastSection(True)
         self.attr_table.verticalHeader().setVisible(False)
         ## self.attr_table.SetColSize(1, tbl.Size[0] - 162) # 178) # 160)
         if attrs:
@@ -640,9 +641,9 @@ class ElementDialog(gui.QDialog):
                 self.attr_table.setItem(idx, 1, item)
         else:
             self.row = -1
-        hbox.addStretch()
+        ## hbox.addStretch()
         hbox.addWidget(self.attr_table)
-        hbox.addStretch()
+        ## hbox.addStretch()
         box.addLayout(hbox)
 
         hbox = gui.QHBoxLayout()
