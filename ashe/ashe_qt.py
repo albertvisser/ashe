@@ -820,6 +820,11 @@ class VisualTree(gui.QTreeWidget):
         Het komt er altijd *onder* te hangen als laatste item
         deze methode breidt de Treewidget methode uit met wat visuele zaken
         """
+        item = self.itemAt(event.pos())
+        if not item or not item.text(0).startswith(ELSTART):
+            gui.QMessageBox.information(self, self._parent.title,
+                'Can only drop on element')
+            return
         dragitem = self.selectedItems()[0]
         gui.QTreeWidget.dropEvent(self, event)
         self._parent.tree_dirty = True
