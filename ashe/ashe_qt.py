@@ -226,7 +226,7 @@ class ImageDialog(gui.QDialog):
     def __init__(self, parent):
         self._parent = parent
         gui.QDialog.__init__(self, parent)
-        self.setWindowTitle('Add Link')
+        self.setWindowTitle('Add Image')
         self.setWindowIcon(gui.QIcon(os.path.join(PPATH,"ashe.ico")))
         vbox = gui.QVBoxLayout()
 
@@ -1792,7 +1792,7 @@ class MainFrame(gui.QMainWindow, ed.EditorMixin):
 
     def view_code(self, evt=None):
         self.data2soup()
-        dlg = CodeViewDialog(self, "Validation output", self.soup.prettify())
+        dlg = CodeViewDialog(self, "Source view", self.soup.prettify())
         dlg.show()
 
 def ashe_gui(args):
@@ -1802,9 +1802,10 @@ def ashe_gui(args):
         fname = args[1]
         ## if len(args) > 2:
             ## print args[2]
-        if not os.path.exists(fname):
+        if fname and not os.path.exists(fname):
             ## fname = os.path.join(args[2], args[1])
-            print('Kan file niet openen, geef s.v.p. een absoluut pad op\n')
+            print('Kan file {} niet openen, '
+                'geef s.v.p. een absoluut pad op\n'.format(fname))
     app = gui.QApplication(sys.argv)
     ## (redirect = True, filename = "/home/albert/htmledit/ashe/ashe.log")
     ## print "\n-- new entry --\n"
