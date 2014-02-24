@@ -971,8 +971,11 @@ class MainFrame(gui.QMainWindow, ed.EditorMixin):
         self.setCentralWidget(self.pnl)
 
         self.tree = VisualTree(self)
+        ## self.tree.header().setStretchLastSection(True)
         self.tree.setItemHidden(self.tree.headerItem(), True)
         self.pnl.addWidget(self.tree)
+        print(self.tree.horizontalScrollBarPolicy(),
+            self.tree.verticalScrollBarPolicy())
 
         self.html = webkit.QWebView(self.pnl) # , -1,
         self.pnl.addWidget(self.html)
@@ -1144,6 +1147,10 @@ class MainFrame(gui.QMainWindow, ed.EditorMixin):
                 ## except Exception as err:
                     ## gui.QMessageBox.information(self, self.title, str(err))
 
+    ## def setfilenametooltip((self):
+        ## """bedoeld om de filename ook als tooltip te tonen, uit te voeren
+        ## aan het eind van new, open, save, saveas en reload"""
+
     def savexml(self, evt=None):
         "save html to file"
         if self.xmlfn == '':
@@ -1224,6 +1231,7 @@ class MainFrame(gui.QMainWindow, ed.EditorMixin):
         self.top = gui.QTreeWidgetItem()
         self.top.setText(0, fname)
         self.tree.addTopLevelItem(self.top) # AddRoot(titel)
+        ## self.top.setToolTip(0, fname)
 
     def init_tree(self, name=''):
         "nieuwe tree initialiseren"
@@ -1334,6 +1342,7 @@ class MainFrame(gui.QMainWindow, ed.EditorMixin):
         item = self.tree.currentItem()
         self.tree.expandItem(item)
         expand_all(item)
+        self.tree.resizeColumnToContents(0)
 
     def collapse(self, evt=None):
         "collapse huidige item en daaronder"
@@ -1345,6 +1354,7 @@ class MainFrame(gui.QMainWindow, ed.EditorMixin):
         item = self.tree.currentItem()
         collapse_all(item)
         self.tree.collapseItem(item)
+        self.tree.resizeColumnToContents(0)
 
     def comment(self, evt=None):
         "(un)comment zonder de edit dialoog"
