@@ -168,10 +168,12 @@ class EditorMixin(object):
                     newitem = self.addtreeitem(item, naam, dic)
                     add_to_tree(newitem, subnode, commented)
                 elif isinstance(subnode, bs.Doctype): # Declaration):
-                    if subnode.startswith(DTDSTART):
-                        self.has_dtd = True
-                    subnode = str(subnode)[2:-1]
+                    subnode = str(subnode) # [2:-1]
+                    print(subnode)
+                    ## if subnode.startswith(DTDSTART):
+                    self.has_dtd = True
                     newitem = self.addtreeitem(item, getshortname(subnode), subnode)
+                    print(self.has_dtd)
                 elif isinstance(subnode, bs.Comment):
                     ## print subitem.string
                     newnode = bs.BeautifulSoup(subnode.string)
