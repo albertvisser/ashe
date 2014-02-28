@@ -147,7 +147,7 @@ class EditorMixin(object):
 
         to be extended with gui-specific method"""
 
-        def add_to_tree(item, node, commented = False):
+        def add_to_tree(item, node, commented=False):
             """add contents of BeautifulSoup node (`node`) to tree item (`item`)
             `commented` flag is used in building item text"""
             ## print hier
@@ -168,16 +168,13 @@ class EditorMixin(object):
                     newitem = self.addtreeitem(item, naam, dic)
                     add_to_tree(newitem, subnode, commented)
                 elif isinstance(subnode, bs.Doctype): # Declaration):
-                    subnode = str(subnode) # [2:-1]
-                    print(subnode)
-                    ## if subnode.startswith(DTDSTART):
+                    dtdtext = ' '.join((DTDSTART,str(subnode))) # [2:-1]
                     self.has_dtd = True
-                    newitem = self.addtreeitem(item, getshortname(subnode), subnode)
-                    print(self.has_dtd)
+                    newitem = self.addtreeitem(item, getshortname(dtdtext), subnode)
                 elif isinstance(subnode, bs.Comment):
                     ## print subitem.string
                     newnode = bs.BeautifulSoup(subnode.string)
-                    add_to_tree(item, newnode, commented = True)
+                    add_to_tree(item, newnode, commented=True)
                 else:
                     newitem = self.addtreeitem(item, getshortname(str(subnode),
                         commented), str(subnode))
