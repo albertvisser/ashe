@@ -145,8 +145,9 @@ class EditorMixin(object):
     def init_tree(self, name = ''):
         """build internal tree representation of the html
 
-        to be extended with gui-specific method"""
-
+        calls gui-specific methods to build the visual structure
+        to be overridden with gui-specific method that calls this one
+        """
         def add_to_tree(item, node, commented=False):
             """add contents of BeautifulSoup node (`node`) to tree item (`item`)
             `commented` flag is used in building item text"""
