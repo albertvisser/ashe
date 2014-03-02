@@ -1276,6 +1276,10 @@ class MainFrame(gui.QMainWindow, ed.EditorMixin):
                     root.append(sub) # insert(0,sub)
                     if not is_comment:
                         expandnode(elm, sub, data, commented)
+                elif text.startswith(DTDSTART):
+                    text = text.split(None, 1)[1]
+                    sub = bs.DocType(data)
+                    root.append(sub)
                 else:
                     sub = bs.NavigableString(str(data)) #.decode("utf-8")) niet voor Py3
                     if text.startswith(CMSTART) and not commented:
@@ -1388,8 +1392,18 @@ class MainFrame(gui.QMainWindow, ed.EditorMixin):
             return
         data = str(self.item.text(0))
         if data.startswith(DTDSTART):
-            gui.QMessageBox.information(self, self.title, 'Please use the menu'
-                ' to edit the DTD')
+            data = str(self.item.data(0, core.Qt.UserRole))
+            text = ''
+            print(data)
+            for item in ed.dtdlist:
+                print(item[1])
+                data = data.upper()
+                item[1] = item[1].upper()
+                if (' '.join(data.split()) == ' '.join(item[1].split())
+                  or data.strip() == item[1].split('\n')[0].strip()):
+                    text = 'doctype is ' + item[0]
+            text = text or 'doctype cannot be determined'
+            gui.QMessageBox.information(self, self.title, text)
             return
         under_comment = str(self.item.parent().text(0)).startswith(CMELSTART)
         modified = False
@@ -1455,9 +1469,9 @@ class MainFrame(gui.QMainWindow, ed.EditorMixin):
             data = data.toPyObject()
         txt = 'cut' if cut else 'copy'
         ## try:
-        if str(data).startswith(DTDSTART):
+        if str(text).startswith(DTDSTART):
             gui.QMessageBox.information(self, self.title,
-                "use the HTML menu's DTD option")
+                "Please use the HTML menu's DTD option to remove the DTD")
             return
         if retain:
             if text.startswith(ELSTART):
@@ -1654,7 +1668,7 @@ class MainFrame(gui.QMainWindow, ed.EditorMixin):
             node = gui.QTreeWidgetItem()
             self.top.insertChild(0, node)
             dtd = self.dialog_data
-            node.setText(0, ed.getshortname(dtd))
+            node.setText(0, ' '.join((DTDSTART, ed.getshortname(dtd))))
             node.setData(0, core.Qt.UserRole, dtd.rstrip())
             self.has_dtd = True
         self.adjust_dtd_menu()
