@@ -12,11 +12,11 @@ import ashe.ashe_mixin as ed
 import bs4 as bs # BeautifulSoup as bs
 
 PPATH = os.path.split(__file__)[0]
-if os.name == "nt":
-    HMASK = "HTML files (*.htm *.html);;All files (*.*)"
-elif os.name == "posix":
-    HMASK = "HTML files (*.htm *.HTM *.html *.HTML);;All files (*.*)"
 IMASK = "All files (*.*)"
+if os.name == "nt":
+    HMASK = "HTML files (*.htm *.html);;" + IMASK
+elif os.name == "posix":
+    HMASK = "HTML files (*.htm *.HTM *.html *.HTML);;" + IMASK
 DESKTOP = ed.DESKTOP
 CMSTART = ed.CMSTART
 ELSTART = ed.ELSTART
@@ -111,6 +111,100 @@ class DTDDialog(gui.QDialog):
             if radio and radio.isChecked():
                 self._parent.dialog_data = dtd
                 break
+        gui.QDialog.done(self, gui.QDialog.Accepted)
+
+class CSSDialog(gui.QDialog):
+    "dialoog om een link element toe te voegen"
+
+    def __init__(self, parent):
+        self._parent = parent
+        gui.QDialog.__init__(self, parent)
+        self.setWindowTitle('Add Stylesheet')
+        self.setWindowIcon(gui.QIcon(os.path.join(PPATH,"ashe.ico")))
+        vbox = gui.QVBoxLayout()
+
+        sbox = gui.QFrame()
+        sbox.setFrameStyle(gui.QFrame.Box)
+        gbox = gui.QGridLayout() # gui.QGridBagSizer(4, 4)
+
+        gbox.addWidget(gui.QLabel("link to stylesheet:", self), 0, 0)
+        self.link_text = gui.QLineEdit("http://", self)
+        gbox.addWidget(self.link_text, 0, 1)
+
+        self.choose_button = gui.QPushButton('Search', self)
+        self.choose_button.clicked.connect(self.kies)
+        box = gui.QHBoxLayout()
+        box.addStretch()
+        box.addWidget(self.choose_button)
+        box.addStretch()
+        gbox.addLayout(box, 1, 0, 1, 2)
+
+        gbox.addWidget(gui.QLabel("for media type(s):", self), 2, 0)
+        self.text_text = gui.QLineEdit(self)
+        gbox.addWidget(self.text_text, 2, 1)
+
+        sbox.setLayout(gbox)
+        vbox.addWidget(sbox)
+
+        hbox = gui.QHBoxLayout()
+        self.ok_button = gui.QPushButton('&Save', self)
+        self.connect(self.ok_button, core.SIGNAL('clicked()'), self.on_ok)
+        self.ok_button.setDefault(True)
+        self.cancel_button = gui.QPushButton('&Cancel', self)
+        self.connect(self.cancel_button, core.SIGNAL('clicked()'), self.on_cancel)
+        hbox.addStretch()
+        hbox.addWidget(self.ok_button)
+        hbox.addWidget(self.cancel_button)
+        hbox.addStretch()
+        vbox.addLayout(hbox)
+
+        self.setLayout(vbox)
+
+        self.link_text.setFocus()
+
+    def kies(self, evt=None):
+        "methode om het te linken document te selecteren"
+        if self._parent.xmlfn:
+            loc = os.path.dirname(self._parent.xmlfn)
+        else:
+            loc = os.getcwd()
+        if os.name == "nt":
+            mask = "CSS files (*.css)"
+        elif os.name == "posix":
+            mask = "CSS files (*.css *.CSS)"
+        fnaam = gui.QFileDialog.getOpenFileName(self, "Choose a file", loc, mask)
+        if fnaam:
+            self.link_text.setText(fnaam)
+
+    def on_cancel(self):
+        gui.QDialog.done(self, gui.QDialog.Rejected)
+
+    def on_ok(self):
+        "bij OK: het geselecteerde (absolute) pad omzetten in een relatief pad"
+        link = str(self.link_text.text())
+        if link:
+            if not link.startswith('http://') and not link.startswith('/'):
+                if self._parent.xmlfn:
+                    whereami = self._parent.xmlfn
+                else:
+                    whereami = os.path.join(os.getcwd(),'index.html')
+                link = ed.getrelativepath(link, whereami)
+            if not link:
+                gui.QMessageBox.information('Unable to make this local link relative',
+                    self.parent.title)
+            else:
+                self.link = link
+            self._parent.dialog_data = {
+                "rel": 'stylesheet',
+                "href": link,
+                "type": 'text/css',
+                }
+            test = str(self.text_text.text())
+            if test:
+                self._parent.dialog_data["media"] = test
+        else:
+            gui.QMessageBox.information("bestandsnaam opgeven of cancel kiezen s.v.p",'')
+            return
         gui.QDialog.done(self, gui.QDialog.Accepted)
 
 class LinkDialog(gui.QDialog):
@@ -1048,7 +1142,8 @@ class MainFrame(gui.QMainWindow, ed.EditorMixin):
                 ), (
             "&HTML", (
                 ('Add &DTD', '', '', 'Add a document type description', self.add_dtd),
-                ('Create &link (under)', '', '', 'Add a link', self.add_link),
+                ('Add &Stylesheet', '', '', 'Add a stylesheet reference', self.add_css),
+                ('Create &link (under)', '', '', 'Add a document reference', self.add_link),
                 ('Add i&mage (under)', '', '', 'Include an image', self.add_image),
                 ('Add l&ist (under)', '', '', 'Create a list', self.add_list),
                 ('Add &table (under)', '', '', 'Create a table', self.add_table),
@@ -1675,6 +1770,36 @@ class MainFrame(gui.QMainWindow, ed.EditorMixin):
         self.mark_dirty(True)
         self.refresh_preview()
         self.tree.scrollToItem(self.top.child(0))
+
+    def add_css(self, evt=None):
+        "start toevoegen stylesheet m.b.v. dialoog"
+        ## if DESKTOP and not self.checkselection():
+            ## return
+        ## if not str(self.item.text(0)).startswith(ELSTART):
+            ## gui.QMessageBox.information(self, self.title, "Can't do this below text")
+            ## return
+        edt = CSSDialog(self).exec_()
+        if edt == gui.QDialog.Accepted:
+            ## pass
+            data = self.dialog_data
+            node = gui.QTreeWidgetItem()
+            node.setText(0, ed.getelname('link', data))
+            node.setData(0, core.Qt.UserRole, data)
+            self.item = None
+            for ix in range(self.top.childCount()):
+                item = self.top.child(ix)
+                if item.text(0) == ' '.join((ELSTART, 'html')):
+                    for ix in range(item.childCount()):
+                        sub = item.child(ix)
+                        if sub.text(0) == ' '.join((ELSTART, 'head')):
+                            self.item = sub
+            if self.item:
+                self.item.addChild(node)
+                self.mark_dirty(True)
+                self.refresh_preview()
+            else:
+                gui.QMessageBox.information(self, self.title, "Error: no <head> element")
+
 
     def add_link(self, evt=None):
         "start toevoegen link m.b.v. dialoog"
