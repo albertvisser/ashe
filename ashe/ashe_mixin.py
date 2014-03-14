@@ -169,7 +169,7 @@ class EditorMixin(object):
                     newitem = self.addtreeitem(item, naam, dic)
                     add_to_tree(newitem, subnode, commented)
                 elif isinstance(subnode, bs.Doctype): # Declaration):
-                    dtdtext = ' '.join((DTDSTART,str(subnode))) # [2:-1]
+                    dtdtext = ' '.join((DTDSTART, str(subnode))) # [2:-1]
                     self.has_dtd = True
                     newitem = self.addtreeitem(item, getshortname(dtdtext), subnode)
                 elif isinstance(subnode, bs.Comment):

@@ -1068,8 +1068,6 @@ class MainFrame(gui.QMainWindow, ed.EditorMixin):
         ## self.tree.header().setStretchLastSection(True)
         self.tree.setItemHidden(self.tree.headerItem(), True)
         self.pnl.addWidget(self.tree)
-        print(self.tree.horizontalScrollBarPolicy(),
-            self.tree.verticalScrollBarPolicy())
 
         self.html = webkit.QWebView(self.pnl) # , -1,
         self.pnl.addWidget(self.html)
@@ -1488,16 +1486,17 @@ class MainFrame(gui.QMainWindow, ed.EditorMixin):
         data = str(self.item.text(0))
         if data.startswith(DTDSTART):
             data = str(self.item.data(0, core.Qt.UserRole))
-            text = ''
             print(data)
-            for item in ed.dtdlist:
-                print(item[1])
-                data = data.upper()
-                item[1] = item[1].upper()
-                if (' '.join(data.split()) == ' '.join(item[1].split())
-                  or data.strip() == item[1].split('\n')[0].strip()):
-                    text = 'doctype is ' + item[0]
-            text = text or 'doctype cannot be determined'
+            prefix = 'HTML PUBLIC "-//W3C//DTD'
+            if data.upper().startswith(prefix):
+                data = data.upper().replace(prefix, '')
+                print('-->',  data)
+                text = 'doctype is ' + data.split('//EN')[0].strip()
+                print('->>',  text)
+            elif data.strip().lower() == 'html':
+                text = 'doctype is HTML 5'
+            else:
+                text = 'doctype cannot be determined'
             gui.QMessageBox.information(self, self.title, text)
             return
         under_comment = str(self.item.parent().text(0)).startswith(CMELSTART)
