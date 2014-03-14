@@ -133,7 +133,6 @@ class EditorMixin(object):
             print(err)
             raise
         else:
-            ## print root.originalEncoding
             self.root = root
             self.xmlfn = fname
             self.init_tree(fname)
@@ -151,12 +150,9 @@ class EditorMixin(object):
         def add_to_tree(item, node, commented=False):
             """add contents of BeautifulSoup node (`node`) to tree item (`item`)
             `commented` flag is used in building item text"""
-            ## print hier
-            for idx, subnode in enumerate([h for h in node.contents]): # if h != '\n']):
-                ## print idx, subnode
+          for idx, subnode in enumerate([h for h in node.contents]): # if h != '\n']):
                 if isinstance(subnode, bs.Tag):
                     data = subnode.attrs
-                    ## print data
                     dic = dict(data)
                     for key, value in dic.items():
                         if '%SOUP-ENCODING%' in value:
@@ -164,7 +160,6 @@ class EditorMixin(object):
                                 self.root.originalEncoding)
                         elif isinstance(value, list): # hack i.v.. nieuwe versie
                             dic[key] = ' '.join(value)
-                    ## print data,dic
                     naam = getelname(subnode.name, dic, commented)
                     newitem = self.addtreeitem(item, naam, dic)
                     add_to_tree(newitem, subnode, commented)
@@ -173,7 +168,6 @@ class EditorMixin(object):
                     self.has_dtd = True
                     newitem = self.addtreeitem(item, getshortname(dtdtext), subnode)
                 elif isinstance(subnode, bs.Comment):
-                    ## print subitem.string
                     newnode = bs.BeautifulSoup(subnode.string)
                     add_to_tree(item, newnode, commented=True)
                 else:
@@ -273,13 +267,9 @@ class EditorMixin(object):
                         data += line
                         continue
                     loc, meld = line.strip().split(' - ', 1)
-                    ## print loc
-                    ## print meld
                     where = loc.split()
                     lineno, column = where[1], where[3]
-                    ## print lineno, column
                     sourceline = linecache.getline(htmlfile, int(lineno))
-                    ## print sourceline
                     tag = ""
                     for char in sourceline[int(column)-1:]:
                         tag += char

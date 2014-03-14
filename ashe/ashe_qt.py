@@ -105,9 +105,6 @@ class DTDDialog(gui.QDialog):
 
     def on_ok(self):
         for cap, dtd, radio in self.dtd_list:
-        ## for item in self.dtd_list:
-            ## print item
-            ## cap, dtd, radio = item
             if radio and radio.isChecked():
                 self._parent.dialog_data = dtd
                 break
@@ -1041,10 +1038,6 @@ class MainFrame(gui.QMainWindow, ed.EditorMixin):
         self.parent = parent
         self.title = "(untitled) - Albert's Simple HTML Editor"
         self.xmlfn = fname
-        ## if fn:
-            ## self.xmlfn = os.path.abspath(fn)
-        ## else:
-            ## self.xmlfn = ''
         # bepaalt de bij het scherm passende hoogte en breedte
         # dsp = gui.QDisplay().GetClientArea()
         # high = dsp.height if dsp.height < 900 else 900
@@ -1338,7 +1331,6 @@ class MainFrame(gui.QMainWindow, ed.EditorMixin):
         "interne tree omzetten in BeautifulSoup object"
         def expandnode(node, root, data, commented = False):
             "tree item (node) met inhoud (data) toevoegen aan BS node (root)"
-            ## print data
             try:
                 for att in data:
                     root[str(att)] = str(data[att])
@@ -1383,9 +1375,6 @@ class MainFrame(gui.QMainWindow, ed.EditorMixin):
         for ix in range(count):
             tag = self.top.child(ix)
             text = str(tag.text(0))
-            ## print tag, text
-            ## print text.split(None, 1)[1]
-            ## print text.split(None, 2)[1]
             data = tag.data(0, core.Qt.UserRole)
             if sys.version < '3':
                 data = data.toPyObject()
@@ -1468,7 +1457,6 @@ class MainFrame(gui.QMainWindow, ed.EditorMixin):
         commented = not commented # het (un)commenten uitvoeren
         if under_comment:
             commented = True
-        print("in comment:", tag, attrs)
         if tag.startswith(ELSTART):
             _, tag = tag.split(None, 1) # ELSTART eraf halen
             self.item.setText(0, ed.getelname(tag, attrs, commented))
@@ -1486,13 +1474,10 @@ class MainFrame(gui.QMainWindow, ed.EditorMixin):
         data = str(self.item.text(0))
         if data.startswith(DTDSTART):
             data = str(self.item.data(0, core.Qt.UserRole))
-            print(data)
             prefix = 'HTML PUBLIC "-//W3C//DTD'
             if data.upper().startswith(prefix):
                 data = data.upper().replace(prefix, '')
-                print('-->',  data)
                 text = 'doctype is ' + data.split('//EN')[0].strip()
-                print('->>',  text)
             elif data.strip().lower() == 'html':
                 text = 'doctype is HTML 5'
             else:
@@ -1513,7 +1498,6 @@ class MainFrame(gui.QMainWindow, ed.EditorMixin):
                 tag, attrs, commented = self.dialog_data
                 if under_comment:
                     commented = True
-                print("in edit:", attrs)
                 if tag != data or attrs != attrdict:
                     self.item.setText(0, ed.getelname(tag, attrs, commented))
                 self.item.setData(0, core.Qt.UserRole, attrs)
@@ -1948,15 +1932,10 @@ def ashe_gui(args):
     fname = ''
     if len(args) > 1:
         fname = args[1]
-        ## if len(args) > 2:
-            ## print args[2]
         if fname and not os.path.exists(fname):
-            ## fname = os.path.join(args[2], args[1])
             print('Kan file {} niet openen, '
                 'geef s.v.p. een absoluut pad op\n'.format(fname))
     app = gui.QApplication(sys.argv)
-    ## (redirect = True, filename = "/home/albert/htmledit/ashe/ashe.log")
-    ## print "\n-- new entry --\n"
     if fname:
         frm = MainFrame(None, -1, fname = fname)
     else:
