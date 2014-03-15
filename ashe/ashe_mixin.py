@@ -1,14 +1,15 @@
+# -*- coding: utf-8 -*-
+
 """
+GUI-toolkit onafhankelijk gedeelte van mijn op een treeview gebaseerde HTML-editor
 Hierin worden een aantal constanten, functies en een mixin class gedefinieerd
-voor de zaken die gui-toolkit onafhankelijk zijn
 """
+
 import os
 import shutil
 import subprocess as sp
 import linecache
 import bs4 as bs # BeautifulSoup as bs
-import string
-tagtest = string.ascii_letters + string.digits
 
 if os.name == 'ce':
     DESKTOP = False
@@ -150,7 +151,7 @@ class EditorMixin(object):
         def add_to_tree(item, node, commented=False):
             """add contents of BeautifulSoup node (`node`) to tree item (`item`)
             `commented` flag is used in building item text"""
-          for idx, subnode in enumerate([h for h in node.contents]): # if h != '\n']):
+            for idx, subnode in enumerate([h for h in node.contents]): # if h != '\n']):
                 if isinstance(subnode, bs.Tag):
                     data = subnode.attrs
                     dic = dict(data)
