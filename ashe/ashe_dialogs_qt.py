@@ -477,9 +477,10 @@ class LinkDialog(gui.QDialog):
         "bij OK: het geselecteerde (absolute) pad omzetten in een relatief pad"
         link = str(self.link_text.text())
         if link:
-            if not link.startswith('http://') and not link.startswith('/'):
+            if not link.startswith('http://'):
+                link = os.path.abspath(link)
                 if self._parent.xmlfn:
-                    whereami = self._parent.xmlfn
+                    whereami = os.path.abspath(self._parent.xmlfn)
                 else:
                     whereami = os.path.join(os.getcwd(),'index.html')
                 link = ed.getrelativepath(link, whereami)
@@ -584,9 +585,10 @@ class ImageDialog(gui.QDialog):
         "bij OK: het geselecteerde (absolute) pad omzetten in een relatief pad"
         link = str(self.link_text.text())
         if link:
-            if not link.startswith('http://') and not link.startswith('/'):
+            if not link.startswith('http://'):
+                link = os.path.abspath(link)
                 if self._parent.xmlfn:
-                    whereami = self._parent.xmlfn
+                    whereami = os.path.abspath(self._parent.xmlfn)
                 else:
                     whereami = os.path.join(os.getcwd(),'index.html')
                 link = ed.getrelativepath(link, whereami)
