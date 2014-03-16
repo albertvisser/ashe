@@ -544,6 +544,7 @@ class MainFrame(gui.QMainWindow, ed.EditorMixin):
         else:
             self.item.setText(0, ed.getshortname(tag, commented))
             self.item.setData(0, core.Qt.UserRole, tag)
+        self.refresh_preview()
 
     def edit(self, evt=None):
         "start edit m.b.v. dialoog"
