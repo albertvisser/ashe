@@ -23,6 +23,7 @@ CMSTART = ed.CMSTART
 ELSTART = ed.ELSTART
 CMELSTART = ed.CMELSTART
 DTDSTART = ed.DTDSTART
+IFSTART = ed.IFSTART
 BL = ed.BL
 TITEL = ed.TITEL
 
@@ -163,6 +164,10 @@ class MainFrame(gui.QMainWindow, ed.EditorMixin):
                     self.edit),
                 ('Comment/Uncomment', '#', 'C', 'Comment (out) the current item and '
                     'everything below', self.comment),
+                ('Add condition', '', '', 'Put a condition on showing the current '
+                    'item', self.make_conditional),
+                ('Remove condition', '', '', 'Remove this condition from the '
+                    'elements below it', self.remove_condition),
                 ('sep1', ),
                 ('Cut', 'X', 'C', 'Copy and delete the current element', self.cut),
                 ('Copy', 'C', 'C', 'Copy the current element', self.copy),
@@ -358,14 +363,19 @@ class MainFrame(gui.QMainWindow, ed.EditorMixin):
         abouttext = ed.EditorMixin.about(self)
         gui.QMessageBox.information(self, self.title, abouttext)
 
-    def addtreeitem(self, node, naam, data):
+    def addtreeitem(self, node, naam, data, index=-1):
         """itemnaam en -data toevoegen aan de interne tree
-        referentie naar treeitem teruggeven"""
+        default is achteraan onder node, anders index meegeven
+        geeft referentie naar treeitem terug
+        """
         newnode = gui.QTreeWidgetItem()
         newnode.setText(0, naam) # self.tree.AppendItem(node, naam)
         # data is ofwel leeg, ofwel een string, ofwel een dictionary
         newnode.setData(0, core.Qt.UserRole, data) # self.tree.SetPyData(newnode, data)
-        node.addChild(newnode)
+        if index == -1:
+            node.addChild(newnode)
+        else:
+            node.insertChild(index, newnode)
         return newnode
 
     def addtreetop(self, fname, titel):
@@ -421,6 +431,32 @@ class MainFrame(gui.QMainWindow, ed.EditorMixin):
                 elif text.startswith(DTDSTART):
                     text = text.split(None, 1)[1]
                     sub = bs.DocType(data)
+                    root.append(sub)
+                elif text.startswith(IFSTART):
+                    # onthou conditie
+                    cond = text.split(None, 1)[1]
+                    text = ''
+                    # onderliggende elementen langslopen
+                    for iy in range(elm.childCount()):
+                        subel = elm.child(iy)
+                        subtext = str(subel.text(0))
+                        print(subtext)
+                        data = subel.data(0, core.Qt.UserRole)
+                        if subtext.startswith(ELSTART):
+                            # element in tekst omzetten en deze aan text toevoegen
+                            onthou = self.soup
+                            self.soup = bs.BeautifulSoup()
+                            tag = self.soup.new_tag(subtext.split()[1])
+                            print(tag)
+                            expandnode(subel, tag, data)
+                            print(tag)
+                            text += str(tag)
+                            self.soup = onthou
+                        else:
+                            # tekst aan text toevoegen
+                            text += str(data)
+                    # complete tekst als commentaar element aan de soup toevoegen
+                    sub = bs.Comment('[if {}]>{}<![endif]'.format(cond, text))
                     root.append(sub)
                 else:
                     sub = bs.NavigableString(str(data)) #.decode("utf-8")) niet voor Py3
@@ -541,6 +577,16 @@ class MainFrame(gui.QMainWindow, ed.EditorMixin):
                 text = 'doctype cannot be determined'
             gui.QMessageBox.information(self, self.title, text)
             return
+        elif data.startswith(IFSTART):
+            gui.QMessageBox.information(self, self.title,
+                "About to edit this conditional")
+            # start dialog to edit condition
+            cond, ok = gui.QInputDialog(self, self.title, data)
+            # if confirmed: change element
+            if ok:
+                gui.QMessageBox.information(self, self.title,
+                    "changing to " + str(cond))
+            return
         under_comment = str(self.item.parent().text(0)).startswith(CMELSTART)
         modified = False
         if data.startswith(ELSTART) or data.startswith(CMELSTART):
@@ -577,7 +623,7 @@ class MainFrame(gui.QMainWindow, ed.EditorMixin):
             self.mark_dirty(True)
             self.refresh_preview()
 
-    def copy(self, evt=None, cut=False, retain=True):
+    def copy(self, evt=None, cut=False, retain=True, ifcheck=True):
         "start copy/cut/delete actie"
         def push_el(elm, result):
             "subitem(s) toevoegen aan copy buffer"
@@ -593,12 +639,18 @@ class MainFrame(gui.QMainWindow, ed.EditorMixin):
                     x = push_el(node, atrlist)
             result.append((text, data, atrlist))
             return result
+        onthou = self.item # wordt vernaggeld door checkselection
         if DESKTOP and not self.checkselection():
             return
+        self.item = onthou
         if self.item == self.root:
             gui.QMessageBox.information(self, self.title, "Can't %s the root" % txt)
             return
         text = str(self.item.text(0))
+        if ifcheck and text.startswith(IFSTART):
+            gui.QMessageBox.information(self, self.title,
+                "Can't do this on a conditional (use menu option to delete)")
+            return
         data = self.item.data(0, core.Qt.UserRole)
         if sys.version < '3':
             data = data.toPyObject()
@@ -645,8 +697,10 @@ class MainFrame(gui.QMainWindow, ed.EditorMixin):
             for item in elm[2]:
                 zetzeronder(subnode, item)
             return subnode
+        onthou = self.item # wordt vernaggeld door checkselection
         if DESKTOP and not self.checkselection():
             return
+        self.item = onthou
         data = self.item.data(0, core.Qt.UserRole)
         if sys.version < '3':
             data = data.toPyObject()
@@ -655,7 +709,7 @@ class MainFrame(gui.QMainWindow, ed.EditorMixin):
             if text.startswith(CMSTART):
                 gui.QMessageBox.information(self, self.title, "Can't paste below comment")
                 return
-            if not text.startswith(ELSTART):
+            if not text.startswith(ELSTART) and not text.startswith(IFSTART):
                 gui.QMessageBox.information(self, self.title, "Can't paste below text")
                 return
         if self.item == self.root:
@@ -709,7 +763,7 @@ class MainFrame(gui.QMainWindow, ed.EditorMixin):
         if DESKTOP and not self.checkselection():
             return
         if below and not str(self.item.text(0)).startswith(ELSTART):
-            gui.MessageBox.information(self, self.title, "Can't add text below text")
+            gui.QMessageBox.information(self, self.title, "Can't add text below text")
             return
         edt = TextDialog(self, title="New Text").exec_()
         if edt == gui.QDialog.Accepted:
@@ -790,6 +844,62 @@ class MainFrame(gui.QMainWindow, ed.EditorMixin):
             self.mark_dirty(True)
             self.refresh_preview()
             self.item.setExpanded(True)
+
+    def make_conditional(self, evt=None):
+        "zet een IE conditie om het element heen"
+        if DESKTOP and not self.checkselection():
+            return
+        text = str(self.item.text(0))
+        if text.startswith(IFSTART):
+            gui.QMessageBox.information(self, self.title,
+                "This is already a conditional")
+            return
+        # ask for the condition
+        cond, ok = gui.QInputDialog.getText(self, self.title, 'Enter the condition',
+            text = '')
+        if ok:
+            # remember and remove the current element (use "cut"?)
+            parent = self.item.parent()
+            test = parent.indexOfChild(self.item)
+            self.cut()
+            # add the conditional in its place
+            if parent.childCount() == 1:
+                self.item = self.addtreeitem(parent, ' '.join((IFSTART, cond)), '')
+            else:
+                self.item = self.addtreeitem(parent, ' '.join((IFSTART, cond)), '',
+                    index=test)
+            # put the current element back ("insert under")
+            self.paste_blw()
+
+    def remove_condition(self, evt=None):
+        "haal de IE conditie om het element weg"
+        if DESKTOP and not self.checkselection():
+            return
+        text = str(self.item.text(0))
+        if not text.startswith(IFSTART):
+            gui.QMessageBox.information(self, self.title,
+                "This is not a conditional")
+            return
+        ## gui.QMessageBox.information(self, self.title,
+            ## "About to remove this conditional")
+        cond = self.item
+        print('current on start:', self.item.text(0))
+        parent = cond.parent()
+        print('parent of cond:', self.item.text(0))
+        # for all elements below this one:
+        for ix in range(cond.childCount()):
+            # remember and remove it (use "cut"?)
+            self.item = cond.child(ix)
+            print('current before cut:', self.item.text(0))
+            self.copy()
+            print('current after cut:', self.item.text(0))
+            # "insert" after the conditional or under its parent
+            self.item = cond
+            print('current before insert:', self.item.text(0))
+            self.paste()
+        # remove the conditional -
+        self.item = cond
+        self.delete(ifcheck=False)
 
     def add_dtd(self, evt=None):
         "start toevoegen dtd m.b.v. dialoog"
@@ -873,7 +983,7 @@ class MainFrame(gui.QMainWindow, ed.EditorMixin):
         if edt == gui.QDialog.Accepted:
             data = self.dialog_data
             node = gui.QTreeWidgetItem()
-            node.setText(0, ed.getelname('a', data))
+            node.setText(0, ed.getelname('img', data))
             node.setData(0, core.Qt.UserRole, data)
             self.item.addChild(node)
             self.mark_dirty(True)

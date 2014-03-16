@@ -20,6 +20,7 @@ CMSTART = "<!>"
 ELSTART = '<>'
 CMELSTART = ' '.join((CMSTART, ELSTART))
 DTDSTART = "DOCTYPE"
+IFSTART = '!IF'
 BL = "&nbsp;"
 
 dtdlist = [
@@ -169,8 +170,19 @@ class EditorMixin(object):
                     self.has_dtd = True
                     newitem = self.addtreeitem(item, getshortname(dtdtext), subnode)
                 elif isinstance(subnode, bs.Comment):
-                    newnode = bs.BeautifulSoup(subnode.string)
-                    add_to_tree(item, newnode, commented=True)
+                    test = subnode.string
+                    if test.lower().startswith('[if'):
+                        print(test)
+                        cond, data = test.split(']>', 1)
+                        cond = cond[3:].strip()
+                        data, _ = data.rsplit('<![', 1)
+                        newitem = self.addtreeitem(item, ' '.join((IFSTART, cond)), '')
+                        ## newer = self.addtreeitem(new, getshortname(data), data)
+                        newnode = bs.BeautifulSoup(data).contents[0].contents[0]
+                        add_to_tree(newitem, newnode)
+                    else:
+                        newnode = bs.BeautifulSoup(test)
+                        add_to_tree(item, newnode, commented=True)
                 else:
                     newitem = self.addtreeitem(item, getshortname(str(subnode),
                         commented), str(subnode))
@@ -201,9 +213,9 @@ class EditorMixin(object):
         "cut = copy with removing item from tree"
         self.copy(cut = True)
 
-    def delete(self, evt = None):
+    def delete(self, evt = None, ifcheck=True):
         "delete = copy with removing item from tree and memory"
-        self.copy(cut = True, retain = False)
+        self.copy(cut = True, retain = False, ifcheck=ifcheck)
 
     def copy(self, evt = None, cut = False, retain = True):
         "placeholder for gui-specific method"
@@ -211,6 +223,7 @@ class EditorMixin(object):
 
     def paste(self, evt = None, before = True, below = False):
         "placeholder for gui-specific method"
+        print('current in paste van mixin:', self.item.text(0))
         pass
 
     def paste_aft(self, evt = None):
@@ -219,6 +232,7 @@ class EditorMixin(object):
 
     def paste_blw(self, evt = None):
         "paste below instead of before"
+        print('current in paste_blw:', self.item.text(0))
         self.paste(below=True)
 
     def insert(self, evt = None, before = True, below = False):
