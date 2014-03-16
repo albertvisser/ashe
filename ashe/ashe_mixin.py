@@ -152,7 +152,7 @@ class EditorMixin(object):
         def add_to_tree(item, node, commented=False):
             """add contents of BeautifulSoup node (`node`) to tree item (`item`)
             `commented` flag is used in building item text"""
-            for idx, subnode in enumerate([h for h in node.contents]): # if h != '\n']):
+            for idx, subnode in enumerate([h for h in node.contents]):
                 if isinstance(subnode, bs.Tag):
                     data = subnode.attrs
                     dic = dict(data)
@@ -172,12 +172,10 @@ class EditorMixin(object):
                 elif isinstance(subnode, bs.Comment):
                     test = subnode.string
                     if test.lower().startswith('[if'):
-                        print(test)
                         cond, data = test.split(']>', 1)
                         cond = cond[3:].strip()
                         data, _ = data.rsplit('<![', 1)
                         newitem = self.addtreeitem(item, ' '.join((IFSTART, cond)), '')
-                        ## newer = self.addtreeitem(new, getshortname(data), data)
                         newnode = bs.BeautifulSoup(data).contents[0].contents[0]
                         add_to_tree(newitem, newnode)
                     else:
@@ -223,7 +221,6 @@ class EditorMixin(object):
 
     def paste(self, evt = None, before = True, below = False):
         "placeholder for gui-specific method"
-        print('current in paste van mixin:', self.item.text(0))
         pass
 
     def paste_aft(self, evt = None):
@@ -232,7 +229,6 @@ class EditorMixin(object):
 
     def paste_blw(self, evt = None):
         "paste below instead of before"
-        print('current in paste_blw:', self.item.text(0))
         self.paste(below=True)
 
     def insert(self, evt = None, before = True, below = False):

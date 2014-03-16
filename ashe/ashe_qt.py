@@ -112,11 +112,9 @@ class MainFrame(gui.QMainWindow, ed.EditorMixin):
         self.connect(act, core.SIGNAL('triggered()'), self.contextmenu)
 
         self.pnl = gui.QSplitter(self)
-        ## self.pnl.moveSplitter(400, 1)
         self.setCentralWidget(self.pnl)
 
         self.tree = VisualTree(self)
-        ## self.tree.header().setStretchLastSection(True)
         self.tree.setItemHidden(self.tree.headerItem(), True)
         self.pnl.addWidget(self.tree)
 
@@ -127,7 +125,6 @@ class MainFrame(gui.QMainWindow, ed.EditorMixin):
 
         self.tree.resize(500, 100)
         self.tree.setFocus()
-        # self.Bind(gui.QEVT_CLOSE, self.exit) reimplement self.closeEvent()
 
         ed.EditorMixin.getsoup(self, fname)
         self.adv_menu.setChecked(True)
@@ -209,7 +206,6 @@ class MainFrame(gui.QMainWindow, ed.EditorMixin):
                 ('&About', '', '', 'Info about this application', self.about),
                 ),
                 )
-        ## self.menu_id = {}
         menu_bar = self.menuBar()
         self.contextmenu_items = []
         for menu_text, data in self.menulist:
@@ -225,8 +221,6 @@ class MainFrame(gui.QMainWindow, ed.EditorMixin):
                     hotkey = "+".join(("Ctrl",hotkey))
                 if 'S' in modifiers:
                     hotkey = "+".join(("Shift",hotkey))
-                ## self.menu_id[menuitem_text] = gui.QNewId()
-                ## caption = menuitem_text.ljust(40) + hotkey
                 act = gui.QAction(menuitem_text, self)
                 menu.addAction(act)
                 act.setStatusTip(status_text)
@@ -287,17 +281,15 @@ class MainFrame(gui.QMainWindow, ed.EditorMixin):
             fnaam = gui.QFileDialog.getOpenFileName(self, "Choose a file", loc,
                 HMASK)
             if fnaam:
-                ## try:
-                    ed.EditorMixin.getsoup(self, fname=str(fnaam))
-                    self.adv_menu.setChecked(True)
-                    self.sb.showMessage("loaded {}".format(self.xmlfn))
-                    self.refresh_preview()
-                ## except Exception as err:
-                    ## gui.QMessageBox.information(self, self.title, str(err))
+                ed.EditorMixin.getsoup(self, fname=str(fnaam))
+                self.adv_menu.setChecked(True)
+                self.sb.showMessage("loaded {}".format(self.xmlfn))
+                self.refresh_preview()
 
-    ## def setfilenametooltip((self):
-        ## """bedoeld om de filename ook als tooltip te tonen, uit te voeren
-        ## aan het eind van new, open, save, saveas en reload"""
+    # def setfilenametooltip((self):
+        # """bedoeld om de filename ook als tooltip te tonen, uit te voeren
+        # aan het eind van new, open, save, saveas en reload"""
+        # zie ticket 406 voor een overweging om dit helemaal achterwege te laten
 
     def savexml(self, evt=None):
         "save html to file"
@@ -384,7 +376,6 @@ class MainFrame(gui.QMainWindow, ed.EditorMixin):
         self.top = gui.QTreeWidgetItem()
         self.top.setText(0, fname)
         self.tree.addTopLevelItem(self.top) # AddRoot(titel)
-        ## self.top.setToolTip(0, fname)
 
     def init_tree(self, name=''):
         "nieuwe tree initialiseren"
@@ -440,16 +431,13 @@ class MainFrame(gui.QMainWindow, ed.EditorMixin):
                     for iy in range(elm.childCount()):
                         subel = elm.child(iy)
                         subtext = str(subel.text(0))
-                        print(subtext)
                         data = subel.data(0, core.Qt.UserRole)
                         if subtext.startswith(ELSTART):
                             # element in tekst omzetten en deze aan text toevoegen
                             onthou = self.soup
                             self.soup = bs.BeautifulSoup()
                             tag = self.soup.new_tag(subtext.split()[1])
-                            print(tag)
                             expandnode(subel, tag, data)
-                            print(tag)
                             text += str(tag)
                             self.soup = onthou
                         else:
@@ -486,8 +474,6 @@ class MainFrame(gui.QMainWindow, ed.EditorMixin):
         else:
             self.dtd_menu.setText('Add &DTD')
             self.dtd_menu.setStatusTip('Add a document type description')
-        ## value = not self.has_dtd
-        ## self.dtd_menu.Enable(value)
 
     def contextmenu(self, item=None, pos=None):
         'build/show context menu'
@@ -507,7 +493,7 @@ class MainFrame(gui.QMainWindow, ed.EditorMixin):
         self.item = self.tree.currentItem()
         if self.item is None or self.item == self.top:
             gui.QMessageBox.information(self, self.title,
-                'You need to select an element or text ''first')
+                'You need to select an element or text first')
             sel = False
         return sel
 
@@ -556,7 +542,6 @@ class MainFrame(gui.QMainWindow, ed.EditorMixin):
             self.item.setData(0, core.Qt.UserRole, attrs)
             comment_out(self.item, commented)
         else:
-            ## txt = CMSTART + " " + tag if commented else tag
             self.item.setText(0, ed.getshortname(tag, commented))
             self.item.setData(0, core.Qt.UserRole, tag)
 
@@ -639,10 +624,8 @@ class MainFrame(gui.QMainWindow, ed.EditorMixin):
                     x = push_el(node, atrlist)
             result.append((text, data, atrlist))
             return result
-        onthou = self.item # wordt vernaggeld door checkselection
         if DESKTOP and not self.checkselection():
             return
-        self.item = onthou
         if self.item == self.root:
             gui.QMessageBox.information(self, self.title, "Can't %s the root" % txt)
             return
@@ -655,7 +638,6 @@ class MainFrame(gui.QMainWindow, ed.EditorMixin):
         if sys.version < '3':
             data = data.toPyObject()
         txt = 'cut' if cut else 'copy'
-        ## try:
         if str(text).startswith(DTDSTART):
             gui.QMessageBox.information(self, self.title,
                 "Please use the HTML menu's DTD option to remove the DTD")
@@ -697,10 +679,8 @@ class MainFrame(gui.QMainWindow, ed.EditorMixin):
             for item in elm[2]:
                 zetzeronder(subnode, item)
             return subnode
-        onthou = self.item # wordt vernaggeld door checkselection
         if DESKTOP and not self.checkselection():
             return
-        self.item = onthou
         data = self.item.data(0, core.Qt.UserRole)
         if sys.version < '3':
             data = data.toPyObject()
@@ -751,7 +731,7 @@ class MainFrame(gui.QMainWindow, ed.EditorMixin):
                 if not before:
                     idx += 1
                 if idx == cnt:
-                    idx -= 1
+                    idx = -1
             new_item = zetzeronder(add_to, self.cut_el[0], idx)
             if self.advance_selection_on_add:
                 self.tree.setCurrentItem(new_item)
@@ -864,11 +844,12 @@ class MainFrame(gui.QMainWindow, ed.EditorMixin):
             self.cut()
             # add the conditional in its place
             if parent.childCount() == 1:
-                self.item = self.addtreeitem(parent, ' '.join((IFSTART, cond)), '')
+                new = self.addtreeitem(parent, ' '.join((IFSTART, cond)), '')
             else:
-                self.item = self.addtreeitem(parent, ' '.join((IFSTART, cond)), '',
+                new = self.addtreeitem(parent, ' '.join((IFSTART, cond)), '',
                     index=test)
             # put the current element back ("insert under")
+            self.tree.setCurrentItem(new)
             self.paste_blw()
 
     def remove_condition(self, evt=None):
@@ -880,25 +861,18 @@ class MainFrame(gui.QMainWindow, ed.EditorMixin):
             gui.QMessageBox.information(self, self.title,
                 "This is not a conditional")
             return
-        ## gui.QMessageBox.information(self, self.title,
-            ## "About to remove this conditional")
         cond = self.item
-        print('current on start:', self.item.text(0))
         parent = cond.parent()
-        print('parent of cond:', self.item.text(0))
         # for all elements below this one:
         for ix in range(cond.childCount()):
             # remember and remove it (use "cut"?)
-            self.item = cond.child(ix)
-            print('current before cut:', self.item.text(0))
+            self.tree.setCurrentItem(cond.child(ix))
             self.copy()
-            print('current after cut:', self.item.text(0))
             # "insert" after the conditional or under its parent
-            self.item = cond
-            print('current before insert:', self.item.text(0))
+            self.tree.setCurrentItem(cond)
             self.paste()
         # remove the conditional -
-        self.item = cond
+        self.tree.setCurrentItem(cond)
         self.delete(ifcheck=False)
 
     def add_dtd(self, evt=None):
@@ -923,14 +897,8 @@ class MainFrame(gui.QMainWindow, ed.EditorMixin):
 
     def add_css(self, evt=None):
         "start toevoegen stylesheet m.b.v. dialoog"
-        ## if DESKTOP and not self.checkselection():
-            ## return
-        ## if not str(self.item.text(0)).startswith(ELSTART):
-            ## gui.QMessageBox.information(self, self.title, "Can't do this below text")
-            ## return
         edt = CssDialog(self).exec_()
         if edt == gui.QDialog.Accepted:
-            ## pass
             data = self.dialog_data
             node = gui.QTreeWidgetItem()
             node.setText(0, ed.getelname('link', data))
