@@ -1043,24 +1043,18 @@ class MainFrame(gui.QMainWindow, ed.EditorMixin):
             fromdisk = False
             self.data2soup()
             with open(htmlfile, "w") as f_out:
-                f_out.write(str(self.soup))
+                f_out.write(self.soup.prettify())
         else:
             htmlfile = self.xmlfn
             fromdisk = True
-        data = ed.EditorMixin.validate(self, htmlfile, fromdisk)
-        dlg = ScrolledTextDialog(self, "Validation output", data)
-        if fromdisk:
-            dlg.message.setText("\n".join((
-                "Validation results are for the file on disk",
-                "some errors/warnings may already have been corrected by "
-                    "BeautifulSoup",
-                "(you'll know when they don't show up inthe tree or text view",
-                " or when you save the file in memory back to disk)")))
+        dlg = ScrolledTextDialog(self, "Validation output", htmlfile=htmlfile,
+            fromdisk=fromdisk)
         dlg.show()
 
     def view_code(self, evt=None):
         self.data2soup()
-        dlg = CodeViewDialog(self, "Source view", self.soup.prettify())
+        dlg = CodeViewDialog(self, "Source view", "Let op: de tekst wordt niet "
+            "ververst bij wijzigingen in het hoofdvenster", self.soup.prettify())
         dlg.show()
 
 def ashe_gui(args):

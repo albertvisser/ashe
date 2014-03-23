@@ -870,19 +870,27 @@ class ScrolledTextDialog(gui.QDialog):
 
     aanroepen met show() om openhouden tijdens aanpassen mogelijk te maken
     """
-    def __init__(self, parent, title='', data='', size=(600, 400)):
+    def __init__(self, parent, title='', data='', htmlfile='', fromdisk=False,
+            size=(600, 400)):
         self._parent = parent
+        self.htmlfile = htmlfile
         gui.QDialog.__init__(self, parent)
         self.setWindowTitle(title)
         self.resize(size[0], size[1])
         vbox = gui.QVBoxLayout()
         hbox = gui.QHBoxLayout()
         self.message = gui.QLabel(self)
+        if fromdisk:
+            self.message.setText("\n".join((
+                "Validation results are for the file on disk",
+                "some errors/warnings may already have been corrected by "
+                    "BeautifulSoup",
+                "(you'll know when they don't show up inthe tree or text view",
+                " or when you save the file in memory back to disk)")))
         hbox.addWidget(self.message)
         vbox.addLayout(hbox)
         hbox = gui.QHBoxLayout()
         text = gui.QTextEdit(self)
-        text.setPlainText(data)
         text.setReadOnly(True)
         hbox.addWidget(text)
         vbox.addLayout(hbox)
@@ -890,11 +898,27 @@ class ScrolledTextDialog(gui.QDialog):
         ok_button = gui.QPushButton('&Ok', self)
         ok_button.clicked.connect(self.close)
         ok_button.setDefault(True)
+        if htmlfile:
+            show_button = gui.QPushButton('&View submitted source', self)
+            show_button.clicked.connect(self.show_source)
         hbox.addStretch()
         hbox.addWidget(ok_button)
+        if htmlfile:
+            hbox.addWidget(show_button)
         hbox.addStretch()
         vbox.addLayout(hbox)
         self.setLayout(vbox)
+        if htmlfile:
+            data = ed.EditorMixin.validate(self, htmlfile)
+        if data:
+            text.setPlainText(data)
+
+    def show_source(self, evt=None):
+        with open(self.htmlfile) as f_in:
+            data = ''.join([x for x in f_in])
+        if data:
+            dlg = CodeViewDialog(self, "Submitted source", data=data)
+            dlg.show()
 
 class CodeViewDialog(gui.QDialog):
     """dialoog voor het tonen van de broncode
@@ -903,7 +927,7 @@ class CodeViewDialog(gui.QDialog):
     """
     ## ARROW_MARKER_NUM = 8
 
-    def __init__(self, parent, title='', data='', size=(600, 400)):
+    def __init__(self, parent, title='', caption = '', data='', size=(600, 400)):
         "create a window with a scintilla text widget and an ok button"
         self._parent = parent
         gui.QDialog.__init__(self, parent)
@@ -911,8 +935,7 @@ class CodeViewDialog(gui.QDialog):
         self.resize(size[0], size[1])
         vbox = gui.QVBoxLayout()
         hbox = gui.QHBoxLayout()
-        hbox.addWidget(gui.QLabel("Let op: de tekst wordt niet ververst "
-            "bij wijzigingen in het hoofdvenster", self))
+        hbox.addWidget(gui.QLabel(caption, self))
         vbox.addLayout(hbox)
         hbox = gui.QHBoxLayout()
         self.text = sci.QsciScintilla(self)

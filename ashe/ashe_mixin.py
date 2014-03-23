@@ -262,7 +262,7 @@ class EditorMixin(object):
             Started in 2008 by Albert Visser
             Versions for PC and PDA available"""
 
-    def validate(self, htmlfile, fromdisk):
+    def validate(self, htmlfile):
         output = '/tmp/ashe_check'
         with open(output, 'w') as f_out:
             pass
@@ -270,22 +270,5 @@ class EditorMixin(object):
         retval = sp.call(cmd, shell=True)
         data = ""
         with open(output) as f_in:
-            if fromdisk:
-                data = f_in.read()
-            else:
-                for line in f_in:
-                    if ' - ' not in line:
-                        data += line
-                        continue
-                    loc, meld = line.strip().split(' - ', 1)
-                    where = loc.split()
-                    lineno, column = where[1], where[3]
-                    sourceline = linecache.getline(htmlfile, int(lineno))
-                    tag = ""
-                    for char in sourceline[int(column)-1:]:
-                        tag += char
-                        if char == ">":
-                            break
-                    data += "gevonden bij tag: {}\n    {}\n".format(tag, meld)
-                linecache.clearcache()
+            data = f_in.read()
         return data
