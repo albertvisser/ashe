@@ -563,8 +563,14 @@ class ImageDialog(gui.QDialog):
             loc = os.path.dirname(self._parent.xmlfn)
         else:
             loc = os.getcwd()
-        fnaam = gui.QFileDialog.getOpenFileName(self, "Choose a file", loc,
-            HMASK)
+        mask = '*.png *.jpg *.gif *.jpeg *.ico *.xpm *.svg'
+        ## if os.name == "nt":
+            ## mask = "Image files (*.htm *.html);;" + IMASK
+        ## elif os.name == "posix":
+        if os.name == "posix":
+            mask += ' ' + mask.upper()
+        mask = "Image files ({});;{}".format(mask, IMASK)
+        fnaam = gui.QFileDialog.getOpenFileName(self, "Choose a file", loc, mask)
         if fnaam:
             self.link_text.setText(fnaam)
 
