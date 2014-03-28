@@ -65,8 +65,7 @@ class VisualTree(gui.QTreeWidget):
             item = self.itemAt(xc, yc)
             if item and item != self._parent.top:
                 self.setCurrentItem(item)
-                menu = self._parent.contextmenu()
-                menu.exec_(core.QPoint(xc, yc))
+                self._parent.popup_menu(item)
                 return
         gui.QTreeWidget.mouseReleaseEvent(self, event)
 
@@ -107,9 +106,9 @@ class MainFrame(gui.QMainWindow, ed.EditorMixin):
         self.resize(1020, 900)
 
         self._setup_menu()
-        act = gui.QAction(self)
-        act.setShortcut(core.Qt.Key_Super_R)
-        self.connect(act, core.SIGNAL('triggered()'), self.contextmenu)
+        ## act = gui.QAction(self)
+        ## act.setShortcut(core.Qt.Key_Super_R)
+        ## self.connect(act, core.SIGNAL('triggered()'), self.popup_menu)
 
         self.pnl = gui.QSplitter(self)
         self.setCentralWidget(self.pnl)
@@ -475,8 +474,9 @@ class MainFrame(gui.QMainWindow, ed.EditorMixin):
             self.dtd_menu.setText('Add &DTD')
             self.dtd_menu.setStatusTip('Add a document type description')
 
-    def contextmenu(self, item=None, pos=None):
+    def popup_menu(self, arg=None):
         'build/show context menu'
+        print('starting popupmenu method')
         menu = gui.QMenu()
         for itemtype, item in self.contextmenu_items:
             if itemtype == 'A':
@@ -485,7 +485,10 @@ class MainFrame(gui.QMainWindow, ed.EditorMixin):
                 menu.addMenu(item)
             else:
                 menu.addSeparator()
-        return menu
+        y = self.tree.visualItemRect(arg).bottom()
+        x = self.tree.visualItemRect(arg).left()
+        popup_location = core.QPoint(int(x) + 200, y)
+        menu.exec_(self.tree.mapToGlobal(popup_location))
 
     def checkselection(self):
         "controleer of er wel iets geselecteerd is (behalve de filenaam)"
@@ -496,6 +499,21 @@ class MainFrame(gui.QMainWindow, ed.EditorMixin):
                 'You need to select an element or text first')
             sel = False
         return sel
+
+    def keyReleaseEvent(self, event):
+        skip = self.on_keyup(event)
+        if not skip:
+            gui.QMainWindow.keyReleaseEvent(self, event)
+
+    def on_keyup(self, ev=None):
+        ky = ev.key()
+        item = self.tree.currentItem()
+        skip = False
+        if item and item != self.top:
+            if ky == core.Qt.Key_Menu:
+                self.popup_menu(item)
+                skip = True
+        return skip
 
     def expand(self, evt=None):
         "expandeer tree vanaf huidige item"
