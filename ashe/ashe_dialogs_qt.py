@@ -774,19 +774,28 @@ class TableDialog(gui.QDialog):
         hbox.addStretch()
         gbox.addLayout(hbox, 2, 1)
 
+        self.show_titles = gui.QCheckBox('Show Titles')
+        self.show_titles.setChecked(True)
+        self.show_titles.stateChanged.connect(self.on_check)
+        hbox = gui.QHBoxLayout()
+        ## hbox.addStretch()
+        hbox.addWidget(self.show_titles)
+        ## hbox.addStretch()
+        gbox.addLayout(hbox, 3, 1)
+
         self.table_table = gui.QTableWidget(self) # wxgrid.Grid(self.pnl, -1, size = (340, 120))
         self.table_table.setRowCount(initialrows) # de eerste rij is voor de kolomtitels
         self.table_table.setColumnCount(initialcols) # de eerste rij is voor de kolomtitels
         self.table_table.setHorizontalHeaderLabels(self.headings)
-        hdr = self.table_table.horizontalHeader()
+        self.hdr = self.table_table.horizontalHeader()
         self.table_table.verticalHeader().setVisible(False)
-        hdr.setClickable(True)
-        hdr.sectionClicked.connect(self.on_title)
+        self.hdr.setClickable(True)
+        self.hdr.sectionClicked.connect(self.on_title)
         hbox = gui.QHBoxLayout()
         hbox.addStretch()
         hbox.addWidget(self.table_table)
         hbox.addStretch()
-        gbox.addLayout(hbox, 3, 0, 1, 2)
+        gbox.addLayout(hbox, 4, 0, 1, 2)
         sbox.setLayout(gbox)
         vbox.addWidget(sbox)
 
@@ -844,6 +853,9 @@ class TableDialog(gui.QDialog):
                 self.table_table.setHorizontalHeaderLabels(self.headings)
                 ## self.table_table.SetColLabelValue(idx,'')
 
+    def on_check(self, number=None):
+        self.hdr.setVisible(bool(number))
+
     def on_title(self, col):
         "opgeven titel bij klikken op kolomheader mogelijk maken"
         txt, ok = gui.QInputDialog.getText(self, 'Add a table',
@@ -868,7 +880,8 @@ class TableDialog(gui.QDialog):
             for col in range(cols):
                 rowitems.append(str(self.table_table.item(row, col).text()))
             items.append(rowitems)
-        self._parent.dialog_data = summary, self.headings, items
+        self._parent.dialog_data = (summary, self.show_titles.isChecked(),
+            self.headings, items)
         gui.QDialog.done(self, gui.QDialog.Accepted)
 
 class ScrolledTextDialog(gui.QDialog):

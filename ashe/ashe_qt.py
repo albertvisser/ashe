@@ -1003,24 +1003,25 @@ class MainFrame(gui.QMainWindow, ed.EditorMixin):
             return
         edt = TableDialog(self).exec_()
         if edt == gui.QDialog.Accepted:
-            summary, headers, items = self.dialog_data
+            summary, titles, headers, items = self.dialog_data
             new_item = gui.QTreeWidgetItem()
             self.item.addChild(new_item)
             data = {'summary': summary}
             new_item.setText(0, ed.getelname('table', data))
             new_item.setData(0, core.Qt.UserRole, data)
-            new_row = gui.QTreeWidgetItem()
-            new_item.addChild(new_row)
-            new_row.setText(0, ed.getelname('tr'))
-            for head in headers:
-                new_head = gui.QTreeWidgetItem()
-                new_row.addChild(new_head)
-                new_head.setText(0, ed.getelname('th'))
-                node = gui.QTreeWidgetItem()
-                new_head.addChild(node)
-                text = head or BL
-                node.setText(0, ed.getshortname(text))
-                node.setData(0, core.Qt.UserRole, text)
+            if titles:
+                new_row = gui.QTreeWidgetItem()
+                new_item.addChild(new_row)
+                new_row.setText(0, ed.getelname('tr'))
+                for head in headers:
+                    new_head = gui.QTreeWidgetItem()
+                    new_row.addChild(new_head)
+                    new_head.setText(0, ed.getelname('th'))
+                    node = gui.QTreeWidgetItem()
+                    new_head.addChild(node)
+                    text = head or BL
+                    node.setText(0, ed.getshortname(text))
+                    node.setData(0, core.Qt.UserRole, text)
             for rowitem in items:
                 new_row = gui.QTreeWidgetItem()
                 new_item.addChild(new_row)
