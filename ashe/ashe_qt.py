@@ -420,7 +420,7 @@ class MainFrame(gui.QMainWindow, ed.EditorMixin):
                         expandnode(elm, sub, data, commented)
                 elif text.startswith(DTDSTART):
                     text = text.split(None, 1)[1]
-                    sub = bs.DocType(data)
+                    sub = bs.Doctype(data)
                     root.append(sub)
                 elif text.startswith(IFSTART):
                     # onthou conditie
