@@ -180,8 +180,11 @@ class EditorMixin(object):
                         add_to_tree(newitem, newnode)
                     else:
                         newnode = bs.BeautifulSoup(test)
-                        # correct BS wrapping this in <html><body>
-                        newnode = newnode.find_all('body')[0]
+                        try:
+                            # correct BS wrapping this in <html><body>
+                            newnode = newnode.find_all('body')[0]
+                        except IndexError:
+                            pass
                         ## print(newnode.name)
                         add_to_tree(item, newnode, commented=True)
                 else:
