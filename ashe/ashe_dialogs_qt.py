@@ -72,6 +72,7 @@ class ElementDialog(gui.QDialog):
         hdr.resizeSection(1, 152)
         hdr.setStretchLastSection(True)
         self.attr_table.verticalHeader().setVisible(False)
+        self.attr_table.setTabKeyNavigation(False)
         ## self.attr_table.SetColSize(1, tbl.Size[0] - 162) # 178) # 160)
         if attrs:
             for attr, value in attrs.items():
@@ -123,19 +124,10 @@ class ElementDialog(gui.QDialog):
 
     def on_add(self, evt=None):
         "attribuut toevoegen"
+        self.attr_table.setFocus()
         idx = self.attr_table.rowCount()
         self.attr_table.insertRow(idx)
-        pos = self.attr_table.rowCount()
-        item = gui.QTableWidgetItem('')
-        self.attr_table.setItem(pos, 0, item)
-        # onderstaande zaken werken niet om de focus op het nieuwe attribuut te krijgen
-        ## self.attr_table.editItem(self.attr_table.item(pos, 0))
-        ## self.attr_table.setCurrentItem(item)
-        ## self.attr_table.setItemSelected(item)
-        ## self.attr_table.setItemSelected(item)
-        ## self.attr_table.setCurrentCell(pos, 0)
-        self.attr_table.setFocus()
-        ## item.setFocus()
+        self.attr_table.setCurrentCell(idx, 0)
 
     def on_del(self, evt=None):
         "attribuut verwijderen"
