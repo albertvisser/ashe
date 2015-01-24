@@ -120,8 +120,12 @@ class EditorMixin(object):
         `preserve` anticipates on the possibility to not strip out newlines
         and replace tabs by spaces"""
         if fname:
-            with open(fname) as f_in:
-                data = ''.join([x.strip() for x in f_in])
+            try:
+                with open(fname) as f_in:
+                    data = ''.join([x.strip() for x in f_in])
+            except UnicodeDecodeError:
+                with open(fname, encoding="iso-8859-1") as f_in:
+                    data = ''.join([x.strip() for x in f_in])
             if not preserve:
                 data = data.replace('\t',' ')
                 data = data.replace('\n','')
