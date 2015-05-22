@@ -337,11 +337,13 @@ class MainFrame(gui.QMainWindow, ed.EditorMixin):
     def mark_dirty(self, state):
         ed.EditorMixin.mark_dirty(self, state)
         title = str(self.windowTitle())
+        test = ' - ' + TITEL
+        test2 = '*' + test
         if state:
-            if not title.endswith(' *'):
-                title = title + ' *'
+            if test2 not in title:
+                title = title.replace(test, test2)
         else:
-            title = title.rstrip(' *')
+            title = title.replace(test2, test)
         self.setWindowTitle(title)
 
     def refresh_preview(self):
