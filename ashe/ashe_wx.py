@@ -1612,7 +1612,7 @@ def ashe_gui(args):
         if not os.path.exists(fname):
             ## fname = os.path.join(args[2], args[1])
             print('Kan file niet openen, geef s.v.p. een absoluut pad op\n')
-    app = wx.App(redirect = True, filename = "/home/albert/htmledit/ashe/ashe.log")
+    app = wx.App(redirect = True, filename = "/home/albert/projects/htmledit/ashe/ashe.log")
     print "\n-- new entry --\n"
     if fname:
         frm = MainFrame(None, -1, fname = fname)
