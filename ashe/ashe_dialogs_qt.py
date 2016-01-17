@@ -13,6 +13,12 @@ import PyQt4.QtCore as core
 import PyQt4.Qsci as sci # scintilla
 import ashe.ashe_mixin as ed
 
+try:
+    import cssedit.editor.csseditor_qt as csed
+    cssedit_available = True
+except ImportError:
+    cssedit_available = False
+
 PPATH = os.path.split(__file__)[0]
 CMSTART = ed.CMSTART
 ELSTART = ed.ELSTART
@@ -40,16 +46,20 @@ class ElementDialog(gui.QDialog):
         self.tag_text = gui.QLineEdit(self)
         self.tag_text.setMinimumWidth(250)
         self.comment_button = gui.QCheckBox('&Comment(ed)', self)
-        iscomment = False
+        ## is_comment = False
+        is_style_tag = self.is_stylesheet = has_style = False
+        self.styledata = self.old_styledata = ''
         if tag:
             x = tag.split(None, 1)
             if x[0] == CMSTART:
-                iscomment = True
+                ## is_comment = True
                 self.comment_button.toggle()
                 x = x[1].split(None, 1)
             if x[0] == ELSTART:
                 x = x[1].split(None, 1)
             self.tag_text.setText(x[0])
+            origtag = x[0]
+            is_style_tag = (origtag == 'style')
             ## self.tag_text.readonly=True
         hbox.addWidget(lbl)
         hbox.addWidget(self.tag_text)
@@ -76,12 +86,25 @@ class ElementDialog(gui.QDialog):
         ## self.attr_table.SetColSize(1, tbl.Size[0] - 162) # 178) # 160)
         if attrs:
             for attr, value in attrs.items():
+                print('elementdialog.init: attr', attr, value)
+                if attr == 'styledata':
+                    self.old_styledata = value
+                    continue
+                elif origtag == 'link' and attr == 'rel' and value == 'stylesheet':
+                    self.is_stylesheet = True
+                elif attr == 'style':
+                    has_style = True
+                    self.old_styledata = value
                 idx = self.attr_table.rowCount()
                 self.attr_table.insertRow(idx)
                 item = gui.QTableWidgetItem(attr)
                 self.attr_table.setItem(idx, 0, item)
+                if attr == 'style':
+                    item.setFlags(item.flags() & (not core.Qt.ItemIsEditable))
                 item = gui.QTableWidgetItem(value)
                 self.attr_table.setItem(idx, 1, item)
+                if attr == 'style':
+                    item.setFlags(item.flags() & (not core.Qt.ItemIsEditable))
         else:
             self.row = -1
         ## hbox.addStretch()
@@ -94,9 +117,23 @@ class ElementDialog(gui.QDialog):
         self.add_button.clicked.connect(self.on_add)
         self.delete_button = gui.QPushButton('&Delete Selected', self)
         self.delete_button.clicked.connect(self.on_del)
+        if is_style_tag:
+            text = '&Edit styles'
+        elif self.is_stylesheet:
+            text = '&Edit linked stylesheet'
+        elif has_style:
+            text = '&Edit inline style'
+        else:
+            text = '&Add inline style'
+        self.style_button = gui.QPushButton(text, self)
+        if cssedit_available:
+            self.style_button.clicked.connect(self.on_style)
+        else:
+            self.style_button.setDisabled(True)
         hbox.addStretch()
         hbox.addWidget(self.add_button)
         hbox.addWidget(self.delete_button)
+        hbox.addWidget(self.style_button)
         hbox.addStretch()
         box.addLayout(hbox)
 
@@ -124,6 +161,7 @@ class ElementDialog(gui.QDialog):
 
     def on_add(self, evt=None):
         "attribuut toevoegen"
+        # TODO: ensure nor duplicate items are added - can't do that here
         self.attr_table.setFocus()
         idx = self.attr_table.rowCount()
         self.attr_table.insertRow(idx)
@@ -138,11 +176,38 @@ class ElementDialog(gui.QDialog):
             gui.QMessageBox.information(self, 'Delete attribute',
                 "press Enter on this item first")
 
+    def on_style(self, evt=None):
+        tag = self.tag_text.text()
+        css = csed.MainWindow(self) # call the editor with this dialog as parent should
+                                    # make sure we get the css back as an attribute
+        if self.is_stylesheet:
+            test = self.attr_table.findItems('href', core.Qt.MatchFixedString)
+            for item in test:
+                col = self.attr_table.column(item)
+                row = self.attr_table.row(item)
+                if col == 0:
+                    fname = self.attr_table.item(row, 1).text()
+            try:
+                css.open(filename=fname)
+            except BaseException as e:
+                gui.QMessageBox.information(self, 'Htmledit - edit css', str(e))
+            else:
+                css.show()
+            return
+        elif tag =='style':
+            css.open(text=self.old_styledata)
+        else:
+            css.open(tag=tag, text=self.old_styledata)
+        css.setWindowModality(core.Qt.ApplicationModal)
+        css.show() # sets self.styledata right before closing
+        print('in on_style:', self.styledata)
+
     def on_cancel(self):
         gui.QDialog.done(self, gui.QDialog.Rejected)
 
     def on_ok(self):
         "controle bij OK aanklikken"
+        print('in on_ok:', self.styledata)
         tag = str(self.tag_text.text())
         okay = True
         test = string.ascii_letters + string.digits
@@ -163,6 +228,13 @@ class ElementDialog(gui.QDialog):
                     'Press enter on this item first')
                 return
             attrs[name] = value
+        if self.styledata and self.styledata != self.old_styledata:
+            self.old_styledata = self.styledata
+        if self.old_styledata:
+            if tag == 'style':
+                attrs['styledata'] = self.old_styledata
+            else:
+                attrs['style'] = self.old_styledata
         self._parent.dialog_data = tag, attrs, commented
         gui.QDialog.done(self, gui.QDialog.Accepted)
 
@@ -178,12 +250,12 @@ class TextDialog(gui.QDialog):
         hbox = gui.QHBoxLayout()
         self.comment_button = gui.QCheckBox('&Comment(ed)', self)
         ## self.comment_button.setCheckState(iscomment)
-        iscomment = False
+        ## iscomment = False
         if text is None:
             text = ''
         else:
             if text.startswith(CMSTART):
-                iscomment = True
+                ## iscomment = True
                 self.comment_button.toggle()
                 dummy, text = text.split(None, 1)
         hbox.addWidget(self.comment_button)
@@ -291,7 +363,7 @@ class DtdDialog(gui.QDialog):
         gui.QDialog.done(self, gui.QDialog.Accepted)
 
 class CssDialog(gui.QDialog):
-    "dialoog om een link element toe te voegen"
+    "dialoog om een stylesheet toe te voegen"
 
     def __init__(self, parent):
         self._parent = parent
@@ -327,10 +399,13 @@ class CssDialog(gui.QDialog):
         self.ok_button = gui.QPushButton('&Save', self)
         self.connect(self.ok_button, core.SIGNAL('clicked()'), self.on_ok)
         self.ok_button.setDefault(True)
+        self.inline_button = gui.QPushButton('&Add inline', self)
+        self.connect(self.inline_button, core.SIGNAL('clicked()'), self.on_inline)
         self.cancel_button = gui.QPushButton('&Cancel', self)
         self.connect(self.cancel_button, core.SIGNAL('clicked()'), self.on_cancel)
         hbox.addStretch()
         hbox.addWidget(self.ok_button)
+        hbox.addWidget(self.inline_button)
         hbox.addWidget(self.cancel_button)
         hbox.addStretch()
         vbox.addLayout(hbox)
@@ -383,6 +458,20 @@ class CssDialog(gui.QDialog):
         else:
             gui.QMessageBox.information("bestandsnaam opgeven of cancel kiezen s.v.p",'')
             return
+        gui.QDialog.done(self, gui.QDialog.Accepted)
+
+    def on_inline(self):
+        "voegt een 'style' tag in"
+        self._parent.dialog_data = {
+            "type": 'text/css',
+            }
+        test = str(self.text_text.text())
+        if test:
+            self._parent.dialog_data["media"] = test
+        css = csed.MainWindow()
+        css.open(text="")
+        css.setWindowModality(core.Qt.ApplicationModal)
+        self._parent.dialog_data["cssdata"] = css.css.data # self.styledata
         gui.QDialog.done(self, gui.QDialog.Accepted)
 
 class LinkDialog(gui.QDialog):

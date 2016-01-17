@@ -99,6 +99,9 @@ def getelname(tag, attrs = None, comment = False):
         naam = "<!> " + naam
     return naam
 
+def get_tag_from_elname(elname):
+    return elname.strip().split()[1]
+
 def getshortname(text, comment = False):
     "shorten name for text node"
     maxlen = 30

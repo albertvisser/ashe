@@ -16,6 +16,11 @@ import ashe.ashe_mixin as ed
 from ashe.ashe_dialogs_qt import HMASK, ElementDialog, TextDialog, \
     DtdDialog, CssDialog, LinkDialog, ImageDialog, \
     ListDialog, TableDialog, ScrolledTextDialog, CodeViewDialog
+try:
+    import cssedit.editor.csseditor_qt as csed
+    cssedit_available = True
+except ImportError:
+    cssedit_available = False
 
 PPATH = os.path.split(__file__)[0]
 DESKTOP = ed.DESKTOP
@@ -40,6 +45,24 @@ def comment_out(node, commented):
             if txt.startswith(CMSTART):
                 subnode.setText(0, txt.split(None, 1)[1])
         comment_out(subnode, commented)
+
+def finditem(parent, tag, first_only=True):
+    """find tag item(s) under a parent
+
+    if first_only is True, one item is returned; otherwise a list of items
+    if none found, an empty list is returned
+    """
+    items = []
+    found = False
+    for ix in range(parent.childCount()):
+        item = parent.child(ix)
+        if item.text(0).startswith(' '.join((ELSTART, tag))):
+            if first_only:
+                return item
+                break
+            else:
+                items.append(item)
+    return items # if not first_only else '' - not necessary when testing for if result:
 
 class VisualTree(gui.QTreeWidget):
     def __init__(self, parent):
@@ -109,6 +132,7 @@ class MainFrame(gui.QMainWindow, ed.EditorMixin):
         ## act = gui.QAction(self)
         ## act.setShortcut(core.Qt.Key_Super_R)
         ## self.connect(act, core.SIGNAL('triggered()'), self.popup_menu)
+        self.in_contextmenu = False
 
         self.pnl = gui.QSplitter(self)
         self.setCentralWidget(self.pnl)
@@ -192,6 +216,7 @@ class MainFrame(gui.QMainWindow, ed.EditorMixin):
             "&HTML", (
                 ('Add &DTD', '', '', 'Add a document type description', self.add_dtd),
                 ('Add &Stylesheet', '', '', 'Add a stylesheet reference', self.add_css),
+                ('&Edit Stylesheet', '', '', 'Edit a linked stylesheet', self.edit_css),
                 ('Create &link (under)', '', '', 'Add a document reference', self.add_link),
                 ('Add i&mage (under)', '', '', 'Include an image', self.add_image),
                 ('Add l&ist (under)', '', '', 'Create a list', self.add_list),
@@ -232,6 +257,10 @@ class MainFrame(gui.QMainWindow, ed.EditorMixin):
                     self.contextmenu_items.append(('A', act))
                 elif menuitem_text == 'Add &DTD':
                     self.dtd_menu = act
+                elif menuitem_text == '&Edit Stylesheet':
+                    self.css_menu = act
+                    if not cssedit_available:
+                        act.setDisabled(True)
                 if menu_text in ('&Edit', '&HTML'):
                     self.contextmenu_items.append(('M', menu))
             if menu_text == '&View':
@@ -478,11 +507,12 @@ class MainFrame(gui.QMainWindow, ed.EditorMixin):
 
     def popup_menu(self, arg=None):
         'build/show context menu'
-        print('starting popupmenu method')
         menu = gui.QMenu()
         for itemtype, item in self.contextmenu_items:
             if itemtype == 'A':
                 menu.addAction(item)
+                if item == self.css_menu and self.tree.currentItem.text() != 'link':
+                    item.setDisabled()
             elif itemtype == 'M':
                 menu.addMenu(item)
             else:
@@ -490,7 +520,10 @@ class MainFrame(gui.QMainWindow, ed.EditorMixin):
         y = self.tree.visualItemRect(arg).bottom()
         x = self.tree.visualItemRect(arg).left()
         popup_location = core.QPoint(int(x) + 200, y)
+        self.in_contextmenu = True
         menu.exec_(self.tree.mapToGlobal(popup_location))
+        self.in_contextmenu = False
+        # del menu
 
     def checkselection(self):
         "controleer of er wel iets geselecteerd is (behalve de filenaam)"
@@ -596,7 +629,11 @@ class MainFrame(gui.QMainWindow, ed.EditorMixin):
         under_comment = str(self.item.parent().text(0)).startswith(CMELSTART)
         modified = False
         if data.startswith(ELSTART) or data.startswith(CMELSTART):
+            oldtag = ed.get_tag_from_elname(data)
             attrdict = self.item.data(0, core.Qt.UserRole)
+            if oldtag == 'style':
+                attrdict['styledata'] = str(
+                    self.item.child(0).data(0, core.Qt.UserRole))
             if sys.version < '3':
                 attrdict = attrdict.toPyObject()
             was_commented = data.startswith(CMSTART)
@@ -607,7 +644,21 @@ class MainFrame(gui.QMainWindow, ed.EditorMixin):
                 tag, attrs, commented = self.dialog_data
                 if under_comment:
                     commented = True
-                if tag != data or attrs != attrdict:
+                print('in edit element', tag, attrs)
+                if tag == 'style':
+                    # style data zit in attrs['styledata'] en moet naar tekst element onder tag
+                    newtext = str(attrs.pop('styledata', '')) # en daarna moet deze hier weg
+                    oldtext = str(self.item.child(0).data(0, core.Qt.UserRole))
+                    print('back from dialog, old = {}, new = {}'.format(
+                        oldtext, newtext))
+                    if newtext == '':
+                        "TODO: remove child, possibly style tag as well"
+                    elif newtext != oldtext:
+                        self.item.child(0).setText(0, newtext)
+                attrdict.pop('styledata', '')
+                print('old', oldtag, attrdict)
+                print('new', tag, attrs)
+                if tag != oldtag or attrs != attrdict:
                     self.item.setText(0, ed.getelname(tag, attrs, commented))
                 self.item.setData(0, core.Qt.UserRole, attrs)
                 if commented != was_commented:
@@ -617,6 +668,10 @@ class MainFrame(gui.QMainWindow, ed.EditorMixin):
             data = self.item.data(0, core.Qt.UserRole)
             if sys.version < '3':
                 data = str(data.toPyObject())
+            test = str(self.item.parent().text(0))
+            if test in ('style', ' '.join((CMSTART, 'style'))):
+                # TODO: edit via css editor instead as text
+                return
             edt = TextDialog(self, title='Edit Text', text = txt + data).exec_()
             if edt == gui.QDialog.Accepted:
                 modified = True
@@ -922,7 +977,16 @@ class MainFrame(gui.QMainWindow, ed.EditorMixin):
         if edt == gui.QDialog.Accepted:
             data = self.dialog_data
             node = gui.QTreeWidgetItem()
-            node.setText(0, ed.getelname('link', data))
+            if 'href' in data:
+                node.setText(0, ed.getelname('link', data))
+                subnode = None
+            else:
+                node.setText(0, ed.getelname('style', data))
+                cssdata = data.pop('cssdata')
+                subnode = gui.QTreeWidgetItem()
+                subnode.setText(0, ed.getshortname(cssdata))
+                subnode.setData(0, core.Qt.UserRole, cssdata)
+                node.addChild(subnode)
             node.setData(0, core.Qt.UserRole, data)
             self.item = None
             for ix in range(self.top.childCount()):
@@ -937,8 +1001,43 @@ class MainFrame(gui.QMainWindow, ed.EditorMixin):
                 self.mark_dirty(True)
                 self.refresh_preview()
             else:
-                gui.QMessageBox.information(self, self.title, "Error: no <head> element")
+                gui.QMessageBox.information(self, self.title,
+                    "Error: no <head> element")
 
+    def edit_css(self, evt=None):
+        "start wijzigen stylesheet m.b.v. dialoog"
+        choice = ''
+        if self.in_contextmenu:
+            item = self.tree.currentItem()
+            attrs = item.data(0, core.Qt.UserRole)
+            if attrs['rel'] == 'stylesheet':
+                choice = attrs['href']
+        else:
+            sheets = []
+            item = finditem(self.top, 'html')
+            if not item: return
+            item = finditem(item, 'head')
+            if not item: return
+            items = finditem(item, 'link', first_only=False)
+            if not items: return
+            for it in items:
+                print(' in edit css', it.text(0))
+                attrs = it.data(0, core.Qt.UserRole)
+                if attrs['rel'] == 'stylesheet':
+                    sheets.append(attrs['href'])
+            if not sheets: return
+            # TODO: nou nog het fysieke adres van elk stylesheet resolven indien nodig
+            # en de onbereikbare uit de lijst weglaten?
+            choice, ok = gui.QInputDialog.getItem(self, 'HtmlEdit',
+                'Select stylesheet', sheets, editable=False)
+        if choice:
+            css = csed.MainWindow()
+            try:
+                css.open(filename=choice) # "", tag="", text="")
+            except BaseException as e:
+                gui.QMessageBox.information(self, 'Htmledit - edit css', str(e))
+            else:
+                css.show()
 
     def add_link(self, evt=None):
         "start toevoegen link m.b.v. dialoog"
