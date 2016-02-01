@@ -167,7 +167,7 @@ class EditorMixin(object):
                         if '%SOUP-ENCODING%' in value:
                             dic[key] = value.replace('%SOUP-ENCODING%',
                                 self.root.originalEncoding)
-                        elif isinstance(value, list): # hack i.v.. nieuwe versie
+                        elif isinstance(value, list): # hack i.v.m. nieuwe versie
                             dic[key] = ' '.join(value)
                     naam = getelname(subnode.name, dic, commented)
                     newitem = self.addtreeitem(item, naam, dic)
@@ -197,7 +197,7 @@ class EditorMixin(object):
                 else:
                     newitem = self.addtreeitem(item, getshortname(str(subnode),
                         commented), str(subnode))
-        self.has_dtd = False
+        self.has_dtd = self.has_stylesheet = False
         if name:
             titel = name
         elif self.xmlfn:

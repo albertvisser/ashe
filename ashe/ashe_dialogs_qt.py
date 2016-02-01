@@ -161,7 +161,6 @@ class ElementDialog(gui.QDialog):
 
     def on_add(self, evt=None):
         "attribuut toevoegen"
-        # TODO: ensure nor duplicate items are added - can't do that here
         self.attr_table.setFocus()
         idx = self.attr_table.rowCount()
         self.attr_table.insertRow(idx)
@@ -194,7 +193,7 @@ class ElementDialog(gui.QDialog):
             else:
                 css.show()
             return
-        elif tag =='style':
+        if tag =='style':
             css.open(text=self.old_styledata)
         else:
             css.open(tag=tag, text=self.old_styledata)
@@ -207,6 +206,7 @@ class ElementDialog(gui.QDialog):
 
     def on_ok(self):
         "controle bij OK aanklikken"
+        # TODO: ensure no duplicate items are added
         print('in on_ok:', self.styledata)
         tag = str(self.tag_text.text())
         okay = True
@@ -367,6 +367,7 @@ class CssDialog(gui.QDialog):
 
     def __init__(self, parent):
         self._parent = parent
+        self.styledata = ''
         gui.QDialog.__init__(self, parent)
         self.setWindowTitle('Add Stylesheet')
         self.setWindowIcon(gui.QIcon(os.path.join(PPATH,"ashe.ico")))
@@ -432,32 +433,39 @@ class CssDialog(gui.QDialog):
         gui.QDialog.done(self, gui.QDialog.Rejected)
 
     def on_ok(self):
-        "bij OK: het geselecteerde (absolute) pad omzetten in een relatief pad"
-        link = str(self.link_text.text())
-        if link:
-            if not link.startswith('http://'):
-                link = os.path.abspath(link)
-                if self._parent.xmlfn:
-                    whereami = os.path.abspath(self._parent.xmlfn)
-                else:
-                    whereami = os.path.join(os.getcwd(),'index.html')
-                link = ed.getrelativepath(link, whereami)
-            if not link:
-                gui.QMessageBox.information('Unable to make this local link relative',
-                    self.parent.title)
-            else:
-                self.link = link
-            self._parent.dialog_data = {
-                "rel": 'stylesheet',
-                "href": link,
-                "type": 'text/css',
-                }
-            test = str(self.text_text.text())
-            if test:
-                self._parent.dialog_data["media"] = test
-        else:
-            gui.QMessageBox.information("bestandsnaam opgeven of cancel kiezen s.v.p",'')
+        """bij OK: het geselecteerde (absolute) pad omzetten in een relatief pad
+        maar eerst kijken of dit geen inline stylesheet betreft """
+        # TODO: wat als er zowel styledata als een linkadres is?
+        if self.styledata:
+            self._parent.dialog_data = {"cssdata": self.styledata}
+            gui.QDialog.done(self, gui.QDialog.Accepted)
             return
+        link = str(self.link_text.text())
+        if link in ('', 'http://'):
+            gui.QMessageBox.information(self, self.parent().title,
+                "bestandsnaam opgeven of inline stylesheet definiëren s.v.p")
+            ## gui.QDialog.done(self, gui.QDialog.Rejected)
+            return
+        if not link.startswith('http://'):
+            link = os.path.abspath(link)
+            if self._parent.xmlfn:
+                whereami = os.path.abspath(self._parent.xmlfn)
+            else:
+                whereami = os.path.join(os.getcwd(),'index.html')
+            link = ed.getrelativepath(link, whereami)
+        if not link:
+            gui.QMessageBox.information(self, self.parent().title,
+                'Unable to make this local link relative')
+        else:
+            self.link = link
+        self._parent.dialog_data = {
+            "rel": 'stylesheet',
+            "href": link,
+            "type": 'text/css',
+            }
+        test = str(self.text_text.text())
+        if test:
+            self._parent.dialog_data["media"] = test
         gui.QDialog.done(self, gui.QDialog.Accepted)
 
     def on_inline(self):
@@ -468,11 +476,11 @@ class CssDialog(gui.QDialog):
         test = str(self.text_text.text())
         if test:
             self._parent.dialog_data["media"] = test
-        css = csed.MainWindow()
+        print("aanroepen csseditor met self als parent")
+        css = csed.MainWindow(self)
         css.open(text="")
         css.setWindowModality(core.Qt.ApplicationModal)
-        self._parent.dialog_data["cssdata"] = css.css.data # self.styledata
-        gui.QDialog.done(self, gui.QDialog.Accepted)
+        css.show()
 
 class LinkDialog(gui.QDialog):
     "dialoog om een link element toe te voegen"
