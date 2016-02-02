@@ -437,7 +437,7 @@ class CssDialog(gui.QDialog):
         maar eerst kijken of dit geen inline stylesheet betreft """
         # TODO: wat als er zowel styledata als een linkadres is?
         if self.styledata:
-            self._parent.dialog_data = {"cssdata": self.styledata}
+            self._parent.dialog_data = {"cssdata": self.styledata.decode()}
             gui.QDialog.done(self, gui.QDialog.Accepted)
             return
         link = str(self.link_text.text())
