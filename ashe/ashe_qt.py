@@ -13,14 +13,14 @@ import PyQt4.QtWebKit as webkit
 import bs4 as bs # BeautifulSoup as bs
 
 import ashe.ashe_mixin as ed
-from ashe.ashe_dialogs_qt import HMASK, ElementDialog, TextDialog, \
-    DtdDialog, CssDialog, LinkDialog, ImageDialog, \
+from ashe.ashe_dialogs_qt import cssedit_available, HMASK, ElementDialog, \
+    TextDialog, DtdDialog, CssDialog, LinkDialog, ImageDialog, \
     ListDialog, TableDialog, ScrolledTextDialog, CodeViewDialog
-try:
-    import cssedit.editor.csseditor_qt as csed
-    cssedit_available = True
-except ImportError:
-    cssedit_available = False
+## try:
+    ## import cssedit.editor.csseditor_qt as csed
+    ## cssedit_available = True
+## except ImportError:
+     ## = False
 
 ## print(cssedit_available) # , csed)
 
