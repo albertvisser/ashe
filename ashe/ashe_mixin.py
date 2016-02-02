@@ -105,9 +105,11 @@ def get_tag_from_elname(elname):
 def getshortname(text, comment = False):
     "shorten name for text node"
     maxlen = 30
-    text = text[:maxlen] + "..." if len(text) > maxlen else text
-    if comment:
-        text = "<!> " + text
+    more = '\n' in text
+    if more: text = text.split('\n', 1)[0]
+    if len(text) > maxlen: text = text[:maxlen] + "..."
+    if more: text += ' [+]'
+    if comment: text = "<!> " + text
     return text
 
 def escape(text):
