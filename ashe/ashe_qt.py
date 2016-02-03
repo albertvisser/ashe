@@ -686,7 +686,8 @@ class MainFrame(gui.QMainWindow, ed.EditorMixin):
                     if newtext != oldtext:
                         ## if newtext == '':
                             ## TODO: remove child, possibly style tag as well
-                        self.item.child(0).setText(0, newtext)
+                        self.item.child(0).setText(0, ed.getshortname(newtext))
+                        self.item.child(0).setData(0, core.Qt.UserRole, newtext)
                 attrdict.pop('styledata', '')
                 print('old', oldtag, attrdict)
                 print('new', tag, attrs)
