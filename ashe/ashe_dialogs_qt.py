@@ -86,7 +86,7 @@ class ElementDialog(gui.QDialog):
         ## self.attr_table.SetColSize(1, tbl.Size[0] - 162) # 178) # 160)
         if attrs:
             for attr, value in attrs.items():
-                print('elementdialog.init: attr', attr, value)
+                ## print('elementdialog.init: attr', attr, value)
                 if attr == 'styledata':
                     self.old_styledata = value
                     continue
@@ -177,29 +177,48 @@ class ElementDialog(gui.QDialog):
 
     def on_style(self, evt=None):
         tag = self.tag_text.text()
-        css = csed.MainWindow(self) # call the editor with this dialog as parent should
-                                    # make sure we get the css back as an attribute
-        if self.is_stylesheet:
-            test = self.attr_table.findItems('href', core.Qt.MatchFixedString)
-            for item in test:
-                col = self.attr_table.column(item)
-                row = self.attr_table.row(item)
-                if col == 0:
-                    fname = self.attr_table.item(row, 1).text()
+        if not self.is_stylesheet:
+            css = csed.MainWindow(self) # call the editor with this dialog as parent should
+                                        # make sure we get the css back as an attribute
+            if tag =='style':
+                css.open(text=self.old_styledata)
+            else:
+                css.open(tag=tag, text=self.old_styledata)
+            css.setWindowModality(core.Qt.ApplicationModal)
+            css.show() # sets self.styledata right before closing
+            return
+        css = csed.MainWindow()
+        mld = fname = ''
+        test = self.attr_table.findItems('href', core.Qt.MatchFixedString)
+        for item in test:
+            col = self.attr_table.column(item)
+            row = self.attr_table.row(item)
+            if col == 0:
+                fname = self.attr_table.item(row, 1).text()
+        if not fname:
+            mld = 'Please enter a link address first'
+        else:
+            if fname.startswith('http'):
+                h_fname = os.path.join('/tmp', 'ashe_{}'.format(
+                    os.path.basename(fname)))
+                os.system('wget {} -O {}'.format(fname, h_fname))    # TODO
+                fname = h_fname
+            else:
+                h_fname = fname
+                xmlfn_path = os.path.dirname(self._parent.xmlfn)
+                while h_fname.startswith('../'):
+                    h_fname = h_fname[3:]
+                    xmlfn_path = os.path.dirname(xmlfn_path)
+                fname = os.path.join(xmlfn_path, h_fname)
+            print(fname)
             try:
                 css.open(filename=fname)
             except BaseException as e:
-                gui.QMessageBox.information(self, 'Htmledit - edit css', str(e))
+                mld = str(e)
             else:
+                css.setWindowModality(core.Qt.ApplicationModal)
                 css.show()
-            return
-        if tag =='style':
-            css.open(text=self.old_styledata)
-        else:
-            css.open(tag=tag, text=self.old_styledata)
-        css.setWindowModality(core.Qt.ApplicationModal)
-        css.show() # sets self.styledata right before closing
-        print('in on_style:', self.styledata)
+        if mld: gui.QMessageBox.information(self, 'Htmledit', mld)
 
     def on_cancel(self):
         gui.QDialog.done(self, gui.QDialog.Rejected)
@@ -228,8 +247,10 @@ class ElementDialog(gui.QDialog):
                     'Press enter on this item first')
                 return
             attrs[name] = value
-        if self.styledata and self.styledata != self.old_styledata:
-            self.old_styledata = self.styledata
+        if self.styledata:
+            self.styledata = self.styledata.decode()
+            if self.styledata != self.old_styledata:
+                self.old_styledata = self.styledata
         if self.old_styledata:
             if tag == 'style':
                 attrs['styledata'] = self.old_styledata
