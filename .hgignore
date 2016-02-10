@@ -3,10 +3,10 @@ syntax: glob
 
 *.bak
 *~
-*pyc
-*log
-*txt
-*htm*
+*.pyc
+*.log
+*.txt
+*.htm*
 afrift*.ini
 pylint*
 archive.zip
