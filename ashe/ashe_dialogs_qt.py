@@ -86,7 +86,6 @@ class ElementDialog(gui.QDialog):
         ## self.attr_table.SetColSize(1, tbl.Size[0] - 162) # 178) # 160)
         if attrs:
             for attr, value in attrs.items():
-                ## print('elementdialog.init: attr', attr, value)
                 if attr == 'styledata':
                     self.old_styledata = value
                     continue
@@ -210,7 +209,6 @@ class ElementDialog(gui.QDialog):
                     h_fname = h_fname[3:]
                     xmlfn_path = os.path.dirname(xmlfn_path)
                 fname = os.path.join(xmlfn_path, h_fname)
-            print(fname)
             try:
                 css.open(filename=fname)
             except BaseException as e:
@@ -226,7 +224,6 @@ class ElementDialog(gui.QDialog):
     def on_ok(self):
         "controle bij OK aanklikken"
         # TODO: ensure no duplicate items are added
-        print('in on_ok:', self.styledata)
         tag = str(self.tag_text.text())
         okay = True
         test = string.ascii_letters + string.digits
@@ -246,15 +243,16 @@ class ElementDialog(gui.QDialog):
                 gui.QMessageBox.information(self, 'Add an element',
                     'Press enter on this item first')
                 return
-            attrs[name] = value
+            if name != 'style':
+                attrs[name] = value
         if self.styledata:
             self.styledata = self.styledata.decode()
-            if self.styledata != self.old_styledata:
-                self.old_styledata = self.styledata
-        if self.old_styledata:
-            if tag == 'style':
-                attrs['styledata'] = self.old_styledata
-            else:
+        if self.styledata != self.old_styledata:
+            self.old_styledata = self.styledata
+        if tag == 'style':
+            attrs['styledata'] = self.old_styledata
+        else:
+            if self.old_styledata:
                 attrs['style'] = self.old_styledata
         self._parent.dialog_data = tag, attrs, commented
         gui.QDialog.done(self, gui.QDialog.Accepted)
@@ -497,7 +495,6 @@ class CssDialog(gui.QDialog):
         test = str(self.text_text.text())
         if test:
             self._parent.dialog_data["media"] = test
-        print("aanroepen csseditor met self als parent")
         css = csed.MainWindow(self)
         css.open(text="")
         css.setWindowModality(core.Qt.ApplicationModal)

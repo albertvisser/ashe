@@ -16,13 +16,6 @@ import ashe.ashe_mixin as ed
 from ashe.ashe_dialogs_qt import cssedit_available, HMASK, ElementDialog, \
     TextDialog, DtdDialog, CssDialog, LinkDialog, ImageDialog, \
     ListDialog, TableDialog, ScrolledTextDialog, CodeViewDialog
-## try:
-    ## import cssedit.editor.csseditor_qt as csed
-    ## cssedit_available = True
-## except ImportError:
-     ## = False
-
-## print(cssedit_available) # , csed)
 
 PPATH = os.path.split(__file__)[0]
 DESKTOP = ed.DESKTOP
@@ -676,21 +669,16 @@ class MainFrame(gui.QMainWindow, ed.EditorMixin):
                 tag, attrs, commented = self.dialog_data
                 if under_comment:
                     commented = True
-                print('in edit element', tag, attrs)
                 if tag == 'style':
                     # style data zit in attrs['styledata'] en moet naar tekst element onder tag
                     newtext = str(attrs.pop('styledata', '')) # en daarna moet deze hier weg
                     oldtext = str(self.item.child(0).data(0, core.Qt.UserRole))
-                    print('back from dialog, old = {}, new = {}'.format(
-                        oldtext, newtext))
                     if newtext != oldtext:
                         ## if newtext == '':
                             ## TODO: remove child, possibly style tag as well
                         self.item.child(0).setText(0, ed.getshortname(newtext))
                         self.item.child(0).setData(0, core.Qt.UserRole, newtext)
                 attrdict.pop('styledata', '')
-                print('old', oldtag, attrdict)
-                print('new', tag, attrs)
                 if tag != oldtag or attrs != attrdict:
                     self.item.setText(0, ed.getelname(tag, attrs, commented))
                 self.item.setData(0, core.Qt.UserRole, attrs)
