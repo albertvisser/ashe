@@ -690,8 +690,10 @@ class MainFrame(gui.QMainWindow, ed.EditorMixin):
             if sys.version < '3':
                 data = str(data.toPyObject())
             test = str(self.item.parent().text(0))
-            if test in ('style', ' '.join((CMSTART, 'style'))):
-                # TODO: edit via css editor instead as text
+            if test in (' '.join((ELSTART, 'style')),
+                    ' '.join((CMELSTART, 'style'))):
+                gui.QMessageBox.information(self, self.title,
+                    "Please edit style through parent tag")
                 return
             edt = TextDialog(self, title='Edit Text', text = txt + data).exec_()
             if edt == gui.QDialog.Accepted:
