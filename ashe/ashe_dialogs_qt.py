@@ -245,8 +245,10 @@ class ElementDialog(gui.QDialog):
                 return
             if name != 'style':
                 attrs[name] = value
-        if self.styledata:
+        try:
             self.styledata = self.styledata.decode()
+        except AttributeError:
+            pass
         if self.styledata != self.old_styledata:
             self.old_styledata = self.styledata
         if tag == 'style':
