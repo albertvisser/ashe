@@ -14,8 +14,8 @@ import bs4 as bs # BeautifulSoup as bs
 
 import ashe.ashe_mixin as ed
 from ashe.ashe_dialogs_qt import cssedit_available, HMASK, ElementDialog, \
-    TextDialog, DtdDialog, CssDialog, LinkDialog, ImageDialog, \
-    ListDialog, TableDialog, ScrolledTextDialog, CodeViewDialog
+    TextDialog, DtdDialog, CssDialog, LinkDialog, ImageDialog, VideoDialog, \
+    AudioDialog, ListDialog, TableDialog, ScrolledTextDialog, CodeViewDialog
 
 PPATH = os.path.split(__file__)[0]
 DESKTOP = ed.DESKTOP
@@ -233,12 +233,16 @@ class MainFrame(gui.QMainWindow, ed.EditorMixin):
             "&HTML", (
                 ('Add &DTD', '', '', 'Add a document type description', self.add_dtd),
                 ('Add &Stylesheet', '', '', 'Add a stylesheet', self.add_css),
+                ('sep1', ),
                 ('Create &link (under)', '', '', 'Add a document reference',
                     self.add_link),
                 ('Add i&mage (under)', '', '', 'Include an image', self.add_image),
+                ('Add v&ideo (under)', '', '', 'Add a video element', self.add_video),
+                ('Add a&udio (under)', '', '', 'Add an audio fragment', self.add_audio),
+                ('sep1', ),
                 ('Add l&ist (under)', '', '', 'Create a list', self.add_list),
                 ('Add &table (under)', '', '', 'Create a table', self.add_table),
-                ('sep1', ),
+                ('sep3', ),
                 ('&View code', '', '', 'Shows the html pretty-printed',
                     self.view_code),
                 ('&Check syntax', '', '', 'Validate HTML with Tidy', self.validate),
@@ -1063,6 +1067,49 @@ class MainFrame(gui.QMainWindow, ed.EditorMixin):
             data = self.dialog_data
             node = gui.QTreeWidgetItem()
             node.setText(0, ed.getelname('img', data))
+            node.setData(0, core.Qt.UserRole, data)
+            self.item.addChild(node)
+            self.mark_dirty(True)
+            self.refresh_preview()
+
+    def add_video(self, evt=None):
+        "start toevoegen video m.b.v. dialoog"
+        if DESKTOP and not self.checkselection():
+            return
+        if not str(self.item.text(0)).startswith(ELSTART):
+            gui.QMessageBox.information(self, self.title, "Can't do this below text")
+            return
+        edt = VideoDialog(self).exec_()
+        if edt == gui.QDialog.Accepted:
+            data = self.dialog_data
+            data['controls'] = ''
+            src = data.pop('src')
+            node = gui.QTreeWidgetItem()
+            node.setText(0, ed.getelname('video', data))
+            node.setData(0, core.Qt.UserRole, data)
+            self.item.addChild(node)
+            child = gui.QTreeWidgetItem()
+            child_data = {'src': src,
+                'type': 'video/{}'.format(os.path.splitext(src)[1][1:])}
+            child.setText(0, ed.getelname('source', child_data))
+            child.setData(0, core.Qt.UserRole, child_data)
+            node.addChild(child)
+            self.mark_dirty(True)
+            self.refresh_preview()
+
+    def add_audio(self, evt=None):
+        "start toevoegen audio m.b.v. dialoog"
+        if DESKTOP and not self.checkselection():
+            return
+        if not str(self.item.text(0)).startswith(ELSTART):
+            gui.QMessageBox.information(self, self.title, "Can't do this below text")
+            return
+        edt = AudioDialog(self).exec_()
+        if edt == gui.QDialog.Accepted:
+            data = self.dialog_data
+            data['controls'] = ''
+            node = gui.QTreeWidgetItem()
+            node.setText(0, ed.getelname('audio', data))
             node.setData(0, core.Qt.UserRole, data)
             self.item.addChild(node)
             self.mark_dirty(True)

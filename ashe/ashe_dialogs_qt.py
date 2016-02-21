@@ -723,6 +723,204 @@ class ImageDialog(gui.QDialog):
             return
         gui.QDialog.done(self, gui.QDialog.Accepted)
 
+class VideoDialog(gui.QDialog):
+    'dialoog om een video element toe te voegen'
+
+    def __init__(self, parent):
+        self._parent = parent
+        gui.QDialog.__init__(self, parent)
+        self.setWindowTitle('Add Video')
+        self.setWindowIcon(gui.QIcon(os.path.join(PPATH,"ashe.ico")))
+        vbox = gui.QVBoxLayout()
+
+        sbox = gui.QFrame()
+        sbox.setFrameStyle(gui.QFrame.Box)
+        gbox = gui.QGridLayout() # gui.QGridBagSizer(4, 4)
+
+        row = 0
+        gbox.addWidget(gui.QLabel("link to video:", self), row, 0)
+        self.link_text = gui.QLineEdit("http://", self)
+        ## self.link_text.textChanged.connect(self.set_ltext)
+        self.linktxt = ""
+        gbox.addWidget(self.link_text, row, 1)
+
+        row += 1
+        self.choose_button = gui.QPushButton('Search', self)
+        self.choose_button.clicked.connect(self.kies)
+        box = gui.QHBoxLayout()
+        box.addStretch()
+        box.addWidget(self.choose_button)
+        box.addStretch()
+        gbox.addLayout(box, row, 0, 1, 2)
+
+        row += 1
+        gbox.addWidget(gui.QLabel("height of video window:", self), row, 0)
+        self.hig_text = gui.QLineEdit(self)
+        gbox.addWidget(self.hig_text, row, 1)
+
+        row += 1
+        gbox.addWidget(gui.QLabel("width  of video window:", self), row, 0)
+        self.wid_text = gui.QLineEdit(self)
+        gbox.addWidget(self.wid_text, row, 1)
+
+        sbox.setLayout(gbox)
+        vbox.addWidget(sbox)
+
+        hbox = gui.QHBoxLayout()
+        self.ok_button = gui.QPushButton('&Save', self)
+        self.connect(self.ok_button, core.SIGNAL('clicked()'), self.on_ok)
+        self.ok_button.setDefault(True)
+        self.cancel_button = gui.QPushButton('&Cancel', self)
+        self.connect(self.cancel_button, core.SIGNAL('clicked()'), self.on_cancel)
+        hbox.addStretch()
+        hbox.addWidget(self.ok_button)
+        hbox.addWidget(self.cancel_button)
+        hbox.addStretch()
+        vbox.addLayout(hbox)
+
+        self.setLayout(vbox)
+
+        self.link_text.setFocus()
+
+    def kies(self, evt=None):
+        "methode om het te linken element te selecteren"
+        if self._parent.xmlfn:
+            loc = os.path.dirname(self._parent.xmlfn)
+        else:
+            loc = os.getcwd()
+        mask = '*.mp4 *.avi *.mpeg' # TODO: add other types
+        ## if os.name == "nt":
+            ## mask = "Image files (*.htm *.html);;" + IMASK
+        ## elif os.name == "posix":
+        if os.name == "posix":
+            mask += ' ' + mask.upper()
+        mask = "Video files ({});;{}".format(mask, IMASK)
+        fnaam = gui.QFileDialog.getOpenFileName(self, "Choose a file", loc, mask)
+        if fnaam:
+            self.link_text.setText(fnaam)
+
+    def on_cancel(self):
+        gui.QDialog.done(self, gui.QDialog.Rejected)
+
+    def on_ok(self):
+        "bij OK: het geselecteerde (absolute) pad omzetten in een relatief pad"
+        link = str(self.link_text.text())
+        if link:
+            if not link.startswith('http://'):
+                link = os.path.abspath(link)
+                if self._parent.xmlfn:
+                    whereami = os.path.abspath(self._parent.xmlfn)
+                else:
+                    whereami = os.path.join(os.getcwd(),'index.html')
+                link = ed.getrelativepath(link, whereami)
+            if not link:
+                gui.QMessageBox.information('Unable to make this local link relative',
+                    self.parent.title)
+            else:
+                self.link = link
+            self._parent.dialog_data = {
+                    "src": link,
+                    "height": str(self.hig_text.text()),
+                    "width": str(self.wid_text.text())
+                    }
+        else:
+            gui.QMessageBox.information("link naar video opgeven of cancel kiezen s.v.p",'')
+            return
+        gui.QDialog.done(self, gui.QDialog.Accepted)
+
+class AudioDialog(gui.QDialog):
+    'dialoog om een audio element toe te voegen'
+
+    def __init__(self, parent):
+        self._parent = parent
+        gui.QDialog.__init__(self, parent)
+        self.setWindowTitle('Add Audio')
+        self.setWindowIcon(gui.QIcon(os.path.join(PPATH,"ashe.ico")))
+        vbox = gui.QVBoxLayout()
+
+        sbox = gui.QFrame()
+        sbox.setFrameStyle(gui.QFrame.Box)
+        gbox = gui.QGridLayout() # gui.QGridBagSizer(4, 4)
+
+        row = 0
+        gbox.addWidget(gui.QLabel("link to audio fragment:", self), row, 0)
+        self.link_text = gui.QLineEdit("http://", self)
+        ## self.link_text.textChanged.connect(self.set_ltext)
+        self.linktxt = ""
+        gbox.addWidget(self.link_text, row, 1)
+
+        row += 1
+        self.choose_button = gui.QPushButton('Search', self)
+        self.choose_button.clicked.connect(self.kies)
+        box = gui.QHBoxLayout()
+        box.addStretch()
+        box.addWidget(self.choose_button)
+        box.addStretch()
+        gbox.addLayout(box, row, 0, 1, 2)
+
+        sbox.setLayout(gbox)
+        vbox.addWidget(sbox)
+
+        hbox = gui.QHBoxLayout()
+        self.ok_button = gui.QPushButton('&Save', self)
+        self.connect(self.ok_button, core.SIGNAL('clicked()'), self.on_ok)
+        self.ok_button.setDefault(True)
+        self.cancel_button = gui.QPushButton('&Cancel', self)
+        self.connect(self.cancel_button, core.SIGNAL('clicked()'), self.on_cancel)
+        hbox.addStretch()
+        hbox.addWidget(self.ok_button)
+        hbox.addWidget(self.cancel_button)
+        hbox.addStretch()
+        vbox.addLayout(hbox)
+
+        self.setLayout(vbox)
+
+        self.link_text.setFocus()
+
+    def kies(self, evt=None):
+        "methode om het te linken element te selecteren"
+        if self._parent.xmlfn:
+            loc = os.path.dirname(self._parent.xmlfn)
+        else:
+            loc = os.getcwd()
+        mask = '*.mp3 *.wav *.ogg' # TODO: add other types
+        ## if os.name == "nt":
+            ## mask = "Image files (*.htm *.html);;" + IMASK
+        ## elif os.name == "posix":
+        if os.name == "posix":
+            mask += ' ' + mask.upper()
+        mask = "Audio files ({});;{}".format(mask, IMASK)
+        fnaam = gui.QFileDialog.getOpenFileName(self, "Choose a file", loc, mask)
+        if fnaam:
+            self.link_text.setText(fnaam)
+
+    def on_cancel(self):
+        gui.QDialog.done(self, gui.QDialog.Rejected)
+
+    def on_ok(self):
+        "bij OK: het geselecteerde (absolute) pad omzetten in een relatief pad"
+        link = str(self.link_text.text())
+        if link:
+            if not link.startswith('http://'):
+                link = os.path.abspath(link)
+                if self._parent.xmlfn:
+                    whereami = os.path.abspath(self._parent.xmlfn)
+                else:
+                    whereami = os.path.join(os.getcwd(),'index.html')
+                link = ed.getrelativepath(link, whereami)
+            if not link:
+                gui.QMessageBox.information('Unable to make this local link relative',
+                    self.parent.title)
+            else:
+                self.link = link
+            self._parent.dialog_data = {
+                    "src": link,
+                    }
+        else:
+            gui.QMessageBox.information("link naar audio opgeven of cancel kiezen s.v.p",'')
+            return
+        gui.QDialog.done(self, gui.QDialog.Accepted)
+
 class ListDialog(gui.QDialog):
     'dialoog om een list toe te voegen'
 
