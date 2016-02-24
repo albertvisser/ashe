@@ -728,6 +728,8 @@ class VideoDialog(gui.QDialog):
 
     def __init__(self, parent):
         self._parent = parent
+        initialwidth, initialheight = 400, 200
+        maxwidth, maxheight = 2400, 1200
         gui.QDialog.__init__(self, parent)
         self.setWindowTitle('Add Video')
         self.setWindowIcon(gui.QIcon(os.path.join(PPATH,"ashe.ico")))
@@ -755,13 +757,25 @@ class VideoDialog(gui.QDialog):
 
         row += 1
         gbox.addWidget(gui.QLabel("height of video window:", self), row, 0)
-        self.hig_text = gui.QLineEdit(self)
-        gbox.addWidget(self.hig_text, row, 1)
+        self.hig_text = gui.QSpinBox(self) #.pnl, -1, size = (40, -1))
+        self.hig_text.setMaximum(maxheight)
+        self.hig_text.setValue(initialheight)
+        self.hig_text.valueChanged.connect(self.on_text)
+        hbox = gui.QHBoxLayout()
+        hbox.addWidget(self.hig_text)
+        hbox.addStretch()
+        gbox.addLayout(hbox, row, 1)
 
         row += 1
         gbox.addWidget(gui.QLabel("width  of video window:", self), row, 0)
-        self.wid_text = gui.QLineEdit(self)
-        gbox.addWidget(self.wid_text, row, 1)
+        self.wid_text = gui.QSpinBox(self) #.pnl, -1, size = (40, -1))
+        self.wid_text.setMaximum(maxwidth)
+        self.wid_text.setValue(initialwidth)
+        self.wid_text.valueChanged.connect(self.on_text)
+        hbox = gui.QHBoxLayout()
+        hbox.addWidget(self.wid_text)
+        hbox.addStretch()
+        gbox.addLayout(hbox, row, 1)
 
         sbox.setLayout(gbox)
         vbox.addWidget(sbox)
@@ -798,6 +812,15 @@ class VideoDialog(gui.QDialog):
         fnaam = gui.QFileDialog.getOpenFileName(self, "Choose a file", loc, mask)
         if fnaam:
             self.link_text.setText(fnaam)
+
+    def on_text(self, number=None):
+        "controle bij invullen/aanpassen hoogte/breedte"
+        try:
+            num = int(number) # self.rows_text.value())
+        except ValueError:
+            gui.QMessageBox.information(self, self.title,
+                'Number must be numeric integer','')
+            return
 
     def on_cancel(self):
         gui.QDialog.done(self, gui.QDialog.Rejected)
