@@ -194,6 +194,9 @@ class MainFrame(gui.QMainWindow, ed.EditorMixin):
                 ('Advance selection on add/insert', '', '',
                     "Move the selection to the added/pasted item",
                     self.advance_selection_onoff),
+                ('sep2', ),
+                ('&Resync preview', 'F5', '', 'Reset the preview window to the '
+                    'contents of the treeview', self.refresh_preview),
                 ),
                 ), (
             '&Edit', (
@@ -397,7 +400,7 @@ class MainFrame(gui.QMainWindow, ed.EditorMixin):
             title = title.replace(test2, test)
         self.setWindowTitle(title)
 
-    def refresh_preview(self):
+    def refresh_preview(self, event=None):
         self.data2soup()
         self.html.setHtml(str(self.soup).replace('%SOUP-ENCODING%','utf-8'))
         self.tree.setFocus()
