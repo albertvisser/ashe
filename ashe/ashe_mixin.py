@@ -281,8 +281,9 @@ class EditorMixin(object):
         output = '/tmp/ashe_check'
         with open(output, 'w') as f_out:
             pass
-        cmd = 'tidy -e -f "{}" "{}"'.format(output, htmlfile)
-        retval = sp.call(cmd, shell=True)
+        ## cmd = 'tidy -e -f "{}" "{}"'.format(output, htmlfile)
+        ## retval = sp.call(cmd, shell=True)
+        retval = sp.run(['tidy', '-e', '-f', output, htmlfile])
         data = ""
         with open(output) as f_in:
             data = f_in.read()
