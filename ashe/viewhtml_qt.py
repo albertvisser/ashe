@@ -1,6 +1,3 @@
-usage = """\
-usage: python(3) viewhtml.py <filename>             view HTML file on filesystem
-"""
 import sys
 import PyQt4.QtGui as gui
 import PyQt4.QtCore as core
@@ -44,8 +41,3 @@ def main(path):
     sys.exit(app.exec_())
 
 
-if __name__ == "__main__":
-    if len(sys.argv) != 2 or not sys.argv[1]:
-        print(usage)
-    else:
-        main(sys.argv[1])
