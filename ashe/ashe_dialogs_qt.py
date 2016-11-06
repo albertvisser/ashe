@@ -8,15 +8,16 @@ custom dialogen
 import os
 import sys
 import string
-import PyQt4.QtGui as gui
-import PyQt4.QtCore as core
-import PyQt4.Qsci as sci # scintilla
+import PyQt5.QtWidgets as qtw
+import PyQt5.QtGui as gui
+import PyQt5.QtCore as core
+import PyQt5.Qsci as sci # scintilla
 import ashe.ashe_mixin as ed
 
 try:
     import cssedit.editor.csseditor_qt as csed
     cssedit_available = True
-except ImportError:
+except ImportError as e:
     cssedit_available = False
 
 PPATH = os.path.split(__file__)[0]
@@ -31,21 +32,21 @@ if os.name == "nt":
 elif os.name == "posix":
     HMASK = "HTML files (*.htm *.HTM *.html *.HTML);;" + IMASK
 
-class ElementDialog(gui.QDialog):
+class ElementDialog(qtw.QDialog):
     """dialoog om (de attributen van) een element op te voeren of te wijzigen
     tevens kan worden aangegeven of het element "op commentaar gezet" moet zijn"""
 
     def __init__(self, parent, title='', tag=None, attrs=None):
-        gui.QDialog.__init__(self, parent)
+        super().__init__(parent)
         self.setWindowTitle(title)
         self.setWindowIcon(gui.QIcon(os.path.join(PPATH,"ashe.ico")))
         self._parent = parent
-        vbox = gui.QVBoxLayout()
-        hbox = gui.QHBoxLayout()
-        lbl = gui.QLabel("element name:", self)
-        self.tag_text = gui.QLineEdit(self)
+        vbox = qtw.QVBoxLayout()
+        hbox = qtw.QHBoxLayout()
+        lbl = qtw.QLabel("element name:", self)
+        self.tag_text = qtw.QLineEdit(self)
         self.tag_text.setMinimumWidth(250)
-        self.comment_button = gui.QCheckBox('&Comment(ed)', self)
+        self.comment_button = qtw.QCheckBox('&Comment(ed)', self)
         ## is_comment = False
         is_style_tag = self.is_stylesheet = has_style = False
         self.styledata = self.old_styledata = ''
@@ -66,13 +67,13 @@ class ElementDialog(gui.QDialog):
         hbox.addWidget(self.comment_button)
         vbox.addLayout(hbox)
 
-        sbox = gui.QFrame()
-        sbox.setFrameStyle(gui.QFrame.Box)
+        sbox = qtw.QFrame()
+        sbox.setFrameStyle(qtw.QFrame.Box)
 
-        box = gui.QVBoxLayout()
+        box = qtw.QVBoxLayout()
 
-        hbox = gui.QHBoxLayout()
-        self.attr_table = gui.QTableWidget(self)
+        hbox = qtw.QHBoxLayout()
+        self.attr_table = qtw.QTableWidget(self)
         ## self.attr_table.resize(540, 340)
         self.attr_table.setColumnCount(2)
         self.attr_table.setHorizontalHeaderLabels(['attribute', 'value']) # alleen zo te wijzigen
@@ -96,11 +97,11 @@ class ElementDialog(gui.QDialog):
                     self.old_styledata = value
                 idx = self.attr_table.rowCount()
                 self.attr_table.insertRow(idx)
-                item = gui.QTableWidgetItem(attr)
+                item = qtw.QTableWidgetItem(attr)
                 self.attr_table.setItem(idx, 0, item)
                 if attr == 'style':
                     item.setFlags(item.flags() & (not core.Qt.ItemIsEditable))
-                item = gui.QTableWidgetItem(value)
+                item = qtw.QTableWidgetItem(value)
                 self.attr_table.setItem(idx, 1, item)
                 if attr == 'style':
                     item.setFlags(item.flags() & (not core.Qt.ItemIsEditable))
@@ -111,10 +112,10 @@ class ElementDialog(gui.QDialog):
         ## hbox.addStretch()
         box.addLayout(hbox)
 
-        hbox = gui.QHBoxLayout()
-        self.add_button = gui.QPushButton('&Add Attribute', self)
+        hbox = qtw.QHBoxLayout()
+        self.add_button = qtw.QPushButton('&Add Attribute', self)
         self.add_button.clicked.connect(self.on_add)
-        self.delete_button = gui.QPushButton('&Delete Selected', self)
+        self.delete_button = qtw.QPushButton('&Delete Selected', self)
         self.delete_button.clicked.connect(self.on_del)
         if is_style_tag:
             text = '&Edit styles'
@@ -124,7 +125,7 @@ class ElementDialog(gui.QDialog):
             text = '&Edit inline style'
         else:
             text = '&Add inline style'
-        self.style_button = gui.QPushButton(text, self)
+        self.style_button = qtw.QPushButton(text, self)
         if cssedit_available:
             self.style_button.clicked.connect(self.on_style)
         else:
@@ -140,12 +141,12 @@ class ElementDialog(gui.QDialog):
 
         vbox.addWidget(sbox)
 
-        hbox = gui.QHBoxLayout()
-        self.ok_button = gui.QPushButton('&Save', self)
-        self.connect(self.ok_button, core.SIGNAL('clicked()'), self.on_ok)
+        hbox = qtw.QHBoxLayout()
+        self.ok_button = qtw.QPushButton('&Save', self)
+        self.ok_button.clicked.connect(self.on_ok)
         self.ok_button.setDefault(True)
-        self.cancel_button = gui.QPushButton('&Cancel', self)
-        self.connect(self.cancel_button, core.SIGNAL('clicked()'), self.on_cancel)
+        self.cancel_button = qtw.QPushButton('&Cancel', self)
+        self.cancel_button.clicked.connect(self.on_cancel)
         hbox.addStretch()
         hbox.addWidget(self.ok_button)
         hbox.addWidget(self.cancel_button)
@@ -171,7 +172,7 @@ class ElementDialog(gui.QDialog):
         if row or row == 0:
             self.attr_table.removeRow(row)
         else:
-            gui.QMessageBox.information(self, 'Delete attribute',
+            qtw.QMessageBox.information(self, 'Delete attribute',
                 "press Enter on this item first")
 
     def on_style(self, evt=None):
@@ -216,10 +217,10 @@ class ElementDialog(gui.QDialog):
             else:
                 css.setWindowModality(core.Qt.ApplicationModal)
                 css.show()
-        if mld: gui.QMessageBox.information(self, 'Htmledit', mld)
+        if mld: qtw.QMessageBox.information(self, 'Htmledit', mld)
 
     def on_cancel(self):
-        gui.QDialog.done(self, gui.QDialog.Rejected)
+        super().done(qtw.QDialog.Rejected)
 
     def on_ok(self):
         "controle bij OK aanklikken"
@@ -230,7 +231,7 @@ class ElementDialog(gui.QDialog):
         for letter in tag:
             if letter not in test:
                 okay = False
-                gui.QMessageBox.information(self, self._parent.title,
+                qtw.QMessageBox.information(self, self._parent.title,
                     'Illegal character(s) in tag name')
                 break
         commented = self.comment_button.checkState()
@@ -240,7 +241,7 @@ class ElementDialog(gui.QDialog):
                 name = str(self.attr_table.item(i, 0).text())
                 value = str(self.attr_table.item(i, 1).text())
             except AttributeError:
-                gui.QMessageBox.information(self, 'Add an element',
+                qtw.QMessageBox.information(self, 'Add an element',
                     'Press enter on this item first')
                 return
             if name != 'style':
@@ -257,19 +258,19 @@ class ElementDialog(gui.QDialog):
             if self.old_styledata:
                 attrs['style'] = self.old_styledata
         self._parent.dialog_data = tag, attrs, commented
-        gui.QDialog.done(self, gui.QDialog.Accepted)
+        super().done(qtw.QDialog.Accepted)
 
-class TextDialog(gui.QDialog):
+class TextDialog(qtw.QDialog):
     """dialoog om een tekst element op te voeren of aan te passen
     biedt tevens de mogelijkheid de tekst "op commentaar" te zetten"""
 
     def __init__(self, parent, title='', text=None):
         self._parent = parent
-        gui.QDialog.__init__(self, parent)
+        super().__init__(parent)
         self.setWindowTitle(title)
-        vbox = gui.QVBoxLayout()
-        hbox = gui.QHBoxLayout()
-        self.comment_button = gui.QCheckBox('&Comment(ed)', self)
+        vbox = qtw.QVBoxLayout()
+        hbox = qtw.QHBoxLayout()
+        self.comment_button = qtw.QCheckBox('&Comment(ed)', self)
         ## self.comment_button.setCheckState(iscomment)
         ## iscomment = False
         if text is None:
@@ -282,19 +283,19 @@ class TextDialog(gui.QDialog):
         hbox.addWidget(self.comment_button)
         vbox.addLayout(hbox)
 
-        hbox = gui.QHBoxLayout()
-        self.data_text = gui.QTextEdit(self)
+        hbox = qtw.QHBoxLayout()
+        self.data_text = qtw.QTextEdit(self)
         self.data_text.resize(340, 175)
         self.data_text.setText(text)
         hbox.addWidget(self.data_text)
         vbox.addLayout(hbox)
 
-        hbox = gui.QHBoxLayout()
-        self.ok_button = gui.QPushButton('&Save', self)
-        self.connect(self.ok_button, core.SIGNAL('clicked()'), self.on_ok)
+        hbox = qtw.QHBoxLayout()
+        self.ok_button = qtw.QPushButton('&Save', self)
+        self.ok_button.clicked.connect(self.on_ok)
         self.ok_button.setDefault(True)
-        self.cancel_button = gui.QPushButton('&Cancel', self)
-        self.connect(self.cancel_button, core.SIGNAL('clicked()'), self.on_cancel)
+        self.cancel_button = qtw.QPushButton('&Cancel', self)
+        self.cancel_button.clicked.connect(self.on_cancel)
         hbox.addWidget(self.ok_button)
         hbox.addWidget(self.cancel_button)
         vbox.addLayout(hbox)
@@ -303,49 +304,49 @@ class TextDialog(gui.QDialog):
         self.data_text.setFocus()
 
     def on_cancel(self):
-        gui.QDialog.done(self, gui.QDialog.Rejected)
+        super().done(qtw.QDialog.Rejected)
 
     def on_ok(self):
         self._parent.dialog_data = (
             str(self.data_text.toPlainText()),
             self.comment_button.checkState(),
             )
-        gui.QDialog.done(self, gui.QDialog.Accepted)
+        super().done(qtw.QDialog.Accepted)
 
-class DtdDialog(gui.QDialog):
+class DtdDialog(qtw.QDialog):
     "dialoog om het toe te voegen dtd te selecteren"
 
     def __init__(self, parent):
         self._parent = parent
-        gui.QDialog.__init__(self, parent)
+        super().__init__(parent)
         self.setWindowTitle("Add DTD")
         self.setWindowIcon(gui.QIcon(os.path.join(PPATH,"ashe.ico")))
-        vbox = gui.QVBoxLayout()
-        hbox = gui.QHBoxLayout()
+        vbox = qtw.QVBoxLayout()
+        hbox = qtw.QHBoxLayout()
 
-        sbox = gui.QFrame()
-        sbox.setFrameStyle(gui.QFrame.Box)
-        vsbox = gui.QVBoxLayout()
+        sbox = qtw.QFrame()
+        sbox.setFrameStyle(qtw.QFrame.Box)
+        vsbox = qtw.QVBoxLayout()
 
-        hsbox = gui.QHBoxLayout()
-        lbl = gui.QLabel("Select document type:", self)
+        hsbox = qtw.QHBoxLayout()
+        lbl = qtw.QLabel("Select document type:", self)
         hsbox.addWidget(lbl)
         vsbox.addLayout(hsbox, 0)
 
-        hsbox = gui.QHBoxLayout()
-        vhsbox = gui.QVBoxLayout()
+        hsbox = qtw.QHBoxLayout()
+        vhsbox = qtw.QVBoxLayout()
         first = True
         button_groups = []
         self.dtd_list = []
         for idx, x in enumerate(ed.dtdlist):
             if not x[0]:
-                vhsbox.addSpacing(8) #  = gui.QVBoxLayout()
+                vhsbox.addSpacing(8) #  = qtw.QVBoxLayout()
                 continue
             if first:
-                grp = gui.QButtonGroup()
+                grp = qtw.QButtonGroup()
                 button_groups.append(grp)
                 first = False
-            radio = gui.QRadioButton(x[0], self)
+            radio = qtw.QRadioButton(x[0], self)
             if idx == 4:
                 radio.setChecked(True)
             self.dtd_list.append((x[0], x[1], radio))
@@ -358,13 +359,13 @@ class DtdDialog(gui.QDialog):
         hbox.addWidget(sbox)
         vbox.addLayout(hbox)
 
-        ## hbox = gui.QDialog.ButtonBoxlayout()
-        hbox = gui.QHBoxLayout()
-        self.ok_button = gui.QPushButton('&Save', self)
-        self.connect(self.ok_button, core.SIGNAL('clicked()'), self.on_ok)
+        ## hbox = qtw.QDialog.ButtonBoxlayout()
+        hbox = qtw.QHBoxLayout()
+        self.ok_button = qtw.QPushButton('&Save', self)
+        self.ok_button.clicked.connect(self.on_ok)
         self.ok_button.setDefault(True)
-        self.cancel_button = gui.QPushButton('&Cancel', self)
-        self.connect(self.cancel_button, core.SIGNAL('clicked()'), self.on_cancel)
+        self.cancel_button = qtw.QPushButton('&Cancel', self)
+        self.cancel_button.clicked.connect(self.on_cancel)
         hbox.addStretch()
         hbox.addWidget(self.ok_button)
         hbox.addWidget(self.cancel_button)
@@ -374,57 +375,57 @@ class DtdDialog(gui.QDialog):
         self.setLayout(vbox)
 
     def on_cancel(self):
-        gui.QDialog.done(self, gui.QDialog.Rejected)
+        super().done(qtw.QDialog.Rejected)
 
     def on_ok(self):
         for cap, dtd, radio in self.dtd_list:
             if radio and radio.isChecked():
                 self._parent.dialog_data = dtd
                 break
-        gui.QDialog.done(self, gui.QDialog.Accepted)
+        super().done(qtw.QDialog.Accepted)
 
-class CssDialog(gui.QDialog):
+class CssDialog(qtw.QDialog):
     "dialoog om een stylesheet toe te voegen"
 
     def __init__(self, parent):
         self._parent = parent
         self.styledata = ''
-        gui.QDialog.__init__(self, parent)
+        super().__init__(parent)
         self.setWindowTitle('Add Stylesheet')
         self.setWindowIcon(gui.QIcon(os.path.join(PPATH,"ashe.ico")))
-        vbox = gui.QVBoxLayout()
+        vbox = qtw.QVBoxLayout()
 
-        sbox = gui.QFrame()
-        sbox.setFrameStyle(gui.QFrame.Box)
-        gbox = gui.QGridLayout() # gui.QGridBagSizer(4, 4)
+        sbox = qtw.QFrame()
+        sbox.setFrameStyle(qtw.QFrame.Box)
+        gbox = qtw.QGridLayout() # qtw.QGridBagSizer(4, 4)
 
-        gbox.addWidget(gui.QLabel("link to stylesheet:", self), 0, 0)
-        self.link_text = gui.QLineEdit("http://", self)
+        gbox.addWidget(qtw.QLabel("link to stylesheet:", self), 0, 0)
+        self.link_text = qtw.QLineEdit("http://", self)
         gbox.addWidget(self.link_text, 0, 1)
 
-        self.choose_button = gui.QPushButton('Search', self)
+        self.choose_button = qtw.QPushButton('Search', self)
         self.choose_button.clicked.connect(self.kies)
-        box = gui.QHBoxLayout()
+        box = qtw.QHBoxLayout()
         box.addStretch()
         box.addWidget(self.choose_button)
         box.addStretch()
         gbox.addLayout(box, 1, 0, 1, 2)
 
-        gbox.addWidget(gui.QLabel("for media type(s):", self), 2, 0)
-        self.text_text = gui.QLineEdit(self)
+        gbox.addWidget(qtw.QLabel("for media type(s):", self), 2, 0)
+        self.text_text = qtw.QLineEdit(self)
         gbox.addWidget(self.text_text, 2, 1)
 
         sbox.setLayout(gbox)
         vbox.addWidget(sbox)
 
-        hbox = gui.QHBoxLayout()
-        self.ok_button = gui.QPushButton('&Save', self)
-        self.connect(self.ok_button, core.SIGNAL('clicked()'), self.on_ok)
+        hbox = qtw.QHBoxLayout()
+        self.ok_button = qtw.QPushButton('&Save', self)
+        self.ok_button.clicked.connect(self.on_ok)
         self.ok_button.setDefault(True)
-        self.inline_button = gui.QPushButton('&Add inline', self)
-        self.connect(self.inline_button, core.SIGNAL('clicked()'), self.on_inline)
-        self.cancel_button = gui.QPushButton('&Cancel', self)
-        self.connect(self.cancel_button, core.SIGNAL('clicked()'), self.on_cancel)
+        self.inline_button = qtw.QPushButton('&Add inline', self)
+        self.inline_button.clicked.connect(self.on_inline)
+        self.cancel_button = qtw.QPushButton('&Cancel', self)
+        self.cancel_button.clicked.connect(self.on_cancel)
         hbox.addStretch()
         hbox.addWidget(self.ok_button)
         hbox.addWidget(self.inline_button)
@@ -446,12 +447,12 @@ class CssDialog(gui.QDialog):
             mask = "CSS files (*.css)"
         elif os.name == "posix":
             mask = "CSS files (*.css *.CSS)"
-        fnaam = gui.QFileDialog.getOpenFileName(self, "Choose a file", loc, mask)
+        fnaam, _ = qtw.QFileDialog.getOpenFileName(self, "Choose a file", loc, mask)
         if fnaam:
             self.link_text.setText(fnaam)
 
     def on_cancel(self):
-        gui.QDialog.done(self, gui.QDialog.Rejected)
+        super().done(qtw.QDialog.Rejected)
 
     def on_ok(self):
         """bij OK: het geselecteerde (absolute) pad omzetten in een relatief pad
@@ -459,13 +460,13 @@ class CssDialog(gui.QDialog):
         # TODO: wat als er zowel styledata als een linkadres is?
         if self.styledata:
             self._parent.dialog_data = {"cssdata": self.styledata.decode()}
-            gui.QDialog.done(self, gui.QDialog.Accepted)
+            super().done(qtw.QDialog.Accepted)
             return
         link = str(self.link_text.text())
         if link in ('', 'http://'):
-            gui.QMessageBox.information(self, self.parent().title,
+            qtw.QMessageBox.information(self, self.parent().title,
                 "bestandsnaam opgeven of inline stylesheet definiëren s.v.p")
-            ## gui.QDialog.done(self, gui.QDialog.Rejected)
+            ## super().done(qtw.QDialog.Rejected)
             return
         if not link.startswith('http://'):
             link = os.path.abspath(link)
@@ -475,7 +476,7 @@ class CssDialog(gui.QDialog):
                 whereami = os.path.join(os.getcwd(),'index.html')
             link = ed.getrelativepath(link, whereami)
         if not link:
-            gui.QMessageBox.information(self, self.parent().title,
+            qtw.QMessageBox.information(self, self.parent().title,
                 'Unable to make this local link relative')
         else:
             self.link = link
@@ -487,7 +488,7 @@ class CssDialog(gui.QDialog):
         test = str(self.text_text.text())
         if test:
             self._parent.dialog_data["media"] = test
-        gui.QDialog.done(self, gui.QDialog.Accepted)
+        super().done(qtw.QDialog.Accepted)
 
     def on_inline(self):
         "voegt een 'style' tag in"
@@ -502,52 +503,52 @@ class CssDialog(gui.QDialog):
         css.setWindowModality(core.Qt.ApplicationModal)
         css.show()
 
-class LinkDialog(gui.QDialog):
+class LinkDialog(qtw.QDialog):
     "dialoog om een link element toe te voegen"
 
     def __init__(self, parent):
         self._parent = parent
-        gui.QDialog.__init__(self, parent)
+        super().__init__(parent)
         self.setWindowTitle('Add Link')
         self.setWindowIcon(gui.QIcon(os.path.join(PPATH,"ashe.ico")))
-        vbox = gui.QVBoxLayout()
+        vbox = qtw.QVBoxLayout()
 
-        sbox = gui.QFrame()
-        sbox.setFrameStyle(gui.QFrame.Box)
-        gbox = gui.QGridLayout() # gui.QGridBagSizer(4, 4)
-        gbox.addWidget(gui.QLabel("descriptive title:", self), 0, 0)
-        self.title_text = gui.QLineEdit(self)
+        sbox = qtw.QFrame()
+        sbox.setFrameStyle(qtw.QFrame.Box)
+        gbox = qtw.QGridLayout() # qtw.QGridBagSizer(4, 4)
+        gbox.addWidget(qtw.QLabel("descriptive title:", self), 0, 0)
+        self.title_text = qtw.QLineEdit(self)
         self.title_text.setMinimumWidth(250)
         gbox.addWidget(self.title_text, 0, 1)
 
-        gbox.addWidget(gui.QLabel("link to document:", self), 1, 0)
-        self.link_text = gui.QLineEdit("http://", self)
+        gbox.addWidget(qtw.QLabel("link to document:", self), 1, 0)
+        self.link_text = qtw.QLineEdit("http://", self)
         self.link_text.textChanged.connect(self.set_ltext)
         self.linktxt = ""
         gbox.addWidget(self.link_text, 1, 1)
 
-        self.choose_button = gui.QPushButton('Search', self)
+        self.choose_button = qtw.QPushButton('Search', self)
         self.choose_button.clicked.connect(self.kies)
-        box = gui.QHBoxLayout()
+        box = qtw.QHBoxLayout()
         box.addStretch()
         box.addWidget(self.choose_button)
         box.addStretch()
         gbox.addLayout(box, 2, 0, 1, 2)
 
-        gbox.addWidget(gui.QLabel("link text:", self), 3, 0)
-        self.text_text = gui.QLineEdit(self)
+        gbox.addWidget(qtw.QLabel("link text:", self), 3, 0)
+        self.text_text = qtw.QLineEdit(self)
         self.text_text.textChanged.connect(self.set_ttext)
         gbox.addWidget(self.text_text, 3, 1)
 
         sbox.setLayout(gbox)
         vbox.addWidget(sbox)
 
-        hbox = gui.QHBoxLayout()
-        self.ok_button = gui.QPushButton('&Save', self)
-        self.connect(self.ok_button, core.SIGNAL('clicked()'), self.on_ok)
+        hbox = qtw.QHBoxLayout()
+        self.ok_button = qtw.QPushButton('&Save', self)
+        self.ok_button.clicked.connect(self.on_ok)
         self.ok_button.setDefault(True)
-        self.cancel_button = gui.QPushButton('&Cancel', self)
-        self.connect(self.cancel_button, core.SIGNAL('clicked()'), self.on_cancel)
+        self.cancel_button = qtw.QPushButton('&Cancel', self)
+        self.cancel_button.clicked.connect(self.on_cancel)
         hbox.addStretch()
         hbox.addWidget(self.ok_button)
         hbox.addWidget(self.cancel_button)
@@ -564,7 +565,7 @@ class LinkDialog(gui.QDialog):
             loc = os.path.dirname(self._parent.xmlfn)
         else:
             loc = os.getcwd()
-        fnaam = gui.QFileDialog.getOpenFileName(self, "Choose a file", loc,
+        fnaam, _ = qtw.QFileDialog.getOpenFileName(self, "Choose a file", loc,
             HMASK)
         if fnaam:
             self.link_text.setText(fnaam)
@@ -581,7 +582,7 @@ class LinkDialog(gui.QDialog):
             self.linktxt = ""
 
     def on_cancel(self):
-        gui.QDialog.done(self, gui.QDialog.Rejected)
+        super().done(qtw.QDialog.Rejected)
 
     def on_ok(self):
         "bij OK: het geselecteerde (absolute) pad omzetten in een relatief pad"
@@ -595,7 +596,7 @@ class LinkDialog(gui.QDialog):
                     whereami = os.path.join(os.getcwd(),'index.html')
                 link = ed.getrelativepath(link, whereami)
             if not link:
-                gui.QMessageBox.information('Unable to make this local link relative',
+                qtw.QMessageBox.information('Unable to make this local link relative',
                     self.parent.title)
             else:
                 self.link = link
@@ -606,56 +607,56 @@ class LinkDialog(gui.QDialog):
                 }
             self._parent.dialog_data = txt, data
         else:
-            gui.QMessageBox.information("link opgeven of cancel kiezen s.v.p",'')
+            qtw.QMessageBox.information("link opgeven of cancel kiezen s.v.p",'')
             return
-        gui.QDialog.done(self, gui.QDialog.Accepted)
+        super().done(qtw.QDialog.Accepted)
 
-class ImageDialog(gui.QDialog):
+class ImageDialog(qtw.QDialog):
     'dialoog om een image toe te voegen'
 
     def __init__(self, parent):
         self._parent = parent
-        gui.QDialog.__init__(self, parent)
+        super().__init__(parent)
         self.setWindowTitle('Add Image')
         self.setWindowIcon(gui.QIcon(os.path.join(PPATH,"ashe.ico")))
-        vbox = gui.QVBoxLayout()
+        vbox = qtw.QVBoxLayout()
 
-        sbox = gui.QFrame()
-        sbox.setFrameStyle(gui.QFrame.Box)
-        gbox = gui.QGridLayout() # gui.QGridBagSizer(4, 4)
-        gbox.addWidget(gui.QLabel("descriptive title:", self), 0, 0)
-        self.title_text = gui.QLineEdit(self)
+        sbox = qtw.QFrame()
+        sbox.setFrameStyle(qtw.QFrame.Box)
+        gbox = qtw.QGridLayout() # qtw.QGridBagSizer(4, 4)
+        gbox.addWidget(qtw.QLabel("descriptive title:", self), 0, 0)
+        self.title_text = qtw.QLineEdit(self)
         self.title_text.setMinimumWidth(250)
         gbox.addWidget(self.title_text, 0, 1)
 
-        gbox.addWidget(gui.QLabel("link to image:", self), 1, 0)
-        self.link_text = gui.QLineEdit("http://", self)
+        gbox.addWidget(qtw.QLabel("link to image:", self), 1, 0)
+        self.link_text = qtw.QLineEdit("http://", self)
         self.link_text.textChanged.connect(self.set_ltext)
         self.linktxt = ""
         gbox.addWidget(self.link_text, 1, 1)
 
-        self.choose_button = gui.QPushButton('Search', self)
+        self.choose_button = qtw.QPushButton('Search', self)
         self.choose_button.clicked.connect(self.kies)
-        box = gui.QHBoxLayout()
+        box = qtw.QHBoxLayout()
         box.addStretch()
         box.addWidget(self.choose_button)
         box.addStretch()
         gbox.addLayout(box, 2, 0, 1, 2)
 
-        gbox.addWidget(gui.QLabel("alternate text:", self), 3, 0)
-        self.alt_text = gui.QLineEdit(self)
+        gbox.addWidget(qtw.QLabel("alternate text:", self), 3, 0)
+        self.alt_text = qtw.QLineEdit(self)
         self.alt_text.textChanged.connect(self.set_ttext)
         gbox.addWidget(self.alt_text, 3, 1)
 
         sbox.setLayout(gbox)
         vbox.addWidget(sbox)
 
-        hbox = gui.QHBoxLayout()
-        self.ok_button = gui.QPushButton('&Save', self)
-        self.connect(self.ok_button, core.SIGNAL('clicked()'), self.on_ok)
+        hbox = qtw.QHBoxLayout()
+        self.ok_button = qtw.QPushButton('&Save', self)
+        self.ok_button.clicked.connect(self.on_ok)
         self.ok_button.setDefault(True)
-        self.cancel_button = gui.QPushButton('&Cancel', self)
-        self.connect(self.cancel_button, core.SIGNAL('clicked()'), self.on_cancel)
+        self.cancel_button = qtw.QPushButton('&Cancel', self)
+        self.cancel_button.clicked.connect(self.on_cancel)
         hbox.addStretch()
         hbox.addWidget(self.ok_button)
         hbox.addWidget(self.cancel_button)
@@ -679,7 +680,7 @@ class ImageDialog(gui.QDialog):
         if os.name == "posix":
             mask += ' ' + mask.upper()
         mask = "Image files ({});;{}".format(mask, IMASK)
-        fnaam = gui.QFileDialog.getOpenFileName(self, "Choose a file", loc, mask)
+        fnaam, _ = qtw.QFileDialog.getOpenFileName(self, "Choose a file", loc, mask)
         if fnaam:
             self.link_text.setText(fnaam)
 
@@ -695,7 +696,7 @@ class ImageDialog(gui.QDialog):
             self.linktxt = ""
 
     def on_cancel(self):
-        gui.QDialog.done(self, gui.QDialog.Rejected)
+        super().done(qtw.QDialog.Rejected)
 
     def on_ok(self):
         "bij OK: het geselecteerde (absolute) pad omzetten in een relatief pad"
@@ -709,7 +710,7 @@ class ImageDialog(gui.QDialog):
                     whereami = os.path.join(os.getcwd(),'index.html')
                 link = ed.getrelativepath(link, whereami)
             if not link:
-                gui.QMessageBox.information('Unable to make this local link relative',
+                qtw.QMessageBox.information('Unable to make this local link relative',
                     self.parent.title)
             else:
                 self.link = link
@@ -719,60 +720,60 @@ class ImageDialog(gui.QDialog):
                     "title": str(self.title_text.text())
                     }
         else:
-            gui.QMessageBox.information("image link opgeven of cancel kiezen s.v.p",'')
+            qtw.QMessageBox.information("image link opgeven of cancel kiezen s.v.p",'')
             return
-        gui.QDialog.done(self, gui.QDialog.Accepted)
+        super().done(qtw.QDialog.Accepted)
 
-class VideoDialog(gui.QDialog):
+class VideoDialog(qtw.QDialog):
     'dialoog om een video element toe te voegen'
 
     def __init__(self, parent):
         self._parent = parent
         initialwidth, initialheight = 400, 200
         maxwidth, maxheight = 2400, 1200
-        gui.QDialog.__init__(self, parent)
+        super().__init__(parent)
         self.setWindowTitle('Add Video')
         self.setWindowIcon(gui.QIcon(os.path.join(PPATH,"ashe.ico")))
-        vbox = gui.QVBoxLayout()
+        vbox = qtw.QVBoxLayout()
 
-        sbox = gui.QFrame()
-        sbox.setFrameStyle(gui.QFrame.Box)
-        gbox = gui.QGridLayout() # gui.QGridBagSizer(4, 4)
+        sbox = qtw.QFrame()
+        sbox.setFrameStyle(qtw.QFrame.Box)
+        gbox = qtw.QGridLayout() # qtw.QGridBagSizer(4, 4)
 
         row = 0
-        gbox.addWidget(gui.QLabel("link to video:", self), row, 0)
-        self.link_text = gui.QLineEdit("http://", self)
+        gbox.addWidget(qtw.QLabel("link to video:", self), row, 0)
+        self.link_text = qtw.QLineEdit("http://", self)
         ## self.link_text.textChanged.connect(self.set_ltext)
         self.linktxt = ""
         gbox.addWidget(self.link_text, row, 1)
 
         row += 1
-        self.choose_button = gui.QPushButton('Search', self)
+        self.choose_button = qtw.QPushButton('Search', self)
         self.choose_button.clicked.connect(self.kies)
-        box = gui.QHBoxLayout()
+        box = qtw.QHBoxLayout()
         box.addStretch()
         box.addWidget(self.choose_button)
         box.addStretch()
         gbox.addLayout(box, row, 0, 1, 2)
 
         row += 1
-        gbox.addWidget(gui.QLabel("height of video window:", self), row, 0)
-        self.hig_text = gui.QSpinBox(self) #.pnl, -1, size = (40, -1))
+        gbox.addWidget(qtw.QLabel("height of video window:", self), row, 0)
+        self.hig_text = qtw.QSpinBox(self) #.pnl, -1, size = (40, -1))
         self.hig_text.setMaximum(maxheight)
         self.hig_text.setValue(initialheight)
         self.hig_text.valueChanged.connect(self.on_text)
-        hbox = gui.QHBoxLayout()
+        hbox = qtw.QHBoxLayout()
         hbox.addWidget(self.hig_text)
         hbox.addStretch()
         gbox.addLayout(hbox, row, 1)
 
         row += 1
-        gbox.addWidget(gui.QLabel("width  of video window:", self), row, 0)
-        self.wid_text = gui.QSpinBox(self) #.pnl, -1, size = (40, -1))
+        gbox.addWidget(qtw.QLabel("width  of video window:", self), row, 0)
+        self.wid_text = qtw.QSpinBox(self) #.pnl, -1, size = (40, -1))
         self.wid_text.setMaximum(maxwidth)
         self.wid_text.setValue(initialwidth)
         self.wid_text.valueChanged.connect(self.on_text)
-        hbox = gui.QHBoxLayout()
+        hbox = qtw.QHBoxLayout()
         hbox.addWidget(self.wid_text)
         hbox.addStretch()
         gbox.addLayout(hbox, row, 1)
@@ -780,12 +781,12 @@ class VideoDialog(gui.QDialog):
         sbox.setLayout(gbox)
         vbox.addWidget(sbox)
 
-        hbox = gui.QHBoxLayout()
-        self.ok_button = gui.QPushButton('&Save', self)
-        self.connect(self.ok_button, core.SIGNAL('clicked()'), self.on_ok)
+        hbox = qtw.QHBoxLayout()
+        self.ok_button = qtw.QPushButton('&Save', self)
+        self.ok_button.clicked.connect(self.on_ok)
         self.ok_button.setDefault(True)
-        self.cancel_button = gui.QPushButton('&Cancel', self)
-        self.connect(self.cancel_button, core.SIGNAL('clicked()'), self.on_cancel)
+        self.cancel_button = qtw.QPushButton('&Cancel', self)
+        self.cancel_button.clicked.connect(self.on_cancel)
         hbox.addStretch()
         hbox.addWidget(self.ok_button)
         hbox.addWidget(self.cancel_button)
@@ -809,7 +810,7 @@ class VideoDialog(gui.QDialog):
         if os.name == "posix":
             mask += ' ' + mask.upper()
         mask = "Video files ({});;{}".format(mask, IMASK)
-        fnaam = gui.QFileDialog.getOpenFileName(self, "Choose a file", loc, mask)
+        fnaam, _ = qtw.QFileDialog.getOpenFileName(self, "Choose a file", loc, mask)
         if fnaam:
             self.link_text.setText(fnaam)
 
@@ -818,12 +819,12 @@ class VideoDialog(gui.QDialog):
         try:
             num = int(number) # self.rows_text.value())
         except ValueError:
-            gui.QMessageBox.information(self, self.title,
+            qtw.QMessageBox.information(self, self.title,
                 'Number must be numeric integer','')
             return
 
     def on_cancel(self):
-        gui.QDialog.done(self, gui.QDialog.Rejected)
+        super().done(qtw.QDialog.Rejected)
 
     def on_ok(self):
         "bij OK: het geselecteerde (absolute) pad omzetten in een relatief pad"
@@ -837,7 +838,7 @@ class VideoDialog(gui.QDialog):
                     whereami = os.path.join(os.getcwd(),'index.html')
                 link = ed.getrelativepath(link, whereami)
             if not link:
-                gui.QMessageBox.information('Unable to make this local link relative',
+                qtw.QMessageBox.information('Unable to make this local link relative',
                     self.parent.title)
             else:
                 self.link = link
@@ -847,35 +848,35 @@ class VideoDialog(gui.QDialog):
                     "width": str(self.wid_text.text())
                     }
         else:
-            gui.QMessageBox.information("link naar video opgeven of cancel kiezen s.v.p",'')
+            qtw.QMessageBox.information("link naar video opgeven of cancel kiezen s.v.p",'')
             return
-        gui.QDialog.done(self, gui.QDialog.Accepted)
+        super().done(qtw.QDialog.Accepted)
 
-class AudioDialog(gui.QDialog):
+class AudioDialog(qtw.QDialog):
     'dialoog om een audio element toe te voegen'
 
     def __init__(self, parent):
         self._parent = parent
-        gui.QDialog.__init__(self, parent)
+        super().__init__(parent)
         self.setWindowTitle('Add Audio')
         self.setWindowIcon(gui.QIcon(os.path.join(PPATH,"ashe.ico")))
-        vbox = gui.QVBoxLayout()
+        vbox = qtw.QVBoxLayout()
 
-        sbox = gui.QFrame()
-        sbox.setFrameStyle(gui.QFrame.Box)
-        gbox = gui.QGridLayout() # gui.QGridBagSizer(4, 4)
+        sbox = qtw.QFrame()
+        sbox.setFrameStyle(qtw.QFrame.Box)
+        gbox = qtw.QGridLayout() # qtw.QGridBagSizer(4, 4)
 
         row = 0
-        gbox.addWidget(gui.QLabel("link to audio fragment:", self), row, 0)
-        self.link_text = gui.QLineEdit("http://", self)
+        gbox.addWidget(qtw.QLabel("link to audio fragment:", self), row, 0)
+        self.link_text = qtw.QLineEdit("http://", self)
         ## self.link_text.textChanged.connect(self.set_ltext)
         self.linktxt = ""
         gbox.addWidget(self.link_text, row, 1)
 
         row += 1
-        self.choose_button = gui.QPushButton('Search', self)
+        self.choose_button = qtw.QPushButton('Search', self)
         self.choose_button.clicked.connect(self.kies)
-        box = gui.QHBoxLayout()
+        box = qtw.QHBoxLayout()
         box.addStretch()
         box.addWidget(self.choose_button)
         box.addStretch()
@@ -884,12 +885,12 @@ class AudioDialog(gui.QDialog):
         sbox.setLayout(gbox)
         vbox.addWidget(sbox)
 
-        hbox = gui.QHBoxLayout()
-        self.ok_button = gui.QPushButton('&Save', self)
-        self.connect(self.ok_button, core.SIGNAL('clicked()'), self.on_ok)
+        hbox = qtw.QHBoxLayout()
+        self.ok_button = qtw.QPushButton('&Save', self)
+        self.ok_button.clicked.connect(self.on_ok)
         self.ok_button.setDefault(True)
-        self.cancel_button = gui.QPushButton('&Cancel', self)
-        self.connect(self.cancel_button, core.SIGNAL('clicked()'), self.on_cancel)
+        self.cancel_button = qtw.QPushButton('&Cancel', self)
+        self.cancel_button.clicked.connect(self.on_cancel)
         hbox.addStretch()
         hbox.addWidget(self.ok_button)
         hbox.addWidget(self.cancel_button)
@@ -913,12 +914,12 @@ class AudioDialog(gui.QDialog):
         if os.name == "posix":
             mask += ' ' + mask.upper()
         mask = "Audio files ({});;{}".format(mask, IMASK)
-        fnaam = gui.QFileDialog.getOpenFileName(self, "Choose a file", loc, mask)
+        fnaam, _ = qtw.QFileDialog.getOpenFileName(self, "Choose a file", loc, mask)
         if fnaam:
             self.link_text.setText(fnaam)
 
     def on_cancel(self):
-        gui.QDialog.done(self, gui.QDialog.Rejected)
+        super().done(qtw.QDialog.Rejected)
 
     def on_ok(self):
         "bij OK: het geselecteerde (absolute) pad omzetten in een relatief pad"
@@ -932,7 +933,7 @@ class AudioDialog(gui.QDialog):
                     whereami = os.path.join(os.getcwd(),'index.html')
                 link = ed.getrelativepath(link, whereami)
             if not link:
-                gui.QMessageBox.information('Unable to make this local link relative',
+                qtw.QMessageBox.information('Unable to make this local link relative',
                     self.parent.title)
             else:
                 self.link = link
@@ -940,43 +941,43 @@ class AudioDialog(gui.QDialog):
                     "src": link,
                     }
         else:
-            gui.QMessageBox.information("link naar audio opgeven of cancel kiezen s.v.p",'')
+            qtw.QMessageBox.information("link naar audio opgeven of cancel kiezen s.v.p",'')
             return
-        gui.QDialog.done(self, gui.QDialog.Accepted)
+        super().done(qtw.QDialog.Accepted)
 
-class ListDialog(gui.QDialog):
+class ListDialog(qtw.QDialog):
     'dialoog om een list toe te voegen'
 
     def __init__(self, parent):
         self._parent = parent
         self.items = []
         self.dataitems = []
-        gui.QDialog.__init__(self, parent)
+        super().__init__(parent)
         self.setWindowTitle('Add a list')
         self.setWindowIcon(gui.QIcon(os.path.join(PPATH,"ashe.ico")))
-        vbox = gui.QVBoxLayout()
+        vbox = qtw.QVBoxLayout()
 
-        sbox = gui.QFrame()
-        sbox.setFrameStyle(gui.QFrame.Box)
-        vsbox = gui.QVBoxLayout()
-        tbox = gui.QGridLayout() # gui.QGridBagSizer(4, 4)
-        tbox.addWidget(gui.QLabel("choose type of list:", self), 0, 0)
-        self.type_select = gui.QComboBox(self)
+        sbox = qtw.QFrame()
+        sbox.setFrameStyle(qtw.QFrame.Box)
+        vsbox = qtw.QVBoxLayout()
+        tbox = qtw.QGridLayout() # qtw.QGridBagSizer(4, 4)
+        tbox.addWidget(qtw.QLabel("choose type of list:", self), 0, 0)
+        self.type_select = qtw.QComboBox(self)
         self.type_select.addItems(["unordered", "ordered", "definition",])
         ## self.type_select.setCurrentIndex(0) # SetStringSelection("unordered")
         self.type_select.activated.connect(self.on_type)
         tbox.addWidget(self.type_select, 0, 1)
 
-        tbox.addWidget(gui.QLabel("initial number of items:", self), 1, 0)
-        self.rows_text = gui.QSpinBox(self) #.pnl, -1, size = (40, -1))
+        tbox.addWidget(qtw.QLabel("initial number of items:", self), 1, 0)
+        self.rows_text = qtw.QSpinBox(self) #.pnl, -1, size = (40, -1))
         self.rows_text.valueChanged.connect(self.on_text)
-        hbox = gui.QHBoxLayout()
+        hbox = qtw.QHBoxLayout()
         hbox.addWidget(self.rows_text)
         hbox.addStretch()
         tbox.addLayout(hbox, 1, 1)
         vsbox.addLayout(tbox)
 
-        tbl = gui.QTableWidget(self) # wxgrid.Grid(self.pnl, -1, size = (340, 120))
+        tbl = qtw.QTableWidget(self) # wxgrid.Grid(self.pnl, -1, size = (340, 120))
         tbl.setColumnCount(1) # CreateGrid(0, 1)
         tbl.setHorizontalHeaderLabels(['list item'])
         hdr = tbl.horizontalHeader()
@@ -984,7 +985,7 @@ class ListDialog(gui.QDialog):
         tbl.verticalHeader().setVisible(False)
         ## tbl.SetColSize(0, 240)
         self.list_table = tbl
-        hbox = gui.QHBoxLayout()
+        hbox = qtw.QHBoxLayout()
         hbox.addStretch()
         hbox.addWidget(self.list_table)
         hbox.addStretch()
@@ -992,12 +993,12 @@ class ListDialog(gui.QDialog):
         sbox.setLayout(vsbox)
         vbox.addWidget(sbox)
 
-        hbox = gui.QHBoxLayout()
-        self.ok_button = gui.QPushButton('&Save', self)
-        self.connect(self.ok_button, core.SIGNAL('clicked()'), self.on_ok)
+        hbox = qtw.QHBoxLayout()
+        self.ok_button = qtw.QPushButton('&Save', self)
+        self.ok_button.clicked.connect(self.on_ok)
         self.ok_button.setDefault(True)
-        self.cancel_button = gui.QPushButton('&Cancel', self)
-        self.connect(self.cancel_button, core.SIGNAL('clicked()'), self.on_cancel)
+        self.cancel_button = qtw.QPushButton('&Cancel', self)
+        self.cancel_button.clicked.connect(self.on_cancel)
         hbox.addStretch()
         hbox.addWidget(self.ok_button)
         hbox.addWidget(self.cancel_button)
@@ -1034,7 +1035,7 @@ class ListDialog(gui.QDialog):
         try:
             cur_rows = int(self.rows_text.value())
         except ValueError:
-            gui.QMessageBox.information(self, self.title,
+            qtw.QMessageBox.information(self, self.title,
                 'Number must be numeric integer','')
             return
         num_rows = self.list_table.rowCount()
@@ -1047,7 +1048,7 @@ class ListDialog(gui.QDialog):
                 ## self.list_table.SetRowLabelValue(idx, '')
 
     def on_cancel(self):
-        gui.QDialog.done(self, gui.QDialog.Rejected)
+        super().done(qtw.QDialog.Rejected)
 
     def on_ok(self):
         """bij OK: de opgebouwde list via self.dialog_data doorgeven
@@ -1061,59 +1062,59 @@ class ListDialog(gui.QDialog):
                 list_item.append(str(self.list_table.item(row, 1).text()))
             list_data.append(list_item)
         self._parent.dialog_data = list_type, list_data
-        gui.QDialog.done(self, gui.QDialog.Accepted)
+        super().done(qtw.QDialog.Accepted)
 
-class TableDialog(gui.QDialog):
+class TableDialog(qtw.QDialog):
     "dialoog om een tabel toe te voegen"
 
     def __init__(self, parent):
         self._parent = parent
         self.headings = ['',]
         initialcols, initialrows = 1, 1
-        gui.QDialog.__init__(self, parent)
+        super().__init__(parent)
         self.setWindowTitle('Add a table')
         self.setWindowIcon(gui.QIcon(os.path.join(PPATH,"ashe.ico")))
-        vbox = gui.QVBoxLayout()
+        vbox = qtw.QVBoxLayout()
 
-        sbox = gui.QFrame()
-        sbox.setFrameStyle(gui.QFrame.Box)
-        gbox = gui.QGridLayout() # gui.QGridBagSizer(4, 4)
+        sbox = qtw.QFrame()
+        sbox.setFrameStyle(qtw.QFrame.Box)
+        gbox = qtw.QGridLayout() # qtw.QGridBagSizer(4, 4)
 
-        gbox.addWidget(gui.QLabel("summary (description):", self), 0, 0)
-        self.title_text = gui.QLineEdit(self)
+        gbox.addWidget(qtw.QLabel("summary (description):", self), 0, 0)
+        self.title_text = qtw.QLineEdit(self)
         self.title_text.setMinimumWidth(250)
         gbox.addWidget(self.title_text, 0, 1)
 
-        gbox.addWidget(gui.QLabel("initial number of rows:", self), 1, 0)
-        hbox = gui.QHBoxLayout()
-        self.rows_text = gui.QSpinBox(self) #.pnl, -1, size = (40, -1))
+        gbox.addWidget(qtw.QLabel("initial number of rows:", self), 1, 0)
+        hbox = qtw.QHBoxLayout()
+        self.rows_text = qtw.QSpinBox(self) #.pnl, -1, size = (40, -1))
         self.rows_text.setValue(initialrows)
         self.rows_text.valueChanged.connect(self.on_rows)
-        hbox = gui.QHBoxLayout()
+        hbox = qtw.QHBoxLayout()
         hbox.addWidget(self.rows_text)
         hbox.addStretch()
         gbox.addLayout(hbox, 1, 1)
 
-        gbox.addWidget(gui.QLabel("initial number of columns:", self), 2, 0)
-        hbox = gui.QHBoxLayout()
-        self.cols_text = gui.QSpinBox(self) #.pnl, -1, size = (40, -1))
+        gbox.addWidget(qtw.QLabel("initial number of columns:", self), 2, 0)
+        hbox = qtw.QHBoxLayout()
+        self.cols_text = qtw.QSpinBox(self) #.pnl, -1, size = (40, -1))
         self.cols_text.setValue(initialcols)
         self.cols_text.valueChanged.connect(self.on_cols)
-        hbox = gui.QHBoxLayout()
+        hbox = qtw.QHBoxLayout()
         hbox.addWidget(self.cols_text)
         hbox.addStretch()
         gbox.addLayout(hbox, 2, 1)
 
-        self.show_titles = gui.QCheckBox('Show Titles')
+        self.show_titles = qtw.QCheckBox('Show Titles')
         self.show_titles.setChecked(True)
         self.show_titles.stateChanged.connect(self.on_check)
-        hbox = gui.QHBoxLayout()
+        hbox = qtw.QHBoxLayout()
         ## hbox.addStretch()
         hbox.addWidget(self.show_titles)
         ## hbox.addStretch()
         gbox.addLayout(hbox, 3, 1)
 
-        self.table_table = gui.QTableWidget(self) # wxgrid.Grid(self.pnl, -1, size = (340, 120))
+        self.table_table = qtw.QTableWidget(self) # wxgrid.Grid(self.pnl, -1, size = (340, 120))
         self.table_table.setRowCount(initialrows) # de eerste rij is voor de kolomtitels
         self.table_table.setColumnCount(initialcols) # de eerste rij is voor de kolomtitels
         self.table_table.setHorizontalHeaderLabels(self.headings)
@@ -1121,7 +1122,7 @@ class TableDialog(gui.QDialog):
         self.table_table.verticalHeader().setVisible(False)
         self.hdr.setClickable(True)
         self.hdr.sectionClicked.connect(self.on_title)
-        hbox = gui.QHBoxLayout()
+        hbox = qtw.QHBoxLayout()
         hbox.addStretch()
         hbox.addWidget(self.table_table)
         hbox.addStretch()
@@ -1129,11 +1130,11 @@ class TableDialog(gui.QDialog):
         sbox.setLayout(gbox)
         vbox.addWidget(sbox)
 
-        hbox = gui.QHBoxLayout()
-        self.ok_button = gui.QPushButton('&Save', self)
+        hbox = qtw.QHBoxLayout()
+        self.ok_button = qtw.QPushButton('&Save', self)
         self.ok_button.clicked.connect(self.on_ok)
         self.ok_button.setDefault(True)
-        self.cancel_button = gui.QPushButton('&Cancel', self)
+        self.cancel_button = qtw.QPushButton('&Cancel', self)
         self.cancel_button.clicked.connect(self.on_cancel)
         hbox.addStretch()
         hbox.addWidget(self.ok_button)
@@ -1150,7 +1151,7 @@ class TableDialog(gui.QDialog):
         try:
             cur_rows = int(self.rows_text.value())
         except ValueError:
-            gui.QMessageBox.information(self, '',
+            qtw.QMessageBox.information(self, '',
                 'Number must be numeric integer')
             return
         num_rows = self.table_table.rowCount()
@@ -1168,7 +1169,7 @@ class TableDialog(gui.QDialog):
         try:
             cur_cols = int(self.cols_text.value())
         except ValueError:
-            gui.QMessageBox.information(self, '',
+            qtw.QMessageBox.information(self, '',
                 'Number must be numeric integer')
             return
         num_cols = self.table_table.columnCount()
@@ -1188,14 +1189,14 @@ class TableDialog(gui.QDialog):
 
     def on_title(self, col):
         "opgeven titel bij klikken op kolomheader mogelijk maken"
-        txt, ok = gui.QInputDialog.getText(self, 'Add a table',
-            'Enter a title for this column:', gui.QLineEdit.Normal, "")
+        txt, ok = qtw.QInputDialog.getText(self, 'Add a table',
+            'Enter a title for this column:', qtw.QLineEdit.Normal, "")
         if txt:
             self.headings[col] = txt
             self.table_table.setHorizontalHeaderLabels(self.headings)
 
     def on_cancel(self):
-        gui.QDialog.done(self, gui.QDialog.Rejected)
+        super().done(qtw.QDialog.Rejected)
 
     def on_ok(self):
         """bij OK: de opgebouwde tabel via self.dialog_data doorgeven
@@ -1212,9 +1213,9 @@ class TableDialog(gui.QDialog):
             items.append(rowitems)
         self._parent.dialog_data = (summary, self.show_titles.isChecked(),
             self.headings, items)
-        gui.QDialog.done(self, gui.QDialog.Accepted)
+        super().done(qtw.QDialog.Accepted)
 
-class ScrolledTextDialog(gui.QDialog):
+class ScrolledTextDialog(qtw.QDialog):
     """dialoog voor het tonen van validatieoutput
 
     aanroepen met show() om openhouden tijdens aanpassen mogelijk te maken
@@ -1223,12 +1224,12 @@ class ScrolledTextDialog(gui.QDialog):
             size=(600, 400)):
         self._parent = parent
         self.htmlfile = htmlfile
-        gui.QDialog.__init__(self, parent)
+        super().__init__(parent)
         self.setWindowTitle(title)
         self.resize(size[0], size[1])
-        vbox = gui.QVBoxLayout()
-        hbox = gui.QHBoxLayout()
-        self.message = gui.QLabel(self)
+        vbox = qtw.QVBoxLayout()
+        hbox = qtw.QHBoxLayout()
+        self.message = qtw.QLabel(self)
         if fromdisk:
             self.message.setText("\n".join((
                 "Validation results are for the file on disk",
@@ -1238,17 +1239,17 @@ class ScrolledTextDialog(gui.QDialog):
                 " or when you save the file in memory back to disk)")))
         hbox.addWidget(self.message)
         vbox.addLayout(hbox)
-        hbox = gui.QHBoxLayout()
-        text = gui.QTextEdit(self)
+        hbox = qtw.QHBoxLayout()
+        text = qtw.QTextEdit(self)
         text.setReadOnly(True)
         hbox.addWidget(text)
         vbox.addLayout(hbox)
-        hbox = gui.QHBoxLayout()
-        ok_button = gui.QPushButton('&Ok', self)
+        hbox = qtw.QHBoxLayout()
+        ok_button = qtw.QPushButton('&Ok', self)
         ok_button.clicked.connect(self.close)
         ok_button.setDefault(True)
         if htmlfile:
-            show_button = gui.QPushButton('&View submitted source', self)
+            show_button = qtw.QPushButton('&View submitted source', self)
             show_button.clicked.connect(self.show_source)
         hbox.addStretch()
         hbox.addWidget(ok_button)
@@ -1269,7 +1270,7 @@ class ScrolledTextDialog(gui.QDialog):
             dlg = CodeViewDialog(self, "Submitted source", data=data)
             dlg.show()
 
-class CodeViewDialog(gui.QDialog):
+class CodeViewDialog(qtw.QDialog):
     """dialoog voor het tonen van de broncode
 
     aanroepen met show() om openhouden tijdens aanpassen mogelijk te maken
@@ -1279,22 +1280,22 @@ class CodeViewDialog(gui.QDialog):
     def __init__(self, parent, title='', caption = '', data='', size=(600, 400)):
         "create a window with a scintilla text widget and an ok button"
         self._parent = parent
-        gui.QDialog.__init__(self, parent)
+        super().__init__(parent)
         self.setWindowTitle(title)
         self.resize(size[0], size[1])
-        vbox = gui.QVBoxLayout()
-        hbox = gui.QHBoxLayout()
-        hbox.addWidget(gui.QLabel(caption, self))
+        vbox = qtw.QVBoxLayout()
+        hbox = qtw.QHBoxLayout()
+        hbox.addWidget(qtw.QLabel(caption, self))
         vbox.addLayout(hbox)
-        hbox = gui.QHBoxLayout()
+        hbox = qtw.QHBoxLayout()
         self.text = sci.QsciScintilla(self)
         self.setup_text()
         self.text.setText(data)
         self.text.setReadOnly(True)
         hbox.addWidget(self.text)
         vbox.addLayout(hbox)
-        hbox = gui.QHBoxLayout()
-        ok_button = gui.QPushButton('&Ok', self)
+        hbox = qtw.QHBoxLayout()
+        ok_button = qtw.QPushButton('&Ok', self)
         ok_button.clicked.connect(self.close)
         ok_button.setDefault(True)
         hbox.addStretch()

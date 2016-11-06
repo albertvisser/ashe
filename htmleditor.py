@@ -2,8 +2,8 @@ import sys
 ## from ashe_ppg import MainGui
 ## from ashe_tk import MainGui - NB werkt niet op deze manier
 ## from ashe.ashe_wx import ashe_gui
-## from ashe.ashe_qt import ashe_gui
-from ashe.ashe_qt5 import ashe_gui
+## from ashe.ashe_qt4 import ashe_gui
+from ashe.ashe_qt import ashe_gui
 
 def main(args):
     x = ashe_gui(args)

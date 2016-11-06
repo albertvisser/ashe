@@ -1,13 +1,14 @@
 import sys
-import PyQt4.QtGui as gui
-import PyQt4.QtCore as core
-import PyQt4.QtWebKit as webkit
+import PyQt5.QtWidgets as qtw
+import PyQt5.QtGui as gui
+import PyQt5.QtCore as core
+import PyQt5.QtWebKitWidgets as webkit
 
-class HtmlView(gui.QMainWindow):
+class HtmlView(qtw.QMainWindow):
 
     def __init__(self, parent=None):
 
-        gui.QMainWindow.__init__(self)
+        super().__init__()
         self.resize(1020, 900)
         self.html = webkit.QWebView(self)
         self.setCentralWidget(self.html)
@@ -34,7 +35,7 @@ class HtmlView(gui.QMainWindow):
 
 
 def main(path):
-    app = gui.QApplication(sys.argv)
+    app = qtw.QApplication(sys.argv)
     frm = HtmlView()
     frm.show_html_from_path(path)
     frm.show()

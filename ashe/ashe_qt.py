@@ -1,15 +1,17 @@
 ﻿# -*- coding: utf-8 -*-
 
 """
-PyQt4 versie van mijn op een treeview gebaseerde HTML-editor
+PyQt5 versie van mijn op een treeview gebaseerde HTML-editor
 startfunctie en hoofdscherm
 """
 
 import os
 import sys
-import PyQt4.QtGui as gui
-import PyQt4.QtCore as core
-import PyQt4.QtWebKit as webkit
+import PyQt5.QtWidgets as qtw
+import PyQt5.QtGui as gui
+import PyQt5.QtCore as core
+## import PyQt5.QtWebKit as webkit
+import PyQt5.QtWebKitWidgets as webkit
 import bs4 as bs # BeautifulSoup as bs
 
 import ashe.ashe_mixin as ed
@@ -81,10 +83,10 @@ def in_body(node):
     return is_node_ok(node)
 
 
-class VisualTree(gui.QTreeWidget):
+class VisualTree(qtw.QTreeWidget):
     def __init__(self, parent):
         self._parent = parent
-        gui.QTreeWidget.__init__(self)
+        super().__init__()
         self.setAcceptDrops(True)
         self.setDragEnabled(True)
         self.setSelectionMode(self.SingleSelection)
@@ -97,7 +99,7 @@ class VisualTree(gui.QTreeWidget):
             if str(item.text(0)).startswith(ELSTART) and item.childCount() == 0:
                 self._parent.edit()
                 return
-        gui.QTreeWidget.mouseDoubleClickEvent(self, event)
+        super().mouseDoubleClickEvent(event)
 
     def mouseReleaseEvent(self, event):
         if event.button() == core.Qt.RightButton:
@@ -107,7 +109,7 @@ class VisualTree(gui.QTreeWidget):
                 self.setCurrentItem(item)
                 self._parent.popup_menu(item)
                 return
-        gui.QTreeWidget.mouseReleaseEvent(self, event)
+        super().mouseReleaseEvent(event)
 
     def dropEvent(self, event):
         """wordt aangeroepen als een versleept item (dragitem) losgelaten wordt over
@@ -117,18 +119,18 @@ class VisualTree(gui.QTreeWidget):
         """
         item = self.itemAt(event.pos())
         if not item or not item.text(0).startswith(ELSTART):
-            gui.QMessageBox.information(self, self._parent.title,
+            qtw.QMessageBox.information(self, self._parent.title,
                 'Can only drop on element')
             return
         dragitem = self.selectedItems()[0]
-        gui.QTreeWidget.dropEvent(self, event)
+        super().dropEvent(event)
         self._parent.tree_dirty = True
         dropitem = dragitem.parent()
         self.setCurrentItem(dragitem)
         dropitem.setExpanded(True)
         self._parent.refresh_preview()
 
-class MainFrame(gui.QMainWindow, ed.EditorMixin):
+class MainFrame(qtw.QMainWindow, ed.EditorMixin):
     "Main GUI"
 
     def __init__(self, parent, _id, fname=''):
@@ -139,23 +141,20 @@ class MainFrame(gui.QMainWindow, ed.EditorMixin):
         # dsp = gui.QDisplay().GetClientArea()
         # high = dsp.height if dsp.height < 900 else 900
         # wide = dsp.width if dsp.width < 1020 else 1020
-        gui.QMainWindow.__init__(self) #, parent, _id,
+        super().__init__() #, parent, _id,
             # pos = (dsp.top, dsp.left),
             # size = (wide, high)
         self.setWindowIcon(gui.QIcon(os.path.join(PPATH,"ashe.ico")))
         self.resize(1020, 900)
 
         self._setup_menu()
-        ## act = gui.QAction(self)
-        ## act.setShortcut(core.Qt.Key_Super_R)
-        ## self.connect(act, core.SIGNAL('triggered()'), self.popup_menu)
         self.in_contextmenu = False
 
-        self.pnl = gui.QSplitter(self)
+        self.pnl = qtw.QSplitter(self)
         self.setCentralWidget(self.pnl)
 
         self.tree = VisualTree(self)
-        self.tree.setItemHidden(self.tree.headerItem(), True)
+        self.tree.headerItem().setHidden(True)
         self.pnl.addWidget(self.tree)
 
         self.html = webkit.QWebView(self.pnl) # , -1,
@@ -258,7 +257,7 @@ class MainFrame(gui.QMainWindow, ed.EditorMixin):
         menu_bar = self.menuBar()
         self.contextmenu_items = []
         for menu_text, data in self.menulist:
-            menu = gui.QMenu(menu_text, self)
+            menu = qtw.QMenu(menu_text, self)
             for item in data:
                 if len(item) == 1:
                     menu.addSeparator()
@@ -270,11 +269,11 @@ class MainFrame(gui.QMainWindow, ed.EditorMixin):
                     hotkey = "+".join(("Ctrl",hotkey))
                 if 'S' in modifiers:
                     hotkey = "+".join(("Shift",hotkey))
-                act = gui.QAction(menuitem_text, self)
+                act = qtw.QAction(menuitem_text, self)
                 menu.addAction(act)
                 act.setStatusTip(status_text)
                 act.setShortcut(hotkey)
-                self.connect(act, core.SIGNAL('triggered()'), callback)
+                act.triggered.connect(callback)
                 if menuitem_text.startswith('Advance selection'):
                     act.setCheckable(True)
                     self.adv_menu = act
@@ -298,13 +297,13 @@ class MainFrame(gui.QMainWindow, ed.EditorMixin):
         retourneert 1 = Yes, 0 = No, -1 = Cancel
         """
         if self.tree_dirty:
-            retval = dict(zip((gui.QMessageBox.Yes, gui.QMessageBox.No,
-                gui.QMessageBox.Cancel), (1, 0, -1)))
-            hlp = gui.QMessageBox.question(self, self.title, "HTML data has been "
+            retval = dict(zip((qtw.QMessageBox.Yes, qtw.QMessageBox.No,
+                qtw.QMessageBox.Cancel), (1, 0, -1)))
+            hlp = qtw.QMessageBox.question(self, self.title, "HTML data has been "
                 "modified - save before continuing?",
-                gui.QMessageBox.Yes | gui.QMessageBox.No | gui.QMessageBox.Cancel,
-                defaultButton = gui.QMessageBox.Yes)
-            if hlp == gui.QMessageBox.Yes:
+                qtw.QMessageBox.Yes | qtw.QMessageBox.No | qtw.QMessageBox.Cancel,
+                defaultButton = qtw.QMessageBox.Yes)
+            if hlp == qtw.QMessageBox.Yes:
                 self.savexml()
             return retval[hlp]
 
@@ -312,7 +311,7 @@ class MainFrame(gui.QMainWindow, ed.EditorMixin):
         """kijken of er wijzigingen opgeslagen moeten worden
         daarna afsluiten"""
         if self._check_tree() != -1:
-            gui.QMainWindow.close(self)
+            super().close()
 
     def newxml(self, evt=None):
         """kijken of er wijzigingen opgeslagen moeten worden
@@ -324,14 +323,14 @@ class MainFrame(gui.QMainWindow, ed.EditorMixin):
                 self.sb.showMessage("started new document")
                 self.refresh_preview()
             except Exception as err:
-                gui.QMessageBox.information(self, self.title, str(err))
+                qtw.QMessageBox.information(self, self.title, str(err))
 
     def openxml(self, evt=None):
         """kijken of er wijzigingen opgeslagen moeten worden
         daarna een html bestand kiezen"""
         if self._check_tree() != -1:
             loc = os.path.dirname(self.xmlfn) if self.xmlfn else os.getcwd()
-            fnaam = gui.QFileDialog.getOpenFileName(self, "Choose a file", loc,
+            fnaam, _ = qtw.QFileDialog.getOpenFileName(self, "Choose a file", loc,
                 HMASK)
             if fnaam:
                 ed.EditorMixin.getsoup(self, fname=str(fnaam))
@@ -353,14 +352,14 @@ class MainFrame(gui.QMainWindow, ed.EditorMixin):
             try:
                 self.soup2file()
             except IOError as err:
-                gui.QMessageBox.information(self, self.title, str(err))
+                qtw.QMessageBox.information(self, self.title, str(err))
                 return
             self.sb.showMessage("saved {}".format(self.xmlfn))
 
     def savexmlas(self, evt=None):
         """vraag bestand om html op te slaan
         bestand opslaan en naam in titel en root element zetten"""
-        name = gui.QFileDialog.getSaveFileName(self, "Save file as ...",
+        name, _ = qtw.QFileDialog.getSaveFileName(self, "Save file as ...",
             self.xmlfn or os.getcwd(),
             HMASK)
         if name:
@@ -369,7 +368,7 @@ class MainFrame(gui.QMainWindow, ed.EditorMixin):
             try:
                 self.soup2file(saveas=True)
             except IOError as err:
-                gui.QMessageBox.information(self, self.title, str(err))
+                qtw.QMessageBox.information(self, self.title, str(err))
                 return
             self.top.setText(0, self.xmlfn)
             self.setWindowTitle(" - ".join((os.path.basename(self.xmlfn), TITEL)))
@@ -383,7 +382,7 @@ class MainFrame(gui.QMainWindow, ed.EditorMixin):
             self.sb.showMessage("reloaded {}".format(self.xmlfn))
             self.refresh_preview()
         except Exception as err:
-            gui.QMessageBox(self, self.title, str(err))
+            qtw.QMessageBox(self, self.title, str(err))
 
     def advance_selection_onoff(self, event=None):
         self.advance_selection_on_add = self.adv_menu.isChecked()
@@ -408,14 +407,14 @@ class MainFrame(gui.QMainWindow, ed.EditorMixin):
     def about(self, evt=None):
         "toon programma info"
         abouttext = ed.EditorMixin.about(self)
-        gui.QMessageBox.information(self, self.title, abouttext)
+        qtw.QMessageBox.information(self, self.title, abouttext)
 
     def addtreeitem(self, node, naam, data, index=-1):
         """itemnaam en -data toevoegen aan de interne tree
         default is achteraan onder node, anders index meegeven
         geeft referentie naar treeitem terug
         """
-        newnode = gui.QTreeWidgetItem()
+        newnode = qtw.QTreeWidgetItem()
         newnode.setText(0, naam) # self.tree.AppendItem(node, naam)
         # data is ofwel leeg, ofwel een string, ofwel een dictionary
         newnode.setData(0, core.Qt.UserRole, data) # self.tree.SetPyData(newnode, data)
@@ -428,7 +427,7 @@ class MainFrame(gui.QMainWindow, ed.EditorMixin):
     def addtreetop(self, fname, titel):
         """titel en root item in tree instellen"""
         self.setWindowTitle(titel)
-        self.top = gui.QTreeWidgetItem()
+        self.top = qtw.QTreeWidgetItem()
         self.top.setText(0, fname)
         self.tree.addTopLevelItem(self.top) # AddRoot(titel)
 
@@ -534,7 +533,7 @@ class MainFrame(gui.QMainWindow, ed.EditorMixin):
         'build/show context menu'
         # get type of node
         node = self.tree.currentItem()
-        menu = gui.QMenu()
+        menu = qtw.QMenu()
         for itemtype, item in self.contextmenu_items:
             if itemtype == 'A':
                 menu.addAction(item)
@@ -562,7 +561,7 @@ class MainFrame(gui.QMainWindow, ed.EditorMixin):
         sel = True
         self.item = self.tree.currentItem()
         if self.item is None or self.item == self.top:
-            gui.QMessageBox.information(self, self.title,
+            qtw.QMessageBox.information(self, self.title,
                 'You need to select an element or text first')
             sel = False
         return sel
@@ -570,7 +569,7 @@ class MainFrame(gui.QMainWindow, ed.EditorMixin):
     def keyReleaseEvent(self, event):
         skip = self.on_keyup(event)
         if not skip:
-            gui.QMainWindow.keyReleaseEvent(self, event)
+            super().keyReleaseEvent(event)
 
     def on_keyup(self, ev=None):
         ky = ev.key()
@@ -646,16 +645,16 @@ class MainFrame(gui.QMainWindow, ed.EditorMixin):
                 text = 'doctype is HTML 5'
             else:
                 text = 'doctype cannot be determined'
-            gui.QMessageBox.information(self, self.title, text)
+            qtw.QMessageBox.information(self, self.title, text)
             return
         elif data.startswith(IFSTART):
-            gui.QMessageBox.information(self, self.title,
+            qtw.QMessageBox.information(self, self.title,
                 "About to edit this conditional")
             # start dialog to edit condition
-            cond, ok = gui.QInputDialog(self, self.title, data)
+            cond, ok = qtw.QInputDialog(self, self.title, data)
             # if confirmed: change element
             if ok:
-                gui.QMessageBox.information(self, self.title,
+                qtw.QMessageBox.information(self, self.title,
                     "changing to " + str(cond))
             return
         under_comment = str(self.item.parent().text(0)).startswith(CMELSTART)
@@ -671,7 +670,7 @@ class MainFrame(gui.QMainWindow, ed.EditorMixin):
             was_commented = data.startswith(CMSTART)
             edt = ElementDialog(self, title = 'Edit an element', tag = data,
                 attrs = attrdict).exec_()
-            if edt == gui.QDialog.Accepted:
+            if edt == qtw.QDialog.Accepted:
                 modified = True
                 tag, attrs, commented = self.dialog_data
                 if under_comment:
@@ -699,11 +698,11 @@ class MainFrame(gui.QMainWindow, ed.EditorMixin):
             test = str(self.item.parent().text(0))
             if test in (' '.join((ELSTART, 'style')),
                     ' '.join((CMELSTART, 'style'))):
-                gui.QMessageBox.information(self, self.title,
+                qtw.QMessageBox.information(self, self.title,
                     "Please edit style through parent tag")
                 return
             edt = TextDialog(self, title='Edit Text', text = txt + data).exec_()
-            if edt == gui.QDialog.Accepted:
+            if edt == qtw.QDialog.Accepted:
                 modified = True
                 txt, commented = self.dialog_data
                 if under_comment:
@@ -733,11 +732,11 @@ class MainFrame(gui.QMainWindow, ed.EditorMixin):
         if DESKTOP and not self.checkselection():
             return
         if self.item == self.root:
-            gui.QMessageBox.information(self, self.title, "Can't %s the root" % txt)
+            qtw.QMessageBox.information(self, self.title, "Can't %s the root" % txt)
             return
         text = str(self.item.text(0))
         if ifcheck and text.startswith(IFSTART):
-            gui.QMessageBox.information(self, self.title,
+            qtw.QMessageBox.information(self, self.title,
                 "Can't do this on a conditional (use menu option to delete)")
             return
         data = self.item.data(0, core.Qt.UserRole)
@@ -745,7 +744,7 @@ class MainFrame(gui.QMainWindow, ed.EditorMixin):
             data = data.toPyObject()
         txt = 'cut' if cut else 'copy'
         if str(text).startswith(DTDSTART):
-            gui.QMessageBox.information(self, self.title,
+            qtw.QMessageBox.information(self, self.title,
                 "Please use the HTML menu's DTD option to remove the DTD")
             return
         if retain:
@@ -775,7 +774,7 @@ class MainFrame(gui.QMainWindow, ed.EditorMixin):
         "start paste actie"
         def zetzeronder(node, elm, pos = -1):
             "paste copy buffer into tree"
-            subnode = gui.QTreeWidgetItem()
+            subnode = qtw.QTreeWidgetItem()
             subnode.setText(0, elm[0])
             subnode.setData(0, core.Qt.UserRole, elm[1])
             if pos == -1:
@@ -793,24 +792,24 @@ class MainFrame(gui.QMainWindow, ed.EditorMixin):
         if below:
             text = str(self.item.text(0))
             if text.startswith(CMSTART):
-                gui.QMessageBox.information(self, self.title, "Can't paste below comment")
+                qtw.QMessageBox.information(self, self.title, "Can't paste below comment")
                 return
             if not text.startswith(ELSTART) and not text.startswith(IFSTART):
-                gui.QMessageBox.information(self, self.title, "Can't paste below text")
+                qtw.QMessageBox.information(self, self.title, "Can't paste below text")
                 return
         if self.item == self.root:
             if before:
-                gui.QMessageBox.information(self, self.title,
+                qtw.QMessageBox.information(self, self.title,
                     "Can't paste before the root")
                 return
             else:
-                gui.QMessageBox.information(self, self.title,
+                qtw.QMessageBox.information(self, self.title,
                     "Pasting as first element below root")
                 below = True
         if self.cut_txt:
             item = ed.getshortname(self.cut_txt)
             data = self.cut_txt
-            node = gui.QTreeWidgetItem()
+            node = qtw.QTreeWidgetItem()
             node.setText(0, item)
             node.setData(0, core.Qt.UserRole, data)
             if below:
@@ -849,10 +848,10 @@ class MainFrame(gui.QMainWindow, ed.EditorMixin):
         if DESKTOP and not self.checkselection():
             return
         if below and not str(self.item.text(0)).startswith(ELSTART):
-            gui.QMessageBox.information(self, self.title, "Can't add text below text")
+            qtw.QMessageBox.information(self, self.title, "Can't add text below text")
             return
         edt = TextDialog(self, title="New Text").exec_()
-        if edt == gui.QDialog.Accepted:
+        if edt == qtw.QDialog.Accepted:
             txt, commented = self.dialog_data
             if below:
                 text = str(self.item.text(0))
@@ -861,7 +860,7 @@ class MainFrame(gui.QMainWindow, ed.EditorMixin):
                 text = str(parent.text(0))
             under_comment = text.startswith(CMSTART)
             text = ed.getshortname(txt, commented or under_comment)
-            new_item = gui.QTreeWidgetItem()
+            new_item = qtw.QTreeWidgetItem()
             new_item.setText(0, text)
             new_item.setData(0, core.Qt.UserRole, txt)
             if below:
@@ -887,11 +886,11 @@ class MainFrame(gui.QMainWindow, ed.EditorMixin):
         if below:
             text = str(self.item.text(0))
             if text.startswith(CMSTART):
-                gui.QMessageBox.information(self, self.title,
+                qtw.QMessageBox.information(self, self.title,
                     "Can't insert below comment")
                 return
             if not text.startswith(ELSTART) and not text.startswith(CMELSTART):
-                gui.QMessageBox.information(self, self.title,
+                qtw.QMessageBox.information(self, self.title,
                     "Can't insert below text")
                 return
             under_comment = text.startswith(CMSTART)
@@ -901,7 +900,7 @@ class MainFrame(gui.QMainWindow, ed.EditorMixin):
         else:
             where = "after"
         edt = ElementDialog(self, title="New element (insert {0})".format(where)).exec_()
-        if edt == gui.QDialog.Accepted:
+        if edt == qtw.QDialog.Accepted:
             modified = True
             tag, attrs, commented = self.dialog_data
             if below:
@@ -911,7 +910,7 @@ class MainFrame(gui.QMainWindow, ed.EditorMixin):
                 text = str(parent.text(0))
             under_comment = text.startswith(CMSTART)
             text = ed.getelname(tag, attrs, commented or under_comment)
-            new_item = gui.QTreeWidgetItem()
+            new_item = qtw.QTreeWidgetItem()
             new_item.setText(0, text)
             new_item.setData(0, core.Qt.UserRole, attrs)
 
@@ -937,11 +936,11 @@ class MainFrame(gui.QMainWindow, ed.EditorMixin):
             return
         text = str(self.item.text(0))
         if text.startswith(IFSTART):
-            gui.QMessageBox.information(self, self.title,
+            qtw.QMessageBox.information(self, self.title,
                 "This is already a conditional")
             return
         # ask for the condition
-        cond, ok = gui.QInputDialog.getText(self, self.title, 'Enter the condition',
+        cond, ok = qtw.QInputDialog.getText(self, self.title, 'Enter the condition',
             text = '')
         if ok:
             # remember and remove the current element (use "cut"?)
@@ -964,7 +963,7 @@ class MainFrame(gui.QMainWindow, ed.EditorMixin):
             return
         text = str(self.item.text(0))
         if not text.startswith(IFSTART):
-            gui.QMessageBox.information(self, self.title,
+            qtw.QMessageBox.information(self, self.title,
                 "This is not a conditional")
             return
         cond = self.item
@@ -988,9 +987,9 @@ class MainFrame(gui.QMainWindow, ed.EditorMixin):
             self.has_dtd = False
         else:
             edt = DtdDialog(self).exec_()
-            if edt == gui.QDialog.Rejected:
+            if edt == qtw.QDialog.Rejected:
                 return
-            node = gui.QTreeWidgetItem()
+            node = qtw.QTreeWidgetItem()
             self.top.insertChild(0, node)
             dtd = self.dialog_data
             node.setText(0, ' '.join((DTDSTART, ed.getshortname(dtd))))
@@ -1004,7 +1003,7 @@ class MainFrame(gui.QMainWindow, ed.EditorMixin):
     def add_css(self, evt=None):
         "start toevoegen stylesheet m.b.v. dialoog"
         edt = CssDialog(self).exec_()
-        if edt != gui.QDialog.Accepted:
+        if edt != qtw.QDialog.Accepted:
             return
         data = self.dialog_data
         # determine the place to put the sylesheet
@@ -1017,18 +1016,18 @@ class MainFrame(gui.QMainWindow, ed.EditorMixin):
                     if sub.text(0) == ' '.join((ELSTART, 'head')):
                         self.item = sub
         if not self.item:
-            gui.QMessageBox.information(self, self.title,
+            qtw.QMessageBox.information(self, self.title,
                 "Error: no <head> element")
             return
         # create the stylesheet node
-        node = gui.QTreeWidgetItem()
+        node = qtw.QTreeWidgetItem()
         if 'href' in data:
             node.setText(0, ed.getelname('link', data))
             subnode = None
         else:
             node.setText(0, ed.getelname('style', data))
             cssdata = data.pop('cssdata')
-            subnode = gui.QTreeWidgetItem()
+            subnode = qtw.QTreeWidgetItem()
             subnode.setText(0, ed.getshortname(cssdata))
             subnode.setData(0, core.Qt.UserRole, cssdata)
             node.addChild(subnode)
@@ -1042,16 +1041,16 @@ class MainFrame(gui.QMainWindow, ed.EditorMixin):
         if DESKTOP and not self.checkselection():
             return
         if not str(self.item.text(0)).startswith(ELSTART):
-            gui.QMessageBox.information(self, self.title, "Can't do this below text")
+            qtw.QMessageBox.information(self, self.title, "Can't do this below text")
             return
         edt = LinkDialog(self).exec_()
-        if edt == gui.QDialog.Accepted:
+        if edt == qtw.QDialog.Accepted:
             txt, data = self.dialog_data
-            node = gui.QTreeWidgetItem()
+            node = qtw.QTreeWidgetItem()
             node.setText(0, ed.getelname('a', data))
             node.setData(0, core.Qt.UserRole, data)
             self.item.addChild(node)
-            new_item = gui.QTreeWidgetItem()
+            new_item = qtw.QTreeWidgetItem()
             new_item.setText(0, ed.getshortname(txt))
             new_item.setData(0, core.Qt.UserRole, txt)
             node.addChild(new_item)
@@ -1063,12 +1062,12 @@ class MainFrame(gui.QMainWindow, ed.EditorMixin):
         if DESKTOP and not self.checkselection():
             return
         if not str(self.item.text(0)).startswith(ELSTART):
-            gui.QMessageBox.information(self, self.title, "Can't do this below text")
+            qtw.QMessageBox.information(self, self.title, "Can't do this below text")
             return
         edt = ImageDialog(self).exec_()
-        if edt == gui.QDialog.Accepted:
+        if edt == qtw.QDialog.Accepted:
             data = self.dialog_data
-            node = gui.QTreeWidgetItem()
+            node = qtw.QTreeWidgetItem()
             node.setText(0, ed.getelname('img', data))
             node.setData(0, core.Qt.UserRole, data)
             self.item.addChild(node)
@@ -1080,18 +1079,18 @@ class MainFrame(gui.QMainWindow, ed.EditorMixin):
         if DESKTOP and not self.checkselection():
             return
         if not str(self.item.text(0)).startswith(ELSTART):
-            gui.QMessageBox.information(self, self.title, "Can't do this below text")
+            qtw.QMessageBox.information(self, self.title, "Can't do this below text")
             return
         edt = VideoDialog(self).exec_()
-        if edt == gui.QDialog.Accepted:
+        if edt == qtw.QDialog.Accepted:
             data = self.dialog_data
             data['controls'] = ''
             src = data.pop('src')
-            node = gui.QTreeWidgetItem()
+            node = qtw.QTreeWidgetItem()
             node.setText(0, ed.getelname('video', data))
             node.setData(0, core.Qt.UserRole, data)
             self.item.addChild(node)
-            child = gui.QTreeWidgetItem()
+            child = qtw.QTreeWidgetItem()
             child_data = {'src': src,
                 'type': 'video/{}'.format(os.path.splitext(src)[1][1:])}
             child.setText(0, ed.getelname('source', child_data))
@@ -1105,13 +1104,13 @@ class MainFrame(gui.QMainWindow, ed.EditorMixin):
         if DESKTOP and not self.checkselection():
             return
         if not str(self.item.text(0)).startswith(ELSTART):
-            gui.QMessageBox.information(self, self.title, "Can't do this below text")
+            qtw.QMessageBox.information(self, self.title, "Can't do this below text")
             return
         edt = AudioDialog(self).exec_()
-        if edt == gui.QDialog.Accepted:
+        if edt == qtw.QDialog.Accepted:
             data = self.dialog_data
             data['controls'] = ''
-            node = gui.QTreeWidgetItem()
+            node = qtw.QTreeWidgetItem()
             node.setText(0, ed.getelname('audio', data))
             node.setData(0, core.Qt.UserRole, data)
             self.item.addChild(node)
@@ -1123,31 +1122,31 @@ class MainFrame(gui.QMainWindow, ed.EditorMixin):
         if DESKTOP and not self.checkselection():
             return
         if not str(self.item.text(0)).startswith(ELSTART):
-            gui.QMessageBox("Can't do this below text", self.title)
+            qtw.QMessageBox("Can't do this below text", self.title)
             return
         edt = ListDialog(self).exec_()
-        if edt == gui.QDialog.Accepted:
+        if edt == qtw.QDialog.Accepted:
             list_type, list_data = self.dialog_data
             itemtype = "dt" if list_type == "dl" else "li"
-            new_item = gui.QTreeWidgetItem()
+            new_item = qtw.QTreeWidgetItem()
             self.item.addChild(new_item)
             new_item.setText(0, ed.getelname(list_type))
 
             for list_item in list_data:
-                new_subitem = gui.QTreeWidgetItem()
+                new_subitem = qtw.QTreeWidgetItem()
                 new_item.addChild(new_subitem)
                 new_subitem.setText(0, ed.getelname(itemtype))
                 data = list_item[0]
-                node = gui.QTreeWidgetItem()
+                node = qtw.QTreeWidgetItem()
                 new_subitem.addChild(node)
                 node.setText(0, ed.getshortname(data))
                 node.setData(0, core.Qt.UserRole, data)
                 if list_type == "dl":
-                    new_subitem = gui.QTreeWidgetItem()
+                    new_subitem = qtw.QTreeWidgetItem()
                     new_item.addChild(new_subitem)
                     new_subitem.setText(0, ed.getelname('dd'))
                     data = list_item[1]
-                    node = gui.QTreeWidgetItem()
+                    node = qtw.QTreeWidgetItem()
                     new_subitem.addChild(node)
                     node.setText(0, ed.getshortname(data))
                     node.setData(0, core.Qt.UserRole, data)
@@ -1159,39 +1158,39 @@ class MainFrame(gui.QMainWindow, ed.EditorMixin):
         if DESKTOP and not self.checkselection():
             return
         if not str(self.item.text(0)).startswith(ELSTART):
-            gui.QMessageBox("Can't do this below text", self.title)
+            qtw.QMessageBox("Can't do this below text", self.title)
             return
         edt = TableDialog(self).exec_()
-        if edt == gui.QDialog.Accepted:
+        if edt == qtw.QDialog.Accepted:
             summary, titles, headers, items = self.dialog_data
-            new_item = gui.QTreeWidgetItem()
+            new_item = qtw.QTreeWidgetItem()
             self.item.addChild(new_item)
             data = {'summary': summary}
             new_item.setText(0, ed.getelname('table', data))
             new_item.setData(0, core.Qt.UserRole, data)
             if titles:
-                new_row = gui.QTreeWidgetItem()
+                new_row = qtw.QTreeWidgetItem()
                 new_item.addChild(new_row)
                 new_row.setText(0, ed.getelname('tr'))
                 for head in headers:
-                    new_head = gui.QTreeWidgetItem()
+                    new_head = qtw.QTreeWidgetItem()
                     new_row.addChild(new_head)
                     new_head.setText(0, ed.getelname('th'))
-                    node = gui.QTreeWidgetItem()
+                    node = qtw.QTreeWidgetItem()
                     new_head.addChild(node)
                     text = head or BL
                     node.setText(0, ed.getshortname(text))
                     node.setData(0, core.Qt.UserRole, text)
             for rowitem in items:
-                new_row = gui.QTreeWidgetItem()
+                new_row = qtw.QTreeWidgetItem()
                 new_item.addChild(new_row)
                 new_row.setText(0, ed.getelname('tr'))
                 for cellitem in rowitem:
-                    new_cell = gui.QTreeWidgetItem()
+                    new_cell = qtw.QTreeWidgetItem()
                     new_row.addChild(new_cell)
                     new_cell.setText(0, ed.getelname('td'))
                     text = cellitem
-                    node = gui.QTreeWidgetItem()
+                    node = qtw.QTreeWidgetItem()
                     new_cell.addChild(node)
                     node.setText(0, ed.getshortname(text))
                     node.setData(0, core.Qt.UserRole, text)
@@ -1226,7 +1225,7 @@ def ashe_gui(args):
         if fname and not os.path.exists(fname):
             print('Kan file {} niet openen, '
                 'geef s.v.p. een absoluut pad op\n'.format(fname))
-    app = gui.QApplication(sys.argv)
+    app = qtw.QApplication(sys.argv)
     if fname:
         frm = MainFrame(None, -1, fname = fname)
     else:
