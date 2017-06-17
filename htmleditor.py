@@ -1,3 +1,4 @@
+#! /usr/bin/env python3
 import sys
 ## from ashe_ppg import MainGui
 ## from ashe_tk import MainGui - NB werkt niet op deze manier
