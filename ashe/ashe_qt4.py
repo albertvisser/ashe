@@ -1,8 +1,6 @@
 ﻿# -*- coding: utf-8 -*-
-
-"""
-PyQt4 versie van mijn op een treeview gebaseerde HTML-editor
-startfunctie en hoofdscherm
+"""PyQt4 versie van mijn op een treeview gebaseerde HTML-editor
+GUI functies - startfunctie en hoofdscherm
 """
 
 import os

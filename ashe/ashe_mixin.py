@@ -1,15 +1,12 @@
 # -*- coding: utf-8 -*-
+"""GUI-toolkit onafhankelijk gedeelte van mijn op een treeview gebaseerde HTML-editor
 
-"""
-GUI-toolkit onafhankelijk gedeelte van mijn op een treeview gebaseerde HTML-editor
 Hierin worden een aantal constanten, functies en een mixin class gedefinieerd
 """
-
 import os
 import shutil
 import subprocess as sp
-import linecache
-import bs4 as bs # BeautifulSoup as bs
+import bs4 as bs
 
 if os.name == 'ce':
     DESKTOP = False
@@ -23,51 +20,44 @@ DTDSTART = "DOCTYPE"
 IFSTART = '!IF'
 BL = "&nbsp;"
 
-dtdlist = [
-        ['HTML 4.1 Strict',
-        """HTML PUBLIC "-//W3C//DTD HTML 4.01//EN"
-        "http://www.w3.org/TR/html4/strict.dtd" """],
-        ['HTML 4.1 Transitional',
-        """HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
-        "http://www.w3.org/TR/html4/loose.dtd" """],
-        ['HTML 4.1 Frameset',
-        """HTML PUBLIC "-//W3C//DTD HTML 4.01 Frameset//EN"
-        "http://www.w3.org/TR/html4/frameset.dtd" """],
-        ['', '', ''],
-        ['HTML 5', 'html'],
-        ['', '', ''],
-        ['XHTML 1.0 Strict',
-        """html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
-        "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd" """],
-        ['XHTML 1.0 Transitional',
-        """html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
-        "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd" """],
-        ['XHTML 1.0 Frameset',
-        """html PUBLIC "-//W3C//DTD XHTML 1.0 Frameset//EN"
-        "http://www.w3.org/TR/xhtml1/DTD/xhtml1-frameset.dtd" """],
-        ['', '', ''],
-        ['XHTML 1.1',
-        """html PUBLIC "-//W3C//DTD XHTML 1.1//EN"
-        "http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd" """]
-            ]
+dtdlist = (('HTML 4.1 Strict', 'HTML PUBLIC "-//W3C//DTD HTML 4.01//EN'
+            ' http://www.w3.org/TR/html4/strict.dtd" '),
+           ('HTML 4.1 Transitional', 'HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN'
+            ' http://www.w3.org/TR/html4/loose.dtd" '),
+           ('HTML 4.1 Frameset', 'HTML PUBLIC "-//W3C//DTD HTML 4.01 Frameset//EN'
+            ' http://www.w3.org/TR/html4/frameset.dtd" '),
+           ('', '', ''),
+           ('HTML 5', 'html'),
+           ('', '', ''),
+           ('XHTML 1.0 Strict', 'html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN'
+            ' http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd" '),
+           ('XHTML 1.0 Transitional', 'html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN'
+            ' http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd" '),
+           ('XHTML 1.0 Frameset', 'html PUBLIC "-//W3C//DTD XHTML 1.0 Frameset//EN'
+            ' http://www.w3.org/TR/xhtml1/DTD/xhtml1-frameset.dtd" '),
+           ('', '', ''),
+           ('XHTML 1.1', 'html PUBLIC "-//W3C//DTD XHTML 1.1//EN'
+            ' http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd" '))
+
 
 def getrelativepath(path, refpath):
     """return path made relative to refpath, or empty string
 
     er is ook een functie os.path.relpath(path [,start])"""
     if path.startswith('./') or path.startswith('../') or os.path.sep not in path:
-        return path # already relative
+        return path  # already relative
     common = os.path.commonprefix([path, refpath]).rsplit(os.path.sep, 1)[0] + os.path.sep
     if not refpath.startswith(common):
-        return '' # 'impossible to create relative link'
+        return ''  # 'impossible to create relative link'
     ref = os.path.dirname(refpath.replace(common, ''))
-    url = path.replace(common,'')
+    url = path.replace(common, '')
     if ref:
         for _ in ref.split(os.path.sep):
             url = os.path.join('..', url)
     return url
 
-def getelname(tag, attrs = None, comment = False):
+
+def getelname(tag, attrs=None, comment=False):
     """build name for element node
 
     precede with <!> and/or <>
@@ -80,14 +70,12 @@ def getelname(tag, attrs = None, comment = False):
             return ''
         else:
             return ' {}="{}"'.format(att, hlp)
-    tagattdict = {
-        'div': 'class',
-        'span': 'class',
-        'a': 'title',
-        'img': 'alt', # "title',
-        'link': 'rel',
-        'table': 'summary',
-        }
+    tagattdict = {'div': 'class',
+                  'span': 'class',
+                  'a': 'title',
+                  'img': 'alt',  # "title',
+                  'link': 'rel',
+                  'table': 'summary'}
     if attrs is None:
         attrs = {}
     naam = '{} {}{}{}'.format('<>', tag, expand('id'), expand('name'))
@@ -99,27 +87,36 @@ def getelname(tag, attrs = None, comment = False):
         naam = "<!> " + naam
     return naam
 
+
 def get_tag_from_elname(elname):
+    "get first part of node name"
     return elname.strip().split()[1]
 
-def getshortname(text, comment = False):
+
+def getshortname(text, comment=False):
     "shorten name for text node"
     maxlen = 30
     more = '\n' in text
-    if more: text = text.split('\n', 1)[0]
-    if len(text) > maxlen: text = text[:maxlen] + "..."
-    if more: text += ' [+]'
-    if comment: text = "<!> " + text
+    if more:
+        text = text.split('\n', 1)[0]
+    if len(text) > maxlen:
+        text = text[:maxlen] + "..."
+    if more:
+        text += ' [+]'
+    if comment:
+        text = "<!> " + text
     return text
+
 
 def escape(text):
     "convert non-ascii characters - not necessary?"
     return text
 
+
 class EditorMixin(object):
     "mixin class to add gui-independent methods to main frame"
 
-    def getsoup(self, fname = "", preserve = False):
+    def getsoup(self, fname="", preserve=False):
         """build initial html or read from file and initialize tree
 
         `preserve` anticipates on the possibility to not strip out newlines
@@ -132,10 +129,10 @@ class EditorMixin(object):
                 with open(fname, encoding="iso-8859-1") as f_in:
                     data = ''.join([x.strip() for x in f_in])
             if not preserve:
-                data = data.replace('\t',' ')
-                data = data.replace('\n','')
+                data = data.replace('\t', ' ')
+                data = data.replace('\n', '')
             # modify some self-closing tags: to accomodate BS:
-            html = data.replace('<br/>','<br />').replace('<hr/>','<hr />')
+            html = data.replace('<br/>', '<br />').replace('<hr/>', '<hr />')
         else:
             html = '<html><head><title></title></head><body></body></html>'
         try:
@@ -150,9 +147,11 @@ class EditorMixin(object):
         self.advance_selection_on_add = True
 
     def mark_dirty(self, state):
+        """set "modified" indicator
+        """
         self.tree_dirty = state
 
-    def init_tree(self, name = ''):
+    def init_tree(self, name=''):
         """build internal tree representation of the html
 
         calls gui-specific methods to build the visual structure
@@ -161,21 +160,21 @@ class EditorMixin(object):
         def add_to_tree(item, node, commented=False):
             """add contents of BeautifulSoup node (`node`) to tree item (`item`)
             `commented` flag is used in building item text"""
-            for idx, subnode in enumerate([h for h in node.contents]):
+            for subnode in [h for h in node.contents]:
                 if isinstance(subnode, bs.Tag):
                     data = subnode.attrs
                     dic = dict(data)
                     for key, value in dic.items():
                         if '%SOUP-ENCODING%' in value:
                             dic[key] = value.replace('%SOUP-ENCODING%',
-                                self.root.originalEncoding)
-                        elif isinstance(value, list): # hack i.v.m. nieuwe versie
+                                                     self.root.originalEncoding)
+                        elif isinstance(value, list):  # hack i.v.m. nieuwe versie
                             dic[key] = ' '.join(value)
                     naam = getelname(subnode.name, dic, commented)
                     newitem = self.addtreeitem(item, naam, dic)
                     add_to_tree(newitem, subnode, commented)
-                elif isinstance(subnode, bs.Doctype): # Declaration):
-                    dtdtext = ' '.join((DTDSTART, str(subnode))) # [2:-1]
+                elif isinstance(subnode, bs.Doctype):  # Declaration):
+                    dtdtext = ' '.join((DTDSTART, str(subnode)))
                     self.has_dtd = True
                     newitem = self.addtreeitem(item, getshortname(dtdtext), subnode)
                 elif isinstance(subnode, bs.Comment):
@@ -198,7 +197,7 @@ class EditorMixin(object):
                         add_to_tree(item, newnode, commented=True)
                 else:
                     newitem = self.addtreeitem(item, getshortname(str(subnode),
-                        commented), str(subnode))
+                                                                  commented), str(subnode))
         self.has_dtd = self.has_stylesheet = False
         if name:
             titel = name
@@ -210,7 +209,8 @@ class EditorMixin(object):
         add_to_tree(self.top, self.root)
         self.mark_dirty(False)
 
-    def soup2file(self, saveas = False):
+    def soup2file(self, saveas=False):
+        "write HTML to file"
         if not saveas:
             if os.path.exists(self.xmlfn):
                 shutil.copyfile(self.xmlfn, self.xmlfn + '.bak')
@@ -218,59 +218,76 @@ class EditorMixin(object):
             f_out.write(str(self.soup))
         self.mark_dirty(False)
 
-    def edit(self, evt = None):
+    def edit(self):
         "placeholder for gui-specific method"
         pass
 
-    def cut(self, evt = None):
+    def _copy(self, cut=False, retain=True, ifcheck=True):
+        "placeholder for gui-specific method"
+        pass
+
+    def cut(self):
         "cut = copy with removing item from tree"
-        self.copy(cut = True)
+        self._copy(cut=True)
 
-    def delete(self, evt = None, ifcheck=True):
+    def delete(self, ifcheck=True):
         "delete = copy with removing item from tree and memory"
-        self.copy(cut = True, retain = False, ifcheck=ifcheck)
+        self._copy(cut=True, retain=False, ifcheck=ifcheck)
 
-    def copy(self, evt = None, cut = False, retain = True):
+    def copy(self):
+        "copy = add a new item identical to an existing one"
+        self._copy()
+
+    def _paste(self, before=True, below=False):
         "placeholder for gui-specific method"
         pass
 
-    def paste(self, evt = None, before = True, below = False):
-        "placeholder for gui-specific method"
-        pass
-
-    def paste_aft(self, evt = None):
+    def paste_aft(self):
         "paste after instead of before"
-        self.paste(before=False)
+        self._paste(before=False)
 
-    def paste_blw(self, evt = None):
+    def paste_blw(self):
         "paste below instead of before"
-        self.paste(below=True)
+        self._paste(below=True)
 
-    def insert(self, evt = None, before = True, below = False):
+    def paste(self):
+        "paste before"
+        self._paste()
+
+    def _insert(self, before=True, below=False):
         "placeholder for gui-specific method"
         pass
 
-    def ins_aft(self, evt = None):
-        "insert after instead of before"
-        self.insert(before=False)
+    def insert(self):
+        "insert element before"
+        self._insert(below=True)
 
-    def ins_chld(self, evt = None):
-        "insert belof instead of before"
-        self.insert(below=True)
+    def ins_aft(self):
+        "insert element after instead of before"
+        self._insert(before=False)
 
-    def add_text(self, evt = None, before = True, below = False):
+    def ins_chld(self):
+        "insert element below instead of before"
+        self._insert()
+
+    def _add_text(self, before=True, below=False):
         "placeholder for gui-specific method"
         pass
 
-    def add_text_aft(self, evt = None):
-        "placeholder for gui-specific method"
-        self.add_text(before=False)
+    def add_text(self):
+        "insert text before"
+        self._add_text()
 
-    def add_textchild(self, evt = None):
-        "placeholder for gui-specific method"
-        self.add_text(below=True)
+    def add_text_aft(self):
+        "insert text after instead of before"
+        self._add_text(before=False)
 
-    def about(self, evt = None):
+    def add_textchild(self):
+        "insert text below instead of before"
+        self._add_text(below=True)
+
+    def about(self):
+        "get info about the application"
         return """\
             Tree-based HTML editor with simultaneous preview
 
@@ -278,12 +295,14 @@ class EditorMixin(object):
             Versions for PC and PDA available"""
 
     def validate(self, htmlfile):
+        """validate HTML source
+        """
         output = '/tmp/ashe_check'
-        with open(output, 'w') as f_out:
-            pass
+        ## with open(output, 'w') as f_out:
+            ## pass
         ## cmd = 'tidy -e -f "{}" "{}"'.format(output, htmlfile)
         ## retval = sp.call(cmd, shell=True)
-        retval = sp.run(['tidy', '-e', '-f', output, htmlfile])
+        sp.run(['tidy', '-e', '-f', output, htmlfile])
         data = ""
         with open(output) as f_in:
             data = f_in.read()

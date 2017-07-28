@@ -1,5 +1,7 @@
-﻿"PocketPyGui versie van een op een treeview gebaseerde HTML-editor"
+﻿"""PocketPyGui versie van een op een treeview gebaseerde HTML-editor
 
+niet meer actief in onderhoud
+"""
 import os
 import sys
 if os.name == 'ce':

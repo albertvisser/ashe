@@ -1,7 +1,8 @@
 ﻿# -*- coding: utf-8 -*-
+"""wxPython versie van een op een treeview gebaseerde HTML-editor
 
-"wxPython versie van een op een treeview gebaseerde HTML-editor"
-
+momenteel niet actief onderhouden
+"""
 import os
 import sys
 import wx

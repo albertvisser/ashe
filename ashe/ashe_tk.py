@@ -1,4 +1,8 @@
-﻿import os,sys,shutil
+﻿"""TKinter versie van mijn op een treeview gebaseerde HTML-editor
+
+niet meer actief in onderhoud
+"""
+import os,sys,shutil
 import types
 from Tkinter import *
 import tkMessageBox

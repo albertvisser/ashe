@@ -1,4 +1,6 @@
 #! /usr/bin/env python3
+"""Albert's simple HTML editor: tree-based with live preview
+"""
 import sys
 ## from ashe_ppg import MainGui
 ## from ashe_tk import MainGui - NB werkt niet op deze manier
@@ -6,8 +8,10 @@ import sys
 ## from ashe.ashe_qt4 import ashe_gui
 from ashe.ashe_qt import ashe_gui
 
+
 def main(args):
-    x = ashe_gui(args)
+    "main function"
+    ashe_gui(args)
 
 if __name__ == '__main__':
     main(sys.argv)

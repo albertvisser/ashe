@@ -1,18 +1,24 @@
+"""test routines
+"""
+from __future__ import print_function
 from ashe_mixin import getelname, getshortname, getrelativepath
 
+
 def uitvoeren(dir1, dir2, href):
-    print dir1, dir2,
+    "actual test execution"
+    print(dir1, dir2, end=',')
     href = getrelativepath(dir2, dir1)
     try:
         assert href == href
     except AssertionError:
-        print "fout"
+        print("fout")
     else:
-        print "ok"
-    print href.join(("href was ", "\n"))
+        print("ok")
+    print(href.join(("href was ", "\n")))
+
 
 def test_getrelativepath():
-    "test routine"
+    "testing various situations"
     dir1 = 'F:\\gepruts\\htmleditor\\index.html'
     dir2 = href = 'http://www.magiokis.nl/index.html'
     uitvoeren(dir1, dir2, href)
@@ -34,11 +40,11 @@ def test_getrelativepath():
     uitvoeren(dir1, dir2, href)
 
     dir2 = 'F:\\geprutserd\\htmleditor\\other.html'
-    href == '..\\..\\geprutserd\\htmleditor\\other.html'
+    href = '..\\..\\geprutserd\\htmleditor\\other.html'
     uitvoeren(dir1, dir2, href)
 
     dir2 = 'C:\\gepruts\\htmleditor\\other.html'
-    href == 'impossible to create relative link'
+    href = 'impossible to create relative link'
     uitvoeren(dir1, dir2, href)
 
     dir2, href = 'F:\\gepruts\\other.html', '..\\other.html'
@@ -52,10 +58,10 @@ def test_getrelativepath():
 
     dir1 = 'F:\\gepruts\\index.html'
     dir2 = 'F:\\gepruts\\htmleditor\\other.html'
-    href == 'htmleditor\\other.html'
+    href = 'htmleditor\\other.html'
     uitvoeren(dir1, dir2, href)
 
 if __name__ == "__main__":
-    ## print getelname("a",{"name": 'Hello', "snork": "hahaha"})
-    ## print getshortname("Hee hallo")
+    print(getelname("a", {"name": 'Hello', "snork": "hahaha"}))
+    print(getshortname("Hee hallo"))
     test_getrelativepath()

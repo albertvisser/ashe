@@ -1,7 +1,12 @@
+"""simple program to show html page without opening a web browser
+
+PyQt4 version - currently unmaintained
+"""
 import sys
 import PyQt4.QtGui as gui
 import PyQt4.QtCore as core
 import PyQt4.QtWebKit as webkit
+
 
 class HtmlView(gui.QMainWindow):
 
@@ -39,5 +44,3 @@ def main(path):
     frm.show_html_from_path(path)
     frm.show()
     sys.exit(app.exec_())
-
-

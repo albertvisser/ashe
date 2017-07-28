@@ -1,8 +1,7 @@
 # -*- coding: utf-8 -*-
-
 """
 PyQt4 versie van mijn op een treeview gebaseerde HTML-editor
-custom dialogen
+GUI functies - custom dialogen
 """
 
 import os
