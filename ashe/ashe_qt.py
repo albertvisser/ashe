@@ -256,7 +256,7 @@ class MainFrame(qtw.QMainWindow, ed.EditorMixin):
                  self.view_code),
                 ('&Check syntax', '', '', 'Validate HTML with Tidy', self.validate))),
             ("Help", (
-                ('&About', '', '', 'Info about this application', self.about))))
+                ('&About', '', '', 'Info about this application', self.about),)))
         menu_bar = self.menuBar()
         self.contextmenu_items = []
         for menu_text, data in self.menulist:
@@ -276,6 +276,7 @@ class MainFrame(qtw.QMainWindow, ed.EditorMixin):
                 menu.addAction(act)
                 act.setStatusTip(status_text)
                 act.setShortcut(hotkey)
+                print(callback)
                 act.triggered.connect(callback)
                 if menuitem_text.startswith('Advance selection'):
                     act.setCheckable(True)

@@ -1095,7 +1095,7 @@ class TableDialog(qtw.QDialog):
         self.table_table.setHorizontalHeaderLabels(self.headings)
         self.hdr = self.table_table.horizontalHeader()
         self.table_table.verticalHeader().setVisible(False)
-        self.hdr.setClickable(True)
+        self.hdr.setSectionsClickable(True)
         self.hdr.sectionClicked.connect(self.on_title)
         hbox = qtw.QHBoxLayout()
         hbox.addStretch()
@@ -1258,7 +1258,7 @@ class CodeViewDialog(qtw.QDialog):
         self._parent = parent
         super().__init__(parent)
         self.setWindowTitle(title)
-        self.setWindowIcon(self._parent.appicon)
+        self.setWindowIcon(self._parent._parent.appicon)
         self.resize(size[0], size[1])
         vbox = qtw.QVBoxLayout()
         hbox = qtw.QHBoxLayout()
