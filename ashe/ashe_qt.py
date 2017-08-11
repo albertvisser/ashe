@@ -143,8 +143,9 @@ class VisualTree(qtw.QTreeWidget):
 class MainFrame(qtw.QMainWindow, ed.EditorMixin):
     "Main GUI"
 
-    def __init__(self, parent=None, fname=''):
+    def __init__(self, parent=None, fname='', app=None):
         self.parent = parent
+        self.app = app
         self.title = "(untitled) - Albert's Simple HTML Editor"
         self.xmlfn = fname
         # bepaalt de bij het scherm passende hoogte en breedte
@@ -276,7 +277,7 @@ class MainFrame(qtw.QMainWindow, ed.EditorMixin):
                 menu.addAction(act)
                 act.setStatusTip(status_text)
                 act.setShortcut(hotkey)
-                print(callback)
+                ## print(callback)
                 act.triggered.connect(callback)
                 if menuitem_text.startswith('Advance selection'):
                     act.setCheckable(True)
@@ -1237,9 +1238,9 @@ def ashe_gui(args):
                   'geef s.v.p. een absoluut pad op\n'.format(fname))
     app = qtw.QApplication(sys.argv)
     if fname:
-        frm = MainFrame(fname=fname)
+        frm = MainFrame(fname=fname, app=app)
     else:
-        frm = MainFrame()
+        frm = MainFrame(app=app)
     frm.show()
     sys.exit(app.exec_())
 

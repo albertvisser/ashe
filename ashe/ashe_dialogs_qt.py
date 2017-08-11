@@ -177,8 +177,8 @@ class ElementDialog(qtw.QDialog):
         "adjust style attributes"
         tag = self.tag_text.text()
         if not self.is_stylesheet:
-            css = csed.MainWindow(self)     # call the editor with this dialog as parent should
-                                            # make sure we get the css back as an attribute
+            css = csed.MainWindow(self, app=self._parent.app)     # calling the editor
+            # with this dialog as parent should make sure we get the css back as an attribute
             if tag == 'style':
                 css.open(text=self.old_styledata)
             else:
@@ -186,7 +186,7 @@ class ElementDialog(qtw.QDialog):
             css.setWindowModality(core.Qt.ApplicationModal)
             css.show()  # sets self.styledata right before closing
             return
-        css = csed.MainWindow()
+        print("started cssedit main window")
         mld = fname = ''
         test = self.attr_table.findItems('href', core.Qt.MatchFixedString)
         for item in test:
@@ -194,8 +194,11 @@ class ElementDialog(qtw.QDialog):
             row = self.attr_table.row(item)
             if col == 0:
                 fname = self.attr_table.item(row, 1).text()
+        print('got filename:', fname)
         if not fname:
             mld = 'Please enter a link address first'
+        elif fname.startswith('/'):
+            mld = "Cannot determine file system location of stylesheet file"
         else:
             if fname.startswith('http'):
                 h_fname = os.path.join('/tmp', 'ashe_{}'.format(
@@ -209,10 +212,13 @@ class ElementDialog(qtw.QDialog):
                     h_fname = h_fname[3:]
                     xmlfn_path = os.path.dirname(xmlfn_path)
                 fname = os.path.join(xmlfn_path, h_fname)
+            print('constructed filename:', fname)
             try:
+                css = csed.MainWindow(app=self._parent.app)
                 css.open(filename=fname)
             except Exception as e:
                 mld = str(e)
+                ## css.close()
             else:
                 css.setWindowModality(core.Qt.ApplicationModal)
                 css.show()
@@ -1098,9 +1104,9 @@ class TableDialog(qtw.QDialog):
         self.hdr.setSectionsClickable(True)
         self.hdr.sectionClicked.connect(self.on_title)
         hbox = qtw.QHBoxLayout()
-        hbox.addStretch()
+        ## hbox.addStretch()
         hbox.addWidget(self.table_table)
-        hbox.addStretch()
+        ## hbox.addStretch()
         gbox.addLayout(hbox, 4, 0, 1, 2)
         sbox.setLayout(gbox)
         vbox.addWidget(sbox)
