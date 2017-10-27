@@ -5,6 +5,7 @@ startfunctie en hoofdscherm
 """
 import os
 import sys
+import pathlib
 import PyQt5.QtWidgets as qtw
 import PyQt5.QtGui as gui
 import PyQt5.QtCore as core
@@ -17,7 +18,7 @@ from ashe.ashe_dialogs_qt import cssedit_available, HMASK, ElementDialog, \
     TextDialog, DtdDialog, CssDialog, LinkDialog, ImageDialog, VideoDialog, \
     AudioDialog, ListDialog, TableDialog, ScrolledTextDialog, CodeViewDialog
 
-PPATH = os.path.split(__file__)[0]
+ICO = str(pathlib.Path(__file__).parent / "ashe.ico")
 DESKTOP = ed.DESKTOP
 CMSTART = ed.CMSTART
 ELSTART = ed.ELSTART
@@ -148,6 +149,7 @@ class MainFrame(qtw.QMainWindow, ed.EditorMixin):
         self.app = app
         self.title = "(untitled) - Albert's Simple HTML Editor"
         self.xmlfn = fname
+        self.dialog_data = {}
         # bepaalt de bij het scherm passende hoogte en breedte
         # dsp = gui.QDisplay().GetClientArea()
         # high = dsp.height if dsp.height < 900 else 900
@@ -155,7 +157,7 @@ class MainFrame(qtw.QMainWindow, ed.EditorMixin):
         super().__init__()
         # pos = (dsp.top, dsp.left),
         # size = (wide, high)
-        self.appicon = gui.QIcon(os.path.join(PPATH, "ashe.ico"))
+        self.appicon = gui.QIcon(ICO)
         self.setWindowIcon(self.appicon)
         self.resize(1020, 900)
 
@@ -334,8 +336,8 @@ class MainFrame(qtw.QMainWindow, ed.EditorMixin):
         """kijken of er wijzigingen opgeslagen moeten worden
         daarna een html bestand kiezen"""
         if self._check_tree() != -1:
-            loc = os.path.dirname(self.xmlfn) if self.xmlfn else os.getcwd()
-            fnaam, _ = qtw.QFileDialog.getOpenFileName(self, "Choose a file", loc, HMASK)
+            fnaam, _ = qtw.QFileDialog.getOpenFileName(self, "Choose a file",
+                                                       self.xmlfn or os.getcwd(), HMASK)
             if fnaam:
                 ed.EditorMixin.getsoup(self, fname=str(fnaam))
                 self.adv_menu.setChecked(True)
@@ -374,7 +376,7 @@ class MainFrame(qtw.QMainWindow, ed.EditorMixin):
                 qtw.QMessageBox.information(self, self.title, str(err))
                 return
             self.top.setText(0, self.xmlfn)
-            self.setWindowTitle(" - ".join((os.path.basename(self.xmlfn), TITEL)))
+            ## self.setWindowTitle(" - ".join((os.path.basename(self.xmlfn), TITEL)))
             self.sb.showMessage("saved as {}".format(self.xmlfn))
 
     def reopenxml(self):  # , evt=None):
@@ -1100,7 +1102,8 @@ class MainFrame(qtw.QMainWindow, ed.EditorMixin):
             self.item.addChild(node)
             child = qtw.QTreeWidgetItem()
             child_data = {'src': src,
-                          'type': 'video/{}'.format(os.path.splitext(src)[1][1:])}
+                          ## 'type': 'video/{}'.format(os.path.splitext(src)[1][1:])}
+                          'type': 'video/{}'.format(pathlib.Path(src).suffix[1:])}
             child.setText(0, ed.getelname('source', child_data))
             child.setData(0, core.Qt.UserRole, child_data)
             node.addChild(child)
@@ -1236,6 +1239,7 @@ def ashe_gui(args):
         if fname and not os.path.exists(fname):
             print('Kan file {} niet openen, '
                   'geef s.v.p. een absoluut pad op\n'.format(fname))
+            return
     app = qtw.QApplication(sys.argv)
     if fname:
         frm = MainFrame(fname=fname, app=app)

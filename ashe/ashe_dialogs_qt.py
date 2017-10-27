@@ -17,7 +17,6 @@ try:
 except ImportError:
     cssedit_available = False
 
-PPATH = os.path.split(__file__)[0]
 CMSTART = ed.CMSTART
 ELSTART = ed.ELSTART
 CMELSTART = ed.CMELSTART
@@ -201,17 +200,21 @@ class ElementDialog(qtw.QDialog):
             mld = "Cannot determine file system location of stylesheet file"
         else:
             if fname.startswith('http'):
-                h_fname = os.path.join('/tmp', 'ashe_{}'.format(
-                    os.path.basename(fname)))
+                h_fname = os.path.join('/tmp', 'ashe_{}'.format(os.path.basename(fname)))
+                ## h_fname = str(pathlib.Path('/tmp') / 'ashe_{}'.format(
+                    ## pathlib.Path(fname).name))
                 os.system('wget {} -O {}'.format(fname, h_fname))    # TODO
                 fname = h_fname
             else:
                 h_fname = fname
-                xmlfn_path = os.path.dirname(self._parent.xmlfn)
+                ## xmlfn_path = os.path.dirname(self._parent.xmlfn)
+                xmlfn_path = pathlib.Path(self._parent.xmlfn)
                 while h_fname.startswith('../'):
                     h_fname = h_fname[3:]
-                    xmlfn_path = os.path.dirname(xmlfn_path)
-                fname = os.path.join(xmlfn_path, h_fname)
+                    ## xmlfn_path = os.path.dirname(xmlfn_path)
+                    xmlfn_path = xmlfn_path.parent
+                ## fname = os.path.join(xmlfn_path, h_fname)
+                fname = str(xmlfn_path / h_fname)
             print('constructed filename:', fname)
             try:
                 css = csed.MainWindow(app=self._parent.app)
@@ -440,14 +443,16 @@ class CssDialog(qtw.QDialog):
 
     def kies(self):
         "methode om het te linken document te selecteren"
-        if self._parent.xmlfn:
-            loc = os.path.dirname(self._parent.xmlfn)
-        else:
-            loc = os.getcwd()
-        if os.name == "nt":
-            mask = "CSS files (*.css)"
-        elif os.name == "posix":
-            mask = "CSS files (*.css *.CSS)"
+        ## if self._parent.xmlfn:
+            ## loc = os.path.dirname(self._parent.xmlfn)
+        ## else:
+            ## loc = os.getcwd()
+        loc = self._parent.xmlfn or os.getcwd()
+        ## if os.name == "nt":
+            ## mask = "CSS files (*.css)"
+        ## elif os.name == "posix":
+            ## mask = "CSS files (*.css *.CSS)"
+        mask = HMASK.replace('html', 'css').replace('HTML', 'CSS')
         fnaam, _ = qtw.QFileDialog.getOpenFileName(self, "Choose a file", loc, mask)
         if fnaam:
             self.link_text.setText(fnaam)
@@ -465,18 +470,23 @@ class CssDialog(qtw.QDialog):
             qtw.QMessageBox.information(self, self.parent().title, "bestandsnaam opgeven"
                                         " of inline stylesheet definiëren s.v.p")
             return
-        if not link.startswith('http://'):
-            link = os.path.abspath(link)
-            if self._parent.xmlfn:
-                whereami = os.path.abspath(self._parent.xmlfn)
-            else:
-                whereami = os.path.join(os.getcwd(), 'index.html')
-            link = ed.getrelativepath(link, whereami)
-        if not link:
-            qtw.QMessageBox.information(self, self.parent().title,
-                                        'Unable to make this local link relative')
-        else:
-            self.link = link
+        ## if not link.startswith('http://'):
+            ## link = os.path.abspath(link)
+            ## if self._parent.xmlfn:
+                ## whereami = os.path.abspath(self._parent.xmlfn)
+            ## else:
+                ## whereami = os.path.join(os.getcwd(), 'index.html')
+            ## link = ed.getrelativepath(link, whereami)
+        ## if not link:
+            ## qtw.QMessageBox.information(self, self.parent().title,
+                                        ## 'Unable to make this local link relative')
+        ## else:
+            ## self.link = link
+        try:
+            link = ed.convert_link(link)
+        except ed.ConversionError:
+            qtw.QMessageBox.information(self, self._parent.title,msg)
+            return
         self._parent.dialog_data = {"rel": 'stylesheet',
                                     "href": link,
                                     "type": 'text/css'}
@@ -555,10 +565,11 @@ class LinkDialog(qtw.QDialog):
 
     def kies(self):
         "methode om het te linken document te selecteren"
-        if self._parent.xmlfn:
-            loc = os.path.dirname(self._parent.xmlfn)
-        else:
-            loc = os.getcwd()
+        ## if self._parent.xmlfn:
+            ## loc = os.path.dirname(self._parent.xmlfn)
+        ## else:
+            ## loc = os.getcwd()
+        loc = self._parent.xmlfn or os.getcwd()
         fnaam, _ = qtw.QFileDialog.getOpenFileName(self, "Choose a file", loc, HMASK)
         if fnaam:
             self.link_text.setText(fnaam)
@@ -577,28 +588,43 @@ class LinkDialog(qtw.QDialog):
 
     def accept(self):
         "bij OK: het geselecteerde (absolute) pad omzetten in een relatief pad"
-        link = str(self.link_text.text())
-        if link:
-            if not link.startswith('http://'):
-                link = os.path.abspath(link)
-                if self._parent.xmlfn:
-                    whereami = os.path.abspath(self._parent.xmlfn)
-                else:
-                    whereami = os.path.join(os.getcwd(), 'index.html')
-                link = ed.getrelativepath(link, whereami)
-            if not link:
-                qtw.QMessageBox.information(self, self._parent.title,
-                                            'Unable to make this local link relative')
-            else:
-                self.link = link
-            txt = str(self.text_text.text())
-            data = {"href": link,
-                    "title": str(self.title_text.text())}
-            self._parent.dialog_data = txt, data
-        else:
-            qtw.QMessageBox.information(self, self._parent.title,
-                                        "link opgeven of cancel kiezen s.v.p")
+        ## link = str(self.link_text.text())
+        ## if link:
+            ## if not link.startswith('http://'):
+                ## link = os.path.abspath(link)
+                ## if self._parent.xmlfn:
+                    ## whereami = os.path.abspath(self._parent.xmlfn)
+                ## else:
+                    ## whereami = os.path.join(os.getcwd(), 'index.html')
+                ## link = ed.getrelativepath(link, whereami)
+            ## if not link:
+                ## qtw.QMessageBox.information(self, self._parent.title,
+                                            ## 'Unable to make this local link relative')
+            ## else:
+                ## self.link = link
+            ## txt = str(self.text_text.text())
+            ## data = {"href": link,
+                    ## "title": str(self.title_text.text())}
+            ## self._parent.dialog_data = txt, data
+        ## else:
+            ## qtw.QMessageBox.information(self, self._parent.title,
+                                        ## "link opgeven of cancel kiezen s.v.p")
+            ## return
+        txt = str(self.text_text.text())
+        if not txt:
+            hlp = qtw.QMessageBox.question(self, 'Add Link',
+                                           "Link text is empty - are you sure?",
+                                           qtw.QMessageBox.Yes | qtw.QMessageBox.No,
+                                           defaultButton=qtw.QMessageBox.Yes)
+            if hlp == qtw.QMessageBox.No:
+                return
+        try:
+            link = ed.convert_link(self.link_text.text(), self._parent.xmlfn)
+        except ed.ConversionError as msg:
+            qtw.QMessageBox.information(self, self._parent.title, msg)
             return
+        self._parent.dialog_data = [txt, {"href": link,
+                                          "title": str(self.title_text.text())}]
         super().accept()
 
 
@@ -660,10 +686,11 @@ class ImageDialog(qtw.QDialog):
 
     def kies(self):
         "methode om het te linken image te selecteren"
-        if self._parent.xmlfn:
-            loc = os.path.dirname(self._parent.xmlfn)
-        else:
-            loc = os.getcwd()
+        ## if self._parent.xmlfn:
+            ## loc = os.path.dirname(self._parent.xmlfn)
+        ## else:
+            ## loc = os.getcwd()
+        loc = self._parent.xmlfn or os.getcwd()
         mask = '*.png *.jpg *.gif *.jpeg *.ico *.xpm *.svg'
         ## if os.name == "nt":
             ## mask = "Image files (*.htm *.html);;" + IMASK
@@ -689,27 +716,35 @@ class ImageDialog(qtw.QDialog):
 
     def accept(self):
         "bij OK: het geselecteerde (absolute) pad omzetten in een relatief pad"
-        link = str(self.link_text.text())
-        if link:
-            if not link.startswith('http://'):
-                link = os.path.abspath(link)
-                if self._parent.xmlfn:
-                    whereami = os.path.abspath(self._parent.xmlfn)
-                else:
-                    whereami = os.path.join(os.getcwd(), 'index.html')
-                link = ed.getrelativepath(link, whereami)
-            if not link:
-                qtw.QMessageBox.information(self, self._parent.title,
-                                            'Unable to make this local link relative')
-            else:
-                self.link = link
-            self._parent.dialog_data = {"src": link,
-                                        "alt": str(self.alt_text.text()),
-                                        "title": str(self.title_text.text())}
-        else:
-            qtw.QMessageBox.information(self, self._parent.title,
-                                        "image link opgeven of cancel kiezen s.v.p")
+        ## link = str(self.link_text.text())
+        ## if link:
+            ## if not link.startswith('http://'):
+                ## link = os.path.abspath(link)
+                ## if self._parent.xmlfn:
+                    ## whereami = os.path.abspath(self._parent.xmlfn)
+                ## else:
+                    ## whereami = os.path.join(os.getcwd(), 'index.html')
+                ## link = ed.getrelativepath(link, whereami)
+            ## if not link:
+                ## qtw.QMessageBox.information(self, self._parent.title,
+                                            ## 'Unable to make this local link relative')
+            ## else:
+                ## self.link = link
+            ## self._parent.dialog_data = {"src": link,
+                                        ## "alt": str(self.alt_text.text()),
+                                        ## "title": str(self.title_text.text())}
+        ## else:
+            ## qtw.QMessageBox.information(self, self._parent.title,
+                                        ## "image link opgeven of cancel kiezen s.v.p")
+            ## return
+        try:
+            link = ed.convert_link(self.link_text.text(), self._parent.xmlfn)
+        except ed.ConversionError:
+            qtw.QMessageBox.information(self, self._parent.title, msg)
             return
+        self._parent.dialog_data = {"src": link,
+                                    "alt": str(self.alt_text.text()),
+                                    "title": str(self.title_text.text())}
         super().accept()
 
 
@@ -788,10 +823,11 @@ class VideoDialog(qtw.QDialog):
 
     def kies(self):
         "methode om het te linken element te selecteren"
-        if self._parent.xmlfn:
-            loc = os.path.dirname(self._parent.xmlfn)
-        else:
-            loc = os.getcwd()
+        ## if self._parent.xmlfn:
+            ## loc = os.path.dirname(self._parent.xmlfn)
+        ## else:
+            ## loc = os.getcwd()
+        loc = self._parent.xmlfn or os.getcwd()
         mask = '*.mp4 *.avi *.mpeg'  # TODO: add other types
         ## if os.name == "nt":
             ## mask = "Image files (*.htm *.html);;" + IMASK
@@ -814,27 +850,35 @@ class VideoDialog(qtw.QDialog):
 
     def accept(self):
         "bij OK: het geselecteerde (absolute) pad omzetten in een relatief pad"
-        link = str(self.link_text.text())
-        if link:
-            if not link.startswith('http://'):
-                link = os.path.abspath(link)
-                if self._parent.xmlfn:
-                    whereami = os.path.abspath(self._parent.xmlfn)
-                else:
-                    whereami = os.path.join(os.getcwd(), 'index.html')
-                link = ed.getrelativepath(link, whereami)
-            if not link:
-                qtw.QMessageBox.information(self, self._parent.title,
-                                            'Unable to make this local link relative')
-            else:
-                self.link = link
-            self._parent.dialog_data = {"src": link,
-                                        "height": str(self.hig_text.text()),
-                                        "width": str(self.wid_text.text())}
-        else:
-            qtw.QMessageBox.information(self, self._parent.title,
-                                        "link naar video opgeven of cancel kiezen s.v.p")
+        ## link = str(self.link_text.text())
+        ## if link:
+            ## if not link.startswith('http://'):
+                ## link = os.path.abspath(link)
+                ## if self._parent.xmlfn:
+                    ## whereami = os.path.abspath(self._parent.xmlfn)
+                ## else:
+                    ## whereami = os.path.join(os.getcwd(), 'index.html')
+                ## link = ed.getrelativepath(link, whereami)
+            ## if not link:
+                ## qtw.QMessageBox.information(self, self._parent.title,
+                                            ## 'Unable to make this local link relative')
+            ## else:
+                ## self.link = link
+            ## self._parent.dialog_data = {"src": link,
+                                        ## "height": str(self.hig_text.text()),
+                                        ## "width": str(self.wid_text.text())}
+        ## else:
+            ## qtw.QMessageBox.information(self, self._parent.title,
+                                        ## "link naar video opgeven of cancel kiezen s.v.p")
+            ## return
+        try:
+            link = ed.convert_link(self.link_text.text(), self._parent.xmlfn)
+        except ed.ConversionError:
+            qtw.QMessageBox.information(self, self._parent.title, msg)
             return
+        self._parent.dialog_data = {"src": link,
+                                    "height": str(self.hig_text.text()),
+                                    "width": str(self.wid_text.text())}
         super().accept()
 
 
@@ -889,10 +933,11 @@ class AudioDialog(qtw.QDialog):
 
     def kies(self):
         "methode om het te linken element te selecteren"
-        if self._parent.xmlfn:
-            loc = os.path.dirname(self._parent.xmlfn)
-        else:
-            loc = os.getcwd()
+        ## if self._parent.xmlfn:
+            ## loc = os.path.dirname(self._parent.xmlfn)
+        ## else:
+            ## loc = os.getcwd()
+        loc = self._parent.xmlfn or os.getcwd()
         mask = '*.mp3 *.wav *.ogg'  # TODO: add other types
         ## if os.name == "nt":
             ## mask = "Image files (*.htm *.html);;" + IMASK
@@ -906,25 +951,31 @@ class AudioDialog(qtw.QDialog):
 
     def accept(self):
         "bij OK: het geselecteerde (absolute) pad omzetten in een relatief pad"
-        link = str(self.link_text.text())
-        if link:
-            if not link.startswith('http://'):
-                link = os.path.abspath(link)
-                if self._parent.xmlfn:
-                    whereami = os.path.abspath(self._parent.xmlfn)
-                else:
-                    whereami = os.path.join(os.getcwd(), 'index.html')
-                link = ed.getrelativepath(link, whereami)
-            if not link:
-                qtw.QMessageBox.information(self, self._parent.title,
-                                            'Unable to make this local link relative')
-            else:
-                self.link = link
-            self._parent.dialog_data = {"src": link}
-        else:
-            qtw.QMessageBox.information(self, self._parent.title,
-                                        "link naar audio opgeven of cancel kiezen s.v.p")
+        ## link = str(self.link_text.text())
+        ## if link:
+            ## if not link.startswith('http://'):
+                ## link = os.path.abspath(link)
+                ## if self._parent.xmlfn:
+                    ## whereami = os.path.abspath(self._parent.xmlfn)
+                ## else:
+                    ## whereami = os.path.join(os.getcwd(), 'index.html')
+                ## link = ed.getrelativepath(link, whereami)
+            ## if not link:
+                ## qtw.QMessageBox.information(self, self._parent.title,
+                                            ## 'Unable to make this local link relative')
+            ## else:
+                ## self.link = link
+            ## self._parent.dialog_data = {"src": link}
+        ## else:
+            ## qtw.QMessageBox.information(self, self._parent.title,
+                                        ## "link naar audio opgeven of cancel kiezen s.v.p")
+            ## return
+        try:
+            link = ed.convert_link(self.link_text.text(), self._parent.xmlfn)
+        except ed.ConversionError:
+            qtw.QMessageBox.information(self, self._parent.title, msg)
             return
+        self._parent.dialog_data = {"src": link}
         super().accept()
 
 

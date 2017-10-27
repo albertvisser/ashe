@@ -40,21 +40,45 @@ dtdlist = (('HTML 4.1 Strict', 'HTML PUBLIC "-//W3C//DTD HTML 4.01//EN'
             ' http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd" '))
 
 
-def getrelativepath(path, refpath):
-    """return path made relative to refpath, or empty string
+## def getrelativepath(path, refpath):
+    ## """return path made relative to refpath, or empty string
 
-    er is ook een functie os.path.relpath(path [,start])"""
-    if path.startswith('./') or path.startswith('../') or os.path.sep not in path:
-        return path  # already relative
-    common = os.path.commonprefix([path, refpath]).rsplit(os.path.sep, 1)[0] + os.path.sep
-    if not refpath.startswith(common):
-        return ''  # 'impossible to create relative link'
-    ref = os.path.dirname(refpath.replace(common, ''))
-    url = path.replace(common, '')
-    if ref:
-        for _ in ref.split(os.path.sep):
-            url = os.path.join('..', url)
-    return url
+    ## er is ook een functie os.path.relpath(path [,start])"""
+    ## if path.startswith('./') or path.startswith('../') or os.path.sep not in path:
+        ## return path  # already relative
+    ## common = os.path.commonprefix([path, refpath]).rsplit(os.path.sep, 1)[0] + os.path.sep
+    ## if not refpath.startswith(common):
+        ## return ''  # 'impossible to create relative link'
+    ## ref = os.path.dirname(refpath.replace(common, ''))
+    ## url = path.replace(common, '')
+    ## if ref:
+        ## for _ in ref.split(os.path.sep):
+            ## url = os.path.join('..', url)
+    ## return url
+
+
+class ConversionError(ValueError):
+    pass
+
+def convert_link(link, root):
+    nice_link = '', ''
+    test = link.split('/', 1)
+    if not link:
+        raise ConversionError("link opgeven of cancel kiezen s.v.p")
+    elif not os.path.exists(link):
+        nice_link = link
+    elif link == '/' or len(test) == 1 or test[0] in ('http://', './', '../'):
+        nice_link = link
+    else:
+        link = os.path.abspath(link)
+        if root:
+            whereami = os.path.dirname(root)          # os.path.abspath(self._parent.xmlfn)
+        else:
+            whereami = os.getcwd()                    # os.path.join(os.getcwd(), 'index.html')
+        nice_link = os.path.relpath(link, whereami)   # getrelativepath(link, whereami)
+    if not nice_link:
+        raise ConversionError('Unable to make this local link relative')
+    return nice_link
 
 
 def getelname(tag, attrs=None, comment=False):
