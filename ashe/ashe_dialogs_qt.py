@@ -5,6 +5,7 @@ custom dialogen
 import os
 ## import sys
 import string
+import pathlib
 import PyQt5.QtWidgets as qtw
 import PyQt5.QtGui as gui
 import PyQt5.QtCore as core
@@ -44,13 +45,11 @@ class ElementDialog(qtw.QDialog):
         self.tag_text = qtw.QLineEdit(self)
         self.tag_text.setMinimumWidth(250)
         self.comment_button = qtw.QCheckBox('&Comment(ed)', self)
-        ## is_comment = False
         is_style_tag = self.is_stylesheet = has_style = False
         self.styledata = self.old_styledata = ''
         if tag:
             x = tag.split(None, 1)
             if x[0] == CMSTART:
-                ## is_comment = True
                 self.comment_button.toggle()
                 x = x[1].split(None, 1)
             if x[0] == ELSTART:
@@ -58,7 +57,6 @@ class ElementDialog(qtw.QDialog):
             self.tag_text.setText(x[0])
             origtag = x[0]
             is_style_tag = (origtag == 'style')
-            ## self.tag_text.readonly=True
         hbox.addWidget(lbl)
         hbox.addWidget(self.tag_text)
         hbox.addWidget(self.comment_button)
@@ -71,17 +69,14 @@ class ElementDialog(qtw.QDialog):
 
         hbox = qtw.QHBoxLayout()
         self.attr_table = qtw.QTableWidget(self)
-        ## self.attr_table.resize(540, 340)
         self.attr_table.setColumnCount(2)
         self.attr_table.setHorizontalHeaderLabels(['attribute', 'value'])
         hdr = self.attr_table.horizontalHeader()
-        ## hdr.setMinimumSectionSize(340)
         hdr.resizeSection(0, 102)
         hdr.resizeSection(1, 152)
         hdr.setStretchLastSection(True)
         self.attr_table.verticalHeader().setVisible(False)
         self.attr_table.setTabKeyNavigation(False)
-        ## self.attr_table.SetColSize(1, tbl.Size[0] - 162) # 178) # 160)
         if attrs:
             for attr, value in attrs.items():
                 if attr == 'styledata':
@@ -104,9 +99,7 @@ class ElementDialog(qtw.QDialog):
                     item.setFlags(item.flags() & (not core.Qt.ItemIsEditable))
         else:
             self.row = -1
-        ## hbox.addStretch()
         hbox.addWidget(self.attr_table)
-        ## hbox.addStretch()
         box.addLayout(hbox)
 
         hbox = qtw.QHBoxLayout()
@@ -151,10 +144,6 @@ class ElementDialog(qtw.QDialog):
         hbox.addStretch()
 
         self.setLayout(vbox)
-
-    ## def on_resize(self, evt=None):
-        ## self.attr_table.SetColSize(1, self.attr_table.GetSize()[0] - 162) # 178) # 160)
-        ## self.attr_table.ForceRefresh()
 
     def on_add(self):
         "attribuut toevoegen"
@@ -201,19 +190,14 @@ class ElementDialog(qtw.QDialog):
         else:
             if fname.startswith('http'):
                 h_fname = os.path.join('/tmp', 'ashe_{}'.format(os.path.basename(fname)))
-                ## h_fname = str(pathlib.Path('/tmp') / 'ashe_{}'.format(
-                    ## pathlib.Path(fname).name))
                 os.system('wget {} -O {}'.format(fname, h_fname))    # TODO
                 fname = h_fname
             else:
                 h_fname = fname
-                ## xmlfn_path = os.path.dirname(self._parent.xmlfn)
                 xmlfn_path = pathlib.Path(self._parent.xmlfn)
                 while h_fname.startswith('../'):
                     h_fname = h_fname[3:]
-                    ## xmlfn_path = os.path.dirname(xmlfn_path)
                     xmlfn_path = xmlfn_path.parent
-                ## fname = os.path.join(xmlfn_path, h_fname)
                 fname = str(xmlfn_path / h_fname)
             print('constructed filename:', fname)
             try:
@@ -221,7 +205,6 @@ class ElementDialog(qtw.QDialog):
                 css.open(filename=fname)
             except Exception as e:
                 mld = str(e)
-                ## css.close()
             else:
                 css.setWindowModality(core.Qt.ApplicationModal)
                 css.show()
@@ -232,11 +215,9 @@ class ElementDialog(qtw.QDialog):
         "controle bij OK aanklikken"
         # TODO: ensure no duplicate items are added
         tag = str(self.tag_text.text())
-        ## okay = True
         test = string.ascii_letters + string.digits
         for letter in tag:
             if letter not in test:
-                ## okay = False
                 qtw.QMessageBox.information(self, self._parent.title,
                                             'Illegal character(s) in tag name')
                 break
@@ -279,13 +260,10 @@ class TextDialog(qtw.QDialog):
         vbox = qtw.QVBoxLayout()
         hbox = qtw.QHBoxLayout()
         self.comment_button = qtw.QCheckBox('&Comment(ed)', self)
-        ## self.comment_button.setCheckState(iscomment)
-        ## iscomment = False
         if text is None:
             text = ''
         else:
             if text.startswith(CMSTART):
-                ## iscomment = True
                 self.comment_button.toggle()
                 dummy, text = text.split(None, 1)
         hbox.addWidget(self.comment_button)
@@ -315,6 +293,144 @@ class TextDialog(qtw.QDialog):
         "pass changed data to parent"
         self._parent.dialog_data = (str(self.data_text.toPlainText()),
                                     self.comment_button.checkState())
+        super().accept()
+
+
+class SearchDialog(qtw.QDialog):
+    """Dialog to get search arguments
+    """
+    def __init__(self, parent, title=""):
+        super().__init__(parent)
+        self.setWindowTitle(title)
+        self._parent = parent
+
+        self.cb_element = qtw.QLabel('Element', self)
+        lbl_element = qtw.QLabel("name:", self)
+        self.txt_element = qtw.QLineEdit(self)
+        self.txt_element.textChanged.connect(self.set_search)
+
+        self.cb_attr = qtw.QLabel('Attribute', self)
+        lbl_attr_name = qtw.QLabel("name:", self)
+        self.txt_attr_name = qtw.QLineEdit(self)
+        self.txt_attr_name.textChanged.connect(self.set_search)
+        lbl_attr_val = qtw.QLabel("value:", self)
+        self.txt_attr_val = qtw.QLineEdit(self)
+        self.txt_attr_val.textChanged.connect(self.set_search)
+
+        self.cb_text = qtw.QLabel('Text', self)
+        lbl_text = qtw.QLabel("value:", self)
+        self.txt_text = qtw.QLineEdit(self)
+        self.txt_text.textChanged.connect(self.set_search)
+
+        self.lbl_search = qtw.QLabel('', self)
+
+        self.btn_ok = qtw.QPushButton('&Ok', self)
+        self.btn_ok.clicked.connect(self.accept)
+        self.btn_ok.setDefault(True)
+        self.btn_cancel = qtw.QPushButton('&Cancel', self)
+        self.btn_cancel.clicked.connect(self.reject)
+
+        sizer = qtw.QVBoxLayout()
+
+        gsizer = qtw.QGridLayout()
+
+        gsizer.addWidget(self.cb_element, 0, 0)
+        vsizer = qtw.QVBoxLayout()
+        hsizer = qtw.QHBoxLayout()
+        hsizer.addWidget(lbl_element)
+        hsizer.addWidget(self.txt_element)
+        vsizer.addLayout(hsizer)
+        gsizer.addLayout(vsizer, 0, 1)
+
+        vsizer = qtw.QVBoxLayout()
+        vsizer.addSpacing(5)
+        vsizer.addWidget(self.cb_attr)
+        vsizer.addStretch()
+        gsizer.addLayout(vsizer, 1, 0)
+        vsizer = qtw.QVBoxLayout()
+        hsizer = qtw.QHBoxLayout()
+        hsizer.addWidget(lbl_attr_name)
+        hsizer.addWidget(self.txt_attr_name)
+        vsizer.addLayout(hsizer)
+        hsizer = qtw.QHBoxLayout()
+        hsizer.addWidget(lbl_attr_val)
+        hsizer.addWidget(self.txt_attr_val)
+        vsizer.addLayout(hsizer)
+        gsizer.addLayout(vsizer, 1, 1)
+
+        gsizer.addWidget(self.cb_text, 2, 0)
+        hsizer = qtw.QHBoxLayout()
+        hsizer.addWidget(lbl_text)
+        hsizer.addWidget(self.txt_text)
+        gsizer.addLayout(hsizer, 2, 1)
+        sizer.addLayout(gsizer)
+
+        hsizer = qtw.QHBoxLayout()
+        hsizer.addWidget(self.lbl_search)
+        sizer.addLayout(hsizer)
+
+        hsizer = qtw.QHBoxLayout()
+        hsizer.addStretch()
+        hsizer.addWidget(self.btn_ok)
+        hsizer.addWidget(self.btn_cancel)
+        hsizer.addStretch()
+        sizer.addLayout(hsizer)
+
+        self.setLayout(sizer)
+
+        if self._parent.search_args:
+            self.txt_element.setText(self._parent.search_args[0])
+            self.txt_attr_name.setText(self._parent.search_args[1])
+            self.txt_attr_val.setText(self._parent.search_args[2])
+            self.txt_text.setText(self._parent.search_args[3])
+
+    def set_search(self):
+        """build text describing search action"""
+        out = ''
+        ele = self.txt_element.text()
+        attr_name = self.txt_attr_name.text()
+        attr_val = self.txt_attr_val.text()
+        text = self.txt_text.text()
+        attr = ''
+        if ele:
+            ele = '\n an element named `{}`'.format(ele)
+        if attr_name or attr_val:
+            attr = '\n an attribute'
+            if attr_name:
+                attr += ' named `{}`'.format(attr_name)
+            if attr_val:
+                attr += '\n that has value `{}`'.format(attr_val)
+            if ele:
+                attr = '\n with' + attr[1:]
+        if text:
+            out = 'search for text'
+            if ele:
+                out += '\n under' + ele[1:]
+            elif attr:
+                out += '\n under an element\n with'
+            if attr:
+                out += attr
+        elif ele:
+            out = 'search for' + ele
+            if attr:
+                out += attr
+        elif attr:
+            out = 'search for' + attr
+        self.lbl_search.setText(out)
+
+    def accept(self):
+        """confirm dialog and pass changed data to parent"""
+        ele = str(self.txt_element.text())
+        attr_name = str(self.txt_attr_name.text())
+        attr_val = str(self.txt_attr_val.text())
+        text = str(self.txt_text.text())
+        if not any((ele, attr_name, attr_val, text)):
+            qtw.QMessageBox.information(self, self._parent.title, 'Please'
+                                        ' enter search criteria or press cancel')
+            self.txt_element.setFocus()
+            return
+
+        self._parent.search_args = (ele, attr_name, attr_val, text)
         super().accept()
 
 
@@ -364,7 +480,6 @@ class DtdDialog(qtw.QDialog):
         hbox.addWidget(sbox)
         vbox.addLayout(hbox)
 
-        ## hbox = qtw.QDialog.ButtonBoxlayout()
         hbox = qtw.QHBoxLayout()
         self.ok_button = qtw.QPushButton('&Save', self)
         self.ok_button.clicked.connect(self.accept)
@@ -443,15 +558,7 @@ class CssDialog(qtw.QDialog):
 
     def kies(self):
         "methode om het te linken document te selecteren"
-        ## if self._parent.xmlfn:
-            ## loc = os.path.dirname(self._parent.xmlfn)
-        ## else:
-            ## loc = os.getcwd()
         loc = self._parent.xmlfn or os.getcwd()
-        ## if os.name == "nt":
-            ## mask = "CSS files (*.css)"
-        ## elif os.name == "posix":
-            ## mask = "CSS files (*.css *.CSS)"
         mask = HMASK.replace('html', 'css').replace('HTML', 'CSS')
         fnaam, _ = qtw.QFileDialog.getOpenFileName(self, "Choose a file", loc, mask)
         if fnaam:
@@ -470,22 +577,10 @@ class CssDialog(qtw.QDialog):
             qtw.QMessageBox.information(self, self.parent().title, "bestandsnaam opgeven"
                                         " of inline stylesheet definiëren s.v.p")
             return
-        ## if not link.startswith('http://'):
-            ## link = os.path.abspath(link)
-            ## if self._parent.xmlfn:
-                ## whereami = os.path.abspath(self._parent.xmlfn)
-            ## else:
-                ## whereami = os.path.join(os.getcwd(), 'index.html')
-            ## link = ed.getrelativepath(link, whereami)
-        ## if not link:
-            ## qtw.QMessageBox.information(self, self.parent().title,
-                                        ## 'Unable to make this local link relative')
-        ## else:
-            ## self.link = link
         try:
             link = ed.convert_link(link)
-        except ed.ConversionError:
-            qtw.QMessageBox.information(self, self._parent.title,msg)
+        except ed.ConversionError as msg:
+            qtw.QMessageBox.information(self, self._parent.title, msg)
             return
         self._parent.dialog_data = {"rel": 'stylesheet',
                                     "href": link,
@@ -565,10 +660,6 @@ class LinkDialog(qtw.QDialog):
 
     def kies(self):
         "methode om het te linken document te selecteren"
-        ## if self._parent.xmlfn:
-            ## loc = os.path.dirname(self._parent.xmlfn)
-        ## else:
-            ## loc = os.getcwd()
         loc = self._parent.xmlfn or os.getcwd()
         fnaam, _ = qtw.QFileDialog.getOpenFileName(self, "Choose a file", loc, HMASK)
         if fnaam:
@@ -588,28 +679,6 @@ class LinkDialog(qtw.QDialog):
 
     def accept(self):
         "bij OK: het geselecteerde (absolute) pad omzetten in een relatief pad"
-        ## link = str(self.link_text.text())
-        ## if link:
-            ## if not link.startswith('http://'):
-                ## link = os.path.abspath(link)
-                ## if self._parent.xmlfn:
-                    ## whereami = os.path.abspath(self._parent.xmlfn)
-                ## else:
-                    ## whereami = os.path.join(os.getcwd(), 'index.html')
-                ## link = ed.getrelativepath(link, whereami)
-            ## if not link:
-                ## qtw.QMessageBox.information(self, self._parent.title,
-                                            ## 'Unable to make this local link relative')
-            ## else:
-                ## self.link = link
-            ## txt = str(self.text_text.text())
-            ## data = {"href": link,
-                    ## "title": str(self.title_text.text())}
-            ## self._parent.dialog_data = txt, data
-        ## else:
-            ## qtw.QMessageBox.information(self, self._parent.title,
-                                        ## "link opgeven of cancel kiezen s.v.p")
-            ## return
         txt = str(self.text_text.text())
         if not txt:
             hlp = qtw.QMessageBox.question(self, 'Add Link',
@@ -686,15 +755,8 @@ class ImageDialog(qtw.QDialog):
 
     def kies(self):
         "methode om het te linken image te selecteren"
-        ## if self._parent.xmlfn:
-            ## loc = os.path.dirname(self._parent.xmlfn)
-        ## else:
-            ## loc = os.getcwd()
         loc = self._parent.xmlfn or os.getcwd()
         mask = '*.png *.jpg *.gif *.jpeg *.ico *.xpm *.svg'
-        ## if os.name == "nt":
-            ## mask = "Image files (*.htm *.html);;" + IMASK
-        ## elif os.name == "posix":
         if os.name == "posix":
             mask += ' ' + mask.upper()
         mask = "Image files ({});;{}".format(mask, IMASK)
@@ -716,30 +778,9 @@ class ImageDialog(qtw.QDialog):
 
     def accept(self):
         "bij OK: het geselecteerde (absolute) pad omzetten in een relatief pad"
-        ## link = str(self.link_text.text())
-        ## if link:
-            ## if not link.startswith('http://'):
-                ## link = os.path.abspath(link)
-                ## if self._parent.xmlfn:
-                    ## whereami = os.path.abspath(self._parent.xmlfn)
-                ## else:
-                    ## whereami = os.path.join(os.getcwd(), 'index.html')
-                ## link = ed.getrelativepath(link, whereami)
-            ## if not link:
-                ## qtw.QMessageBox.information(self, self._parent.title,
-                                            ## 'Unable to make this local link relative')
-            ## else:
-                ## self.link = link
-            ## self._parent.dialog_data = {"src": link,
-                                        ## "alt": str(self.alt_text.text()),
-                                        ## "title": str(self.title_text.text())}
-        ## else:
-            ## qtw.QMessageBox.information(self, self._parent.title,
-                                        ## "image link opgeven of cancel kiezen s.v.p")
-            ## return
         try:
             link = ed.convert_link(self.link_text.text(), self._parent.xmlfn)
-        except ed.ConversionError:
+        except ed.ConversionError as msg:
             qtw.QMessageBox.information(self, self._parent.title, msg)
             return
         self._parent.dialog_data = {"src": link,
@@ -767,7 +808,6 @@ class VideoDialog(qtw.QDialog):
         row = 0
         gbox.addWidget(qtw.QLabel("link to video:", self), row, 0)
         self.link_text = qtw.QLineEdit("http://", self)
-        ## self.link_text.textChanged.connect(self.set_ltext)
         self.linktxt = ""
         gbox.addWidget(self.link_text, row, 1)
 
@@ -823,15 +863,8 @@ class VideoDialog(qtw.QDialog):
 
     def kies(self):
         "methode om het te linken element te selecteren"
-        ## if self._parent.xmlfn:
-            ## loc = os.path.dirname(self._parent.xmlfn)
-        ## else:
-            ## loc = os.getcwd()
         loc = self._parent.xmlfn or os.getcwd()
         mask = '*.mp4 *.avi *.mpeg'  # TODO: add other types
-        ## if os.name == "nt":
-            ## mask = "Image files (*.htm *.html);;" + IMASK
-        ## elif os.name == "posix":
         if os.name == "posix":
             mask += ' ' + mask.upper()
         mask = "Video files ({});;{}".format(mask, IMASK)
@@ -850,30 +883,9 @@ class VideoDialog(qtw.QDialog):
 
     def accept(self):
         "bij OK: het geselecteerde (absolute) pad omzetten in een relatief pad"
-        ## link = str(self.link_text.text())
-        ## if link:
-            ## if not link.startswith('http://'):
-                ## link = os.path.abspath(link)
-                ## if self._parent.xmlfn:
-                    ## whereami = os.path.abspath(self._parent.xmlfn)
-                ## else:
-                    ## whereami = os.path.join(os.getcwd(), 'index.html')
-                ## link = ed.getrelativepath(link, whereami)
-            ## if not link:
-                ## qtw.QMessageBox.information(self, self._parent.title,
-                                            ## 'Unable to make this local link relative')
-            ## else:
-                ## self.link = link
-            ## self._parent.dialog_data = {"src": link,
-                                        ## "height": str(self.hig_text.text()),
-                                        ## "width": str(self.wid_text.text())}
-        ## else:
-            ## qtw.QMessageBox.information(self, self._parent.title,
-                                        ## "link naar video opgeven of cancel kiezen s.v.p")
-            ## return
         try:
             link = ed.convert_link(self.link_text.text(), self._parent.xmlfn)
-        except ed.ConversionError:
+        except ed.ConversionError as msg:
             qtw.QMessageBox.information(self, self._parent.title, msg)
             return
         self._parent.dialog_data = {"src": link,
@@ -899,7 +911,6 @@ class AudioDialog(qtw.QDialog):
         row = 0
         gbox.addWidget(qtw.QLabel("link to audio fragment:", self), row, 0)
         self.link_text = qtw.QLineEdit("http://", self)
-        ## self.link_text.textChanged.connect(self.set_ltext)
         self.linktxt = ""
         gbox.addWidget(self.link_text, row, 1)
 
@@ -933,15 +944,8 @@ class AudioDialog(qtw.QDialog):
 
     def kies(self):
         "methode om het te linken element te selecteren"
-        ## if self._parent.xmlfn:
-            ## loc = os.path.dirname(self._parent.xmlfn)
-        ## else:
-            ## loc = os.getcwd()
         loc = self._parent.xmlfn or os.getcwd()
         mask = '*.mp3 *.wav *.ogg'  # TODO: add other types
-        ## if os.name == "nt":
-            ## mask = "Image files (*.htm *.html);;" + IMASK
-        ## elif os.name == "posix":
         if os.name == "posix":
             mask += ' ' + mask.upper()
         mask = "Audio files ({});;{}".format(mask, IMASK)
@@ -951,28 +955,9 @@ class AudioDialog(qtw.QDialog):
 
     def accept(self):
         "bij OK: het geselecteerde (absolute) pad omzetten in een relatief pad"
-        ## link = str(self.link_text.text())
-        ## if link:
-            ## if not link.startswith('http://'):
-                ## link = os.path.abspath(link)
-                ## if self._parent.xmlfn:
-                    ## whereami = os.path.abspath(self._parent.xmlfn)
-                ## else:
-                    ## whereami = os.path.join(os.getcwd(), 'index.html')
-                ## link = ed.getrelativepath(link, whereami)
-            ## if not link:
-                ## qtw.QMessageBox.information(self, self._parent.title,
-                                            ## 'Unable to make this local link relative')
-            ## else:
-                ## self.link = link
-            ## self._parent.dialog_data = {"src": link}
-        ## else:
-            ## qtw.QMessageBox.information(self, self._parent.title,
-                                        ## "link naar audio opgeven of cancel kiezen s.v.p")
-            ## return
         try:
             link = ed.convert_link(self.link_text.text(), self._parent.xmlfn)
-        except ed.ConversionError:
+        except ed.ConversionError as msg:
             qtw.QMessageBox.information(self, self._parent.title, msg)
             return
         self._parent.dialog_data = {"src": link}
@@ -998,7 +983,6 @@ class ListDialog(qtw.QDialog):
         tbox.addWidget(qtw.QLabel("choose type of list:", self), 0, 0)
         self.type_select = qtw.QComboBox(self)
         self.type_select.addItems(["unordered", "ordered", "definition"])
-        ## self.type_select.setCurrentIndex(0) # SetStringSelection("unordered")
         self.type_select.activated.connect(self.on_type)
         tbox.addWidget(self.type_select, 0, 1)
 
@@ -1017,7 +1001,6 @@ class ListDialog(qtw.QDialog):
         hdr = tbl.horizontalHeader()
         hdr.resizeSection(0, 252)
         tbl.verticalHeader().setVisible(False)
-        ## tbl.SetColSize(0, 240)
         self.list_table = tbl
         hbox = qtw.QHBoxLayout()
         hbox.addStretch()
@@ -1053,16 +1036,10 @@ class ListDialog(qtw.QDialog):
             self.list_table.setHorizontalHeaderLabels(['term', 'description'])
             hdr.resizeSection(0, 102)
             hdr.resizeSection(1, 152)
-            ## self.list_table.SetColLabelValue(0, 'term')
-            ## self.list_table.SetColSize(0, 80)
-            ## self.list_table.SetColLabelValue(1, 'description')
-            ## self.list_table.SetColSize(1, 160)
         elif sel[0] != "d" and numcols == 2:
             self.list_table.removeColumn(0)
             self.list_table.setHorizontalHeaderLabels(['list item'])
             hdr.resizeSection(0, 254)
-            ## self.list_table.SetColLabelValue(0, 'list item')
-            ## self.list_table.SetColSize(0, 240)
 
     def on_text(self):  # , number=None):
         "controle en actie bij invullen/aanpassen aantal regels"
@@ -1079,7 +1056,6 @@ class ListDialog(qtw.QDialog):
         elif cur_rows > num_rows:
             for idx in range(num_rows, cur_rows):
                 self.list_table.insertRow(idx)
-                ## self.list_table.SetRowLabelValue(idx, '')
 
     def accept(self):
         """bij OK: de opgebouwde list via self.dialog_data doorgeven
@@ -1141,9 +1117,7 @@ class TableDialog(qtw.QDialog):
         self.show_titles.setChecked(True)
         self.show_titles.stateChanged.connect(self.on_check)
         hbox = qtw.QHBoxLayout()
-        ## hbox.addStretch()
         hbox.addWidget(self.show_titles)
-        ## hbox.addStretch()
         gbox.addLayout(hbox, 3, 1)
 
         self.table_table = qtw.QTableWidget(self)
@@ -1155,9 +1129,7 @@ class TableDialog(qtw.QDialog):
         self.hdr.setSectionsClickable(True)
         self.hdr.sectionClicked.connect(self.on_title)
         hbox = qtw.QHBoxLayout()
-        ## hbox.addStretch()
         hbox.addWidget(self.table_table)
-        ## hbox.addStretch()
         gbox.addLayout(hbox, 4, 0, 1, 2)
         sbox.setLayout(gbox)
         vbox.addWidget(sbox)
@@ -1193,8 +1165,6 @@ class TableDialog(qtw.QDialog):
         elif cur_rows > num_rows:
             for idx in range(num_rows, cur_rows):
                 self.table_table.insertRow(idx)
-                ## self.table_table.itemAt(idx, 0).setBackgroundColor(core.Qt.darkGray)
-                ## self.table_table.SetRowLabelValue(idx, '')
 
     def on_cols(self):  # , number=None):
         "controle en actie bij opgeven aantal kolommen"
@@ -1214,7 +1184,6 @@ class TableDialog(qtw.QDialog):
                 self.table_table.insertColumn(idx)
                 self.headings.append('')
                 self.table_table.setHorizontalHeaderLabels(self.headings)
-                ## self.table_table.SetColLabelValue(idx,'')
 
     def on_check(self, number=None):
         "callback for show titles checkbox"
@@ -1354,16 +1323,6 @@ class CodeViewDialog(qtw.QDialog):
         self.text.setMarginWidth(0, fontmetrics.width("00000"))
         self.text.setMarginLineNumbers(0, True)
         self.text.setMarginsBackgroundColor(gui.QColor("#cccccc"))
-
-        ## # Clickable margin 1 for showing markers
-        ## self.text.setMarginSensitivity(1, True)
-        ## self.connect(self.text,
-            ## core.SIGNAL('marginClicked(int, int, Qt::KeyboardModifiers)'),
-            ## self.text.on_margin_clicked)
-        ## self.text.markerDefine(sci.QsciScintilla.RightArrow,
-            ## self.ARROW_MARKER_NUM)
-        ## self.text.setMarkerBackgroundColor(gui.QColor("#ee1111"),
-            ## self.ARROW_MARKER_NUM)
 
         # Enable brace matching, auto-indent, code-folding
         self.text.setBraceMatching(sci.QsciScintilla.SloppyBraceMatch)

@@ -3,6 +3,7 @@
 
 startfunctie en hoofdscherm
 """
+
 import os
 import sys
 import pathlib
@@ -16,7 +17,8 @@ import bs4 as bs  # BeautifulSoup as bs
 import ashe.ashe_mixin as ed
 from ashe.ashe_dialogs_qt import cssedit_available, HMASK, ElementDialog, \
     TextDialog, DtdDialog, CssDialog, LinkDialog, ImageDialog, VideoDialog, \
-    AudioDialog, ListDialog, TableDialog, ScrolledTextDialog, CodeViewDialog
+    AudioDialog, ListDialog, TableDialog, ScrolledTextDialog, CodeViewDialog, \
+    SearchDialog
 
 ICO = str(pathlib.Path(__file__).parent / "ashe.ico")
 DESKTOP = ed.DESKTOP
@@ -45,23 +47,6 @@ def comment_out(node, commented):
         comment_out(subnode, commented)
 
 
-def finditem(parent, tag, first_only=True):
-    """find tag item(s) under a parent
-
-    if first_only is True, one item is returned; otherwise a list of items
-    if none found, an empty list is returned
-    """
-    items = []
-    for ix in range(parent.childCount()):
-        item = parent.child(ix)
-        if item.text(0).startswith(' '.join((ELSTART, tag))):
-            if first_only:
-                return item
-            else:
-                items.append(item)
-    return items  # if not first_only else '' - not necessary when testing for if result:
-
-
 def is_stylesheet_node(node):
     """determine if node is for stylesheet definition
     """
@@ -87,6 +72,35 @@ def in_body(node):
         else:
             return is_node_ok(node.parent())
     return is_node_ok(node)
+
+
+def flatten_tree(element, top=True):
+    """return the tree's structure as a flat list
+    probably nicer as a generator function
+    """
+    name = element.text(0)
+    count = 0
+    if name.startswith(ELSTART):
+        count = 2
+    elif name.startswith(CMELSTART):
+        count = 3
+    if count:
+        splits = name.split(None, count)
+        name = ' '.join(splits[:count])
+    elem_list = [(element, name, element.data(0, core.Qt.UserRole))]
+
+    subel_list = []
+    for seq in range(element.childCount()):
+        subitem = element.child(seq)
+        if str(subitem.text(0)).startswith(ELSTART) \
+                or str(subitem.text(0)).startswith(CMELSTART):
+            subel_list = flatten_tree(subitem, top=False)
+            elem_list.extend(subel_list)
+        else:
+            elem_list.append((subitem, subitem.text(0), {}))
+    if top:
+        elem_list = elem_list[1:]
+    return elem_list
 
 
 class VisualTree(qtw.QTreeWidget):
@@ -150,13 +164,8 @@ class MainFrame(qtw.QMainWindow, ed.EditorMixin):
         self.title = "(untitled) - Albert's Simple HTML Editor"
         self.xmlfn = fname
         self.dialog_data = {}
-        # bepaalt de bij het scherm passende hoogte en breedte
-        # dsp = gui.QDisplay().GetClientArea()
-        # high = dsp.height if dsp.height < 900 else 900
-        # wide = dsp.width if dsp.width < 1020 else 1020
+        self.search_args = []
         super().__init__()
-        # pos = (dsp.top, dsp.left),
-        # size = (wide, high)
         self.appicon = gui.QIcon(ICO)
         self.setWindowIcon(self.appicon)
         self.resize(1020, 900)
@@ -242,6 +251,16 @@ class MainFrame(qtw.QMainWindow, ed.EditorMixin):
                  'Add a new element after the current', self.ins_aft),
                 ('Insert Element Under', 'Ins', '',
                  'Add a new element under the current', self.ins_chld))),
+            ('&Search', (
+                ("&Find", 'F', 'C',
+                 'Open dialog to specify search and find first', self.search),
+                ("Find &Last", 'F', 'SC',
+                 'Find last occurrence of search argument', self.search_last),
+                ("Find &Next", 'F3', '',
+                 'Find next occurrence of search argument', self.search_next),
+                ("Find &Previous", 'F3', 'S',
+                 'Find previous occurrence of search argument', self.search_prev))),
+                ## ("&Replace", 'H', 'C', 'Search and replace', self.replace),
             ("&HTML", (
                 ('Add &DTD', '', '', 'Add a document type description', self.add_dtd),
                 ('Add &Stylesheet', '', '', 'Add a stylesheet', self.add_css),
@@ -279,7 +298,6 @@ class MainFrame(qtw.QMainWindow, ed.EditorMixin):
                 menu.addAction(act)
                 act.setStatusTip(status_text)
                 act.setShortcut(hotkey)
-                ## print(callback)
                 act.triggered.connect(callback)
                 if menuitem_text.startswith('Advance selection'):
                     act.setCheckable(True)
@@ -314,13 +332,13 @@ class MainFrame(qtw.QMainWindow, ed.EditorMixin):
                 self.savexml()
             return retval[hlp]
 
-    def close(self):  # , evt=None):
+    def close(self):
         """kijken of er wijzigingen opgeslagen moeten worden
         daarna afsluiten"""
         if self._check_tree() != -1:
             super().close()
 
-    def newxml(self):  # , evt=None):
+    def newxml(self):
         """kijken of er wijzigingen opgeslagen moeten worden
         daarna nieuwe html aanmaken"""
         if self._check_tree() != -1:
@@ -332,7 +350,7 @@ class MainFrame(qtw.QMainWindow, ed.EditorMixin):
             except Exception as err:
                 qtw.QMessageBox.information(self, self.title, str(err))
 
-    def openxml(self):  # , evt=None):
+    def openxml(self):
         """kijken of er wijzigingen opgeslagen moeten worden
         daarna een html bestand kiezen"""
         if self._check_tree() != -1:
@@ -349,7 +367,7 @@ class MainFrame(qtw.QMainWindow, ed.EditorMixin):
         # aan het eind van new, open, save, saveas en reload"""
         # zie ticket 406 voor een overweging om dit helemaal achterwege te laten
 
-    def savexml(self):  # , evt=None):
+    def savexml(self):
         "save html to file"
         if self.xmlfn == '':
             self.savexmlas()
@@ -362,7 +380,7 @@ class MainFrame(qtw.QMainWindow, ed.EditorMixin):
                 return
             self.sb.showMessage("saved {}".format(self.xmlfn))
 
-    def savexmlas(self):  # , evt=None):
+    def savexmlas(self):
         """vraag bestand om html op te slaan
         bestand opslaan en naam in titel en root element zetten"""
         name, _ = qtw.QFileDialog.getSaveFileName(self, "Save file as ...",
@@ -376,10 +394,9 @@ class MainFrame(qtw.QMainWindow, ed.EditorMixin):
                 qtw.QMessageBox.information(self, self.title, str(err))
                 return
             self.top.setText(0, self.xmlfn)
-            ## self.setWindowTitle(" - ".join((os.path.basename(self.xmlfn), TITEL)))
             self.sb.showMessage("saved as {}".format(self.xmlfn))
 
-    def reopenxml(self):  # , evt=None):
+    def reopenxml(self):
         """onvoorwaardelijk html bestand opnieuw laden"""
         try:
             ed.EditorMixin.getsoup(self, fname=self.xmlfn)
@@ -389,7 +406,7 @@ class MainFrame(qtw.QMainWindow, ed.EditorMixin):
         except Exception as err:
             qtw.QMessageBox(self, self.title, str(err))
 
-    def advance_selection_onoff(self):  # , event=None):
+    def advance_selection_onoff(self):
         "callback for menu option"
         self.advance_selection_on_add = self.adv_menu.isChecked()
 
@@ -406,13 +423,13 @@ class MainFrame(qtw.QMainWindow, ed.EditorMixin):
             title = title.replace(test2, test)
         self.setWindowTitle(title)
 
-    def refresh_preview(self):  # , event=None):
+    def refresh_preview(self):
         "update display"
         self.data2soup()
         self.html.setHtml(str(self.soup).replace('%SOUP-ENCODING%', 'utf-8'))
         self.tree.setFocus()
 
-    def about(self):  # , evt=None):
+    def about(self):
         "toon programma info"
         abouttext = ed.EditorMixin.about(self)
         qtw.QMessageBox.information(self, self.title, abouttext)
@@ -468,7 +485,7 @@ class MainFrame(qtw.QMainWindow, ed.EditorMixin):
                         text = text.split(None, 1)[1]
                         if not commented:
                             is_comment = True
-                            soup = bs.BeautifulSoup()
+                            soup = bs.BeautifulSoup('', 'lxml')
                             sub = soup.new_tag(text.split()[1])
                             expandnode(elm, sub, data, is_comment)
                             sub = bs.Comment(str(sub))  # .decode("utf-8")) niet voor Py3
@@ -497,7 +514,8 @@ class MainFrame(qtw.QMainWindow, ed.EditorMixin):
                         if subtext.startswith(ELSTART):
                             # element in tekst omzetten en deze aan text toevoegen
                             onthou = self.soup
-                            self.soup = bs.BeautifulSoup()
+
+                            self.soup = bs.BeautifulSoup('', 'lxml')
                             tag = self.soup.new_tag(subtext.split()[1])
                             expandnode(subel, tag, data)
                             text += str(tag)
@@ -513,7 +531,7 @@ class MainFrame(qtw.QMainWindow, ed.EditorMixin):
                     if text.startswith(CMSTART) and not commented:
                         sub = bs.Comment(data)  # .decode("utf-8")) niet voor Py3
                     root.append(sub)  # data.decode("latin-1")) # insert(0,sub)
-        self.soup = bs.BeautifulSoup()  # self.root.originalEncoding)
+        self.soup = bs.BeautifulSoup('', 'lxml')  # self.root.originalEncoding)
         count = self.top.childCount()
         for ix in range(count):
             tag = self.top.child(ix)
@@ -541,7 +559,6 @@ class MainFrame(qtw.QMainWindow, ed.EditorMixin):
     def popup_menu(self, arg=None):
         'build/show context menu'
         # get type of node
-        ## node = self.tree.currentItem()
         menu = qtw.QMenu()
         for itemtype, item in self.contextmenu_items:
             if itemtype == 'A':
@@ -549,10 +566,6 @@ class MainFrame(qtw.QMainWindow, ed.EditorMixin):
                 if item == self.css_menu:
                     if not cssedit_available:
                         act.setDisabled(True)
-                    ## elif in_body(item):
-                        ## item.setText('Add inline &style')
-                        ## if not node.text(0).startswith(ELSTART):
-                            ## item.setDisabled(True)
             elif itemtype == 'M':
                 menu.addMenu(item)
             else:
@@ -592,7 +605,7 @@ class MainFrame(qtw.QMainWindow, ed.EditorMixin):
                 skip = True
         return skip
 
-    def expand(self):  # , evt=None):
+    def expand(self):
         "expandeer tree vanaf huidige item"
         def expand_all(item):
             "recursively expand items"
@@ -605,7 +618,7 @@ class MainFrame(qtw.QMainWindow, ed.EditorMixin):
         expand_all(item)
         self.tree.resizeColumnToContents(0)
 
-    def collapse(self):  # , evt=None):
+    def collapse(self):
         "collapse huidige item en daaronder"
         def collapse_all(item):
             "recursively collapse items"
@@ -618,7 +631,7 @@ class MainFrame(qtw.QMainWindow, ed.EditorMixin):
         self.tree.collapseItem(item)
         self.tree.resizeColumnToContents(0)
 
-    def comment(self):  # , evt=None):
+    def comment(self):
         "(un)comment zonder de edit dialoog"
         if DESKTOP and not self.checkselection():
             return
@@ -643,7 +656,7 @@ class MainFrame(qtw.QMainWindow, ed.EditorMixin):
             self.item.setData(0, core.Qt.UserRole, tag)
         self.refresh_preview()
 
-    def edit(self):  # , evt=None):
+    def edit(self):
         "start edit m.b.v. dialoog"
         if DESKTOP and not self.checkselection():
             return
@@ -693,8 +706,6 @@ class MainFrame(qtw.QMainWindow, ed.EditorMixin):
                     newtext = str(attrs.pop('styledata', ''))  # en daarna moet deze hier weg
                     oldtext = str(self.item.child(0).data(0, core.Qt.UserRole))
                     if newtext != oldtext:
-                        ## if newtext == '':
-                            ## TODO: remove child, possibly style tag as well
                         self.item.child(0).setText(0, ed.getshortname(newtext))
                         self.item.child(0).setData(0, core.Qt.UserRole, newtext)
                 attrdict.pop('styledata', '')
@@ -913,7 +924,6 @@ class MainFrame(qtw.QMainWindow, ed.EditorMixin):
             where = "after"
         edt = ElementDialog(self, title="New element (insert {0})".format(where)).exec_()
         if edt == qtw.QDialog.Accepted:
-            ## modified = True
             tag, attrs, commented = self.dialog_data
             if below:
                 text = str(self.item.text(0))
@@ -942,7 +952,7 @@ class MainFrame(qtw.QMainWindow, ed.EditorMixin):
             self.refresh_preview()
             self.item.setExpanded(True)
 
-    def make_conditional(self):  # , evt=None):
+    def make_conditional(self):
         "zet een IE conditie om het element heen"
         if DESKTOP and not self.checkselection():
             return
@@ -969,7 +979,7 @@ class MainFrame(qtw.QMainWindow, ed.EditorMixin):
             self.tree.setCurrentItem(new)
             self.paste_blw()
 
-    def remove_condition(self):  # , evt=None):
+    def remove_condition(self):
         "haal de IE conditie om het element weg"
         if DESKTOP and not self.checkselection():
             return
@@ -991,7 +1001,75 @@ class MainFrame(qtw.QMainWindow, ed.EditorMixin):
         self.tree.setCurrentItem(cond)
         self.delete(ifcheck=False)
 
-    def add_dtd(self):  # , evt=None):
+    def search(self, reverse=False):
+        "start search after asking for options"
+        self._search_pos = None
+        if not reverse or not self.search_args:
+            edt = SearchDialog(self, title='Search options').exec_()
+        if reverse or edt == qtw.QDialog.Accepted:
+            found = ed.find_next(flatten_tree(self.top), self.search_args,
+                                 reverse)
+            if found:
+                self.tree.setCurrentItem(found[1])
+                self._search_pos = found
+            else:
+                self._meldinfo('Niks (meer) gevonden')
+
+    def search_last(self):
+        "start backwards search"
+        self.search(reversed=True)
+
+    def search_next(self, reverse=False):
+        "find (default is forward)"
+        found = ed.find_next(flatten_tree(self.top), self.search_args, reverse,
+                             self._search_pos)
+        if found:
+            self.tree.setCurrentItem(found[1])
+            self._search_pos = found
+        else:
+            self._meldinfo('Niks (meer) gevonden')
+
+    def search_prev(self):
+        "find backwards"
+        self.search_next(reversed=True)
+
+    def replace(self):
+        "replace an element"
+        self._meldinfo('Replace: not sure if I wanna implement this')
+
+    def _meldinfo(self, text):   # letterlijk overgenomen uit axe
+        """notify about some information"""
+        self.in_dialog = True
+        qtw.QMessageBox.information(self, self.title, text)
+
+    def _meldfout(self, text, abort=False):   # letterlijk overgenomen uit axe
+        """notify about an error"""
+        self.in_dialog = True
+        qtw.QMessageBox.critical(self, self.title, text)
+        if abort:
+            self.quit()
+
+    def _ask_yesnocancel(self, prompt):   # letterlijk overgenomen uit axe
+        """stelt een vraag en retourneert het antwoord
+        1 = Yes, 0 = No, -1 = Cancel
+        """
+        retval = dict(zip((qtw.QMessageBox.Yes, qtw.QMessageBox.No,
+                           qtw.QMessageBox.Cancel), (1, 0, -1)))
+        self.in_dialog = True
+        h = qtw.QMessageBox.question(
+            self, self.title, prompt,
+            qtw.QMessageBox.Yes | qtw.QMessageBox.No | qtw.QMessageBox.Cancel,
+            defaultButton=qtw.QMessageBox.Yes)
+        return retval[h]
+
+    def _ask_for_text(self, prompt):   # letterlijk overgenomen uit axe
+        """vraagt om tekst en retourneert het antwoord"""
+        self.in_dialog = True
+        data, *_ = qtw.QInputDialog.getText(self, self.title, prompt,
+                                            qtw.QLineEdit.Normal, "")
+        return data
+
+    def add_dtd(self):
         "start toevoegen dtd m.b.v. dialoog"
         if self.has_dtd:
             self.top.removeChild(self.top.child(0))
@@ -1011,7 +1089,7 @@ class MainFrame(qtw.QMainWindow, ed.EditorMixin):
         self.refresh_preview()
         self.tree.scrollToItem(self.top.child(0))
 
-    def add_css(self):  # , evt=None):
+    def add_css(self):
         "start toevoegen stylesheet m.b.v. dialoog"
         edt = CssDialog(self).exec_()
         if edt != qtw.QDialog.Accepted:
@@ -1046,7 +1124,7 @@ class MainFrame(qtw.QMainWindow, ed.EditorMixin):
         self.mark_dirty(True)
         self.refresh_preview()
 
-    def add_link(self):  # , evt=None):
+    def add_link(self):
         "start toevoegen link m.b.v. dialoog"
         if DESKTOP and not self.checkselection():
             return
@@ -1067,7 +1145,7 @@ class MainFrame(qtw.QMainWindow, ed.EditorMixin):
             self.mark_dirty(True)
             self.refresh_preview()
 
-    def add_image(self):  # , evt=None):
+    def add_image(self):
         "start toevoegen image m.b.v. dialoog"
         if DESKTOP and not self.checkselection():
             return
@@ -1084,7 +1162,7 @@ class MainFrame(qtw.QMainWindow, ed.EditorMixin):
             self.mark_dirty(True)
             self.refresh_preview()
 
-    def add_video(self):  # , evt=None):
+    def add_video(self):
         "start toevoegen video m.b.v. dialoog"
         if DESKTOP and not self.checkselection():
             return
@@ -1102,7 +1180,6 @@ class MainFrame(qtw.QMainWindow, ed.EditorMixin):
             self.item.addChild(node)
             child = qtw.QTreeWidgetItem()
             child_data = {'src': src,
-                          ## 'type': 'video/{}'.format(os.path.splitext(src)[1][1:])}
                           'type': 'video/{}'.format(pathlib.Path(src).suffix[1:])}
             child.setText(0, ed.getelname('source', child_data))
             child.setData(0, core.Qt.UserRole, child_data)
@@ -1110,7 +1187,7 @@ class MainFrame(qtw.QMainWindow, ed.EditorMixin):
             self.mark_dirty(True)
             self.refresh_preview()
 
-    def add_audio(self):  # , evt=None):
+    def add_audio(self):
         "start toevoegen audio m.b.v. dialoog"
         if DESKTOP and not self.checkselection():
             return
@@ -1128,7 +1205,7 @@ class MainFrame(qtw.QMainWindow, ed.EditorMixin):
             self.mark_dirty(True)
             self.refresh_preview()
 
-    def add_list(self):  # , evt=None):
+    def add_list(self):
         "start toevoegen list m.b.v. dialoog"
         if DESKTOP and not self.checkselection():
             return
@@ -1164,7 +1241,7 @@ class MainFrame(qtw.QMainWindow, ed.EditorMixin):
             self.mark_dirty(True)
             self.refresh_preview()
 
-    def add_table(self):  # , evt=None):
+    def add_table(self):
         "start toevoegen tabel m.b.v. dialoog"
         if DESKTOP and not self.checkselection():
             return
@@ -1208,7 +1285,7 @@ class MainFrame(qtw.QMainWindow, ed.EditorMixin):
             self.mark_dirty(True)
             self.refresh_preview()
 
-    def validate(self):  # , evt=None):
+    def validate(self):
         "start validation"
         if self.tree_dirty or not self.xmlfn:
             htmlfile = '/tmp/ashe_check.html'
@@ -1223,7 +1300,7 @@ class MainFrame(qtw.QMainWindow, ed.EditorMixin):
                                  fromdisk=fromdisk)
         dlg.show()
 
-    def view_code(self):  # , evt=None):
+    def view_code(self):
         "start source viewer"
         self.data2soup()
         dlg = CodeViewDialog(self, "Source view", "Let op: de tekst wordt niet ververst"

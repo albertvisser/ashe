@@ -40,25 +40,9 @@ dtdlist = (('HTML 4.1 Strict', 'HTML PUBLIC "-//W3C//DTD HTML 4.01//EN'
             ' http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd" '))
 
 
-## def getrelativepath(path, refpath):
-    ## """return path made relative to refpath, or empty string
-
-    ## er is ook een functie os.path.relpath(path [,start])"""
-    ## if path.startswith('./') or path.startswith('../') or os.path.sep not in path:
-        ## return path  # already relative
-    ## common = os.path.commonprefix([path, refpath]).rsplit(os.path.sep, 1)[0] + os.path.sep
-    ## if not refpath.startswith(common):
-        ## return ''  # 'impossible to create relative link'
-    ## ref = os.path.dirname(refpath.replace(common, ''))
-    ## url = path.replace(common, '')
-    ## if ref:
-        ## for _ in ref.split(os.path.sep):
-            ## url = os.path.join('..', url)
-    ## return url
-
-
 class ConversionError(ValueError):
     pass
+
 
 def convert_link(link, root):
     nice_link = '', ''
@@ -137,6 +121,73 @@ def escape(text):
     return text
 
 
+def find_next(data, search_args, reverse=False, pos=None):
+    """searches the flattened tree from start or the given pos
+    to find the next item that fulfills the search criteria
+    """
+    outfile = '/tmp/search_stuff'
+    wanted_ele, wanted_attr, wanted_value, wanted_text = search_args
+    with open(outfile, 'a') as _o:
+        print(search_args, file=_o)
+    if pos is None:
+        pos = (0, None)
+        if reverse:
+            pos = (len(data), None)
+        with open(outfile, 'a') as _o:
+            print(data, file=_o)
+    if reverse:
+        data.reverse()
+    if pos[0]:
+        start = len(data) - pos[0] - 1 if reverse else pos[0]
+        data = data[start + 1:]
+
+    itemfound = None
+    for newpos, data_item in enumerate(data):
+        ele_ok = attr_name_ok = attr_value_ok = attr_ok = text_ok = False
+        item, element_name, attr_data = data_item
+
+        if element_name.startswith(ELSTART):
+            text_ok = True
+            ## if not wanted_ele or wanted_ele in element_name.replace(ELSTART, ''):
+            if wanted_ele and wanted_ele in element_name.replace(ELSTART, ''):
+                ele_ok = True
+            for name, value in attr_data.items():
+                if not wanted_attr or wanted_attr in name:
+                    attr_name_ok = True
+                if not wanted_value or wanted_value in value:
+                    attr_value_ok = True
+                if attr_name_ok and attr_value_ok:
+                    attr_ok = True
+                    break
+            with open(outfile, 'a') as _o:
+                print(item.text(0), 'is het niet', file=_o)
+        else:
+            ele_ok = attr_ok = True
+            ## if not wanted_text or wanted_text in element_name:
+            if wanted_text and wanted_text in element_name:
+                text_ok = True
+
+        with open(outfile, 'a') as _o:
+            print(item.text(0), ele_ok, text_ok, attr_ok, file=_o)
+        ok = ele_ok and text_ok and attr_ok
+        if ok:
+            itemfound = item
+            break
+
+    if itemfound:
+        factor = 1
+        if reverse:
+            newpos *= - 1
+            factor = -1
+        if pos[0]:
+            pos = newpos + pos[0] + factor
+        else:
+            pos = newpos + pos[0]
+        with open(outfile, 'a') as _o:
+            print('return values when found', pos, itemfound, file=_o)
+        return pos, itemfound
+
+
 class EditorMixin(object):
     "mixin class to add gui-independent methods to main frame"
 
@@ -160,14 +211,14 @@ class EditorMixin(object):
         else:
             html = '<html><head><title></title></head><body></body></html>'
         try:
-            root = bs.BeautifulSoup(html)
+            root = bs.BeautifulSoup(html, 'lxml')
         except Exception as err:
             print(err)
             raise
-        else:
-            self.root = root
-            self.xmlfn = fname
-            self.init_tree(fname)
+
+        self.root = root
+        self.xmlfn = fname
+        self.init_tree(fname)
         self.advance_selection_on_add = True
 
     def mark_dirty(self, state):
@@ -207,11 +258,13 @@ class EditorMixin(object):
                         cond, data = test.split(']>', 1)
                         cond = cond[3:].strip()
                         data, _ = data.rsplit('<![', 1)
-                        newitem = self.addtreeitem(item, ' '.join((IFSTART, cond)), '')
-                        newnode = bs.BeautifulSoup(data).contents[0].contents[0]
+                        newitem = self.addtreeitem(item, ' '.join((IFSTART, cond)),
+                                                   '')
+                        newnode = bs.BeautifulSoup(data,
+                                                   'lxml').contents[0].contents[0]
                         add_to_tree(newitem, newnode)
                     else:
-                        newnode = bs.BeautifulSoup(test)
+                        newnode = bs.BeautifulSoup(test, 'lxml')
                         try:
                             # correct BS wrapping this in <html><body>
                             newnode = newnode.find_all('body')[0]
@@ -220,8 +273,9 @@ class EditorMixin(object):
                         ## print(newnode.name)
                         add_to_tree(item, newnode, commented=True)
                 else:
-                    newitem = self.addtreeitem(item, getshortname(str(subnode),
-                                                                  commented), str(subnode))
+                    newitem = self.addtreeitem(item,
+                                               getshortname(str(subnode), commented),
+                                               str(subnode))
         self.has_dtd = self.has_stylesheet = False
         if name:
             titel = name
@@ -322,10 +376,6 @@ class EditorMixin(object):
         """validate HTML source
         """
         output = '/tmp/ashe_check'
-        ## with open(output, 'w') as f_out:
-            ## pass
-        ## cmd = 'tidy -e -f "{}" "{}"'.format(output, htmlfile)
-        ## retval = sp.call(cmd, shell=True)
         sp.run(['tidy', '-e', '-f', output, htmlfile])
         data = ""
         with open(output) as f_in:
