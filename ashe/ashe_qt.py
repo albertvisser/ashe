@@ -612,11 +612,16 @@ class MainFrame(qtw.QMainWindow, ed.EditorMixin):
             for ix in range(item.childCount()):
                 sub = item.child(ix)
                 sub.setExpanded(True)
-                expand_all(sub)
+                result = expand_all(sub)
+                if result:
+                    return result
+                else:
+                    return sub
         item = self.tree.currentItem()
         self.tree.expandItem(item)
-        expand_all(item)
+        item = expand_all(item)
         self.tree.resizeColumnToContents(0)
+        self.tree.scrollToItem(item)
 
     def collapse(self):
         "collapse huidige item en daaronder"
