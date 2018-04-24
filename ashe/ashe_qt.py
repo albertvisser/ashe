@@ -609,19 +609,20 @@ class MainFrame(qtw.QMainWindow, ed.EditorMixin):
         "expandeer tree vanaf huidige item"
         def expand_all(item):
             "recursively expand items"
+            all_results = []
             for ix in range(item.childCount()):
                 sub = item.child(ix)
                 sub.setExpanded(True)
+                all_results.append(sub)
                 result = expand_all(sub)
                 if result:
-                    return result
-                else:
-                    return sub
+                    all_results.extend(result)
+            return all_results
         item = self.tree.currentItem()
         self.tree.expandItem(item)
-        item = expand_all(item)
+        results = expand_all(item)
         self.tree.resizeColumnToContents(0)
-        self.tree.scrollToItem(item)
+        self.tree.scrollToItem(results[-1])
 
     def collapse(self):
         "collapse huidige item en daaronder"
