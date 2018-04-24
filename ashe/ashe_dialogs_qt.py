@@ -1247,7 +1247,7 @@ class ScrolledTextDialog(qtw.QDialog):
         hbox.addWidget(text)
         vbox.addLayout(hbox)
         hbox = qtw.QHBoxLayout()
-        ok_button = qtw.QPushButton('&Ok', self)
+        ok_button = qtw.QPushButton('&Done', self)
         ok_button.clicked.connect(self.close)
         ok_button.setDefault(True)
         if htmlfile:
@@ -1284,7 +1284,7 @@ class CodeViewDialog(qtw.QDialog):
         self._parent = parent
         super().__init__(parent)
         self.setWindowTitle(title)
-        self.setWindowIcon(self._parent._parent.appicon)
+        self.setWindowIcon(self._parent.appicon)
         self.resize(size[0], size[1])
         vbox = qtw.QVBoxLayout()
         hbox = qtw.QHBoxLayout()
@@ -1298,7 +1298,7 @@ class CodeViewDialog(qtw.QDialog):
         hbox.addWidget(self.text)
         vbox.addLayout(hbox)
         hbox = qtw.QHBoxLayout()
-        ok_button = qtw.QPushButton('&Ok', self)
+        ok_button = qtw.QPushButton('&Done', self)
         ok_button.clicked.connect(self.close)
         ok_button.setDefault(True)
         hbox.addStretch()
