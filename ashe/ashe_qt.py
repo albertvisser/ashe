@@ -254,13 +254,13 @@ class MainFrame(qtw.QMainWindow, ed.EditorMixin):
             ('&Search', (
                 ("&Find", 'F', 'C',
                  'Open dialog to specify search and find first', self.search),
+                ## ("&Replace", 'H', 'C', 'Search and replace', self.replace),
                 ("Find &Last", 'F', 'SC',
                  'Find last occurrence of search argument', self.search_last),
                 ("Find &Next", 'F3', '',
                  'Find next occurrence of search argument', self.search_next),
                 ("Find &Previous", 'F3', 'S',
                  'Find previous occurrence of search argument', self.search_prev))),
-                ## ("&Replace", 'H', 'C', 'Search and replace', self.replace),
             ("&HTML", (
                 ('Add &DTD', '', '', 'Add a document type description', self.add_dtd),
                 ('Add &Stylesheet', '', '', 'Add a stylesheet', self.add_css),
@@ -1023,7 +1023,7 @@ class MainFrame(qtw.QMainWindow, ed.EditorMixin):
 
     def search_last(self):
         "start backwards search"
-        self.search(reversed=True)
+        self.search(reverse=True)
 
     def search_next(self, reverse=False):
         "find (default is forward)"
@@ -1037,7 +1037,7 @@ class MainFrame(qtw.QMainWindow, ed.EditorMixin):
 
     def search_prev(self):
         "find backwards"
-        self.search_next(reversed=True)
+        self.search_next(reverse=True)
 
     def replace(self):
         "replace an element"

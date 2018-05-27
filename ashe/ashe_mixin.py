@@ -41,10 +41,14 @@ dtdlist = (('HTML 4.1 Strict', 'HTML PUBLIC "-//W3C//DTD HTML 4.01//EN'
 
 
 class ConversionError(ValueError):
+    """project-specific error
+    """
     pass
 
 
 def convert_link(link, root):
+    """attempt to turn the link into one relative to the document
+    """
     nice_link = '', ''
     test = link.split('/', 1)
     if not link:

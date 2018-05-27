@@ -578,7 +578,7 @@ class CssDialog(qtw.QDialog):
                                         " of inline stylesheet definiëren s.v.p")
             return
         try:
-            link = ed.convert_link(link)
+            link = ed.convert_link(link, self._parent.xmlfn)
         except ed.ConversionError as msg:
             qtw.QMessageBox.information(self, self._parent.title, msg)
             return
