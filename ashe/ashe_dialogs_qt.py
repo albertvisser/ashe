@@ -1,5 +1,5 @@
-# -*- coding: utf-8 -*-
 """PyQt5 versie van mijn op een treeview gebaseerde HTML-editor
+
 custom dialogen
 """
 import os
@@ -190,7 +190,7 @@ class ElementDialog(qtw.QDialog):
         else:
             if fname.startswith('http'):
                 h_fname = os.path.join('/tmp', 'ashe_{}'.format(os.path.basename(fname)))
-                os.system('wget {} -O {}'.format(fname, h_fname))    # TODO
+                os.system('wget {} -O {}'.format(fname, h_fname))    # TODO: use subprocess?
                 fname = h_fname
             else:
                 h_fname = fname

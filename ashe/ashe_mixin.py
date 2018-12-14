@@ -190,6 +190,7 @@ def find_next(data, search_args, reverse=False, pos=None):
         with open(outfile, 'a') as _o:
             print('return values when found', pos, itemfound, file=_o)
         return pos, itemfound
+    return None
 
 
 class EditorMixin(object):
@@ -201,9 +202,12 @@ class EditorMixin(object):
         `preserve` anticipates on the possibility to not strip out newlines
         and replace tabs by spaces"""
         if fname:
+            fname = os.path.abspath(os.path.expanduser(fname))
             try:
                 with open(fname) as f_in:
                     data = ''.join([x.strip() for x in f_in])
+            except FileNotFoundError as err:
+                return err
             except UnicodeDecodeError:
                 with open(fname, encoding="iso-8859-1") as f_in:
                     data = ''.join([x.strip() for x in f_in])
@@ -217,13 +221,13 @@ class EditorMixin(object):
         try:
             root = bs.BeautifulSoup(html, 'lxml')
         except Exception as err:
-            print(err)
-            raise
+            return err
 
         self.root = root
         self.xmlfn = fname
         self.init_tree(fname)
         self.advance_selection_on_add = True
+        return None
 
     def mark_dirty(self, state):
         """set "modified" indicator
@@ -317,18 +321,18 @@ class EditorMixin(object):
         self._copy(cut=True, retain=False, ifcheck=ifcheck)
 
     def copy(self):
-        "copy = add a new item identical to an existing one"
+        "copy = transfer item to memory"
         self._copy()
 
     def _paste(self, before=True, below=False):
         "placeholder for gui-specific method"
         pass
 
-    def paste_aft(self):
+    def paste_after(self):
         "paste after instead of before"
         self._paste(before=False)
 
-    def paste_blw(self):
+    def paste_below(self):
         "paste below instead of before"
         self._paste(below=True)
 
@@ -344,11 +348,11 @@ class EditorMixin(object):
         "insert element before"
         self._insert(below=True)
 
-    def ins_aft(self):
+    def insert_after(self):
         "insert element after instead of before"
         self._insert(before=False)
 
-    def ins_chld(self):
+    def insert_child(self):
         "insert element below instead of before"
         self._insert()
 
@@ -360,7 +364,7 @@ class EditorMixin(object):
         "insert text before"
         self._add_text()
 
-    def add_text_aft(self):
+    def add_text_after(self):
         "insert text after instead of before"
         self._add_text(before=False)
 

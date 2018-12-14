@@ -3,7 +3,6 @@
 
 startfunctie en hoofdscherm
 """
-
 import os
 import sys
 import pathlib
@@ -69,8 +68,7 @@ def in_body(node):
             return True
         elif node.text(0) == ' '.join((ELSTART, 'head')) or node.parent() is None:
             return False
-        else:
-            return is_node_ok(node.parent())
+        return is_node_ok(node.parent())
     return is_node_ok(node)
 
 
@@ -163,6 +161,7 @@ class MainFrame(qtw.QMainWindow, ed.EditorMixin):
         self.app = app
         self.title = "(untitled) - Albert's Simple HTML Editor"
         self.xmlfn = fname
+        self.tree_dirty = False
         self.dialog_data = {}
         self.search_args = []
         super().__init__()
@@ -188,97 +187,15 @@ class MainFrame(qtw.QMainWindow, ed.EditorMixin):
         self.tree.resize(500, 100)
         self.tree.setFocus()
 
-        ed.EditorMixin.getsoup(self, fname)
+        self.err = ed.EditorMixin.getsoup(self, fname) or None
         self.adv_menu.setChecked(True)
-        self.refresh_preview()
+        if not self.err:
+            self.refresh_preview()
 
     def _setup_menu(self):
         """build application menu
         """
-        self.menulist = (
-            ('&File', (
-                ('&New', 'N', 'C', "Start a new HTML document", self.newxml),
-                ('&Open', 'O', 'C', "Open an existing HTML document", self.openxml),
-                ('&Save', 'S', 'C', "Save the current document", self.savexml),
-                ('Save &As', 'S', 'SC',
-                 "Save the current document under a different name",
-                 self.savexmlas),
-                ('&Revert', 'R', 'C', "Discard all changes since the last save",
-                 self.reopenxml),
-                ('sep1', ),
-                ('E&xit', 'Q', 'C', 'Quit the application', self.close))),
-            ('&View', (
-                ('E&xpand All (sub)Levels', '+', 'C',
-                 "Show what's beneath the current element", self.expand, True),
-                ('&Collapse All (sub)Levels', '-', 'C',
-                 "Hide what's beneath the current element", self.collapse, True),
-                ('sep1', ),
-                ('Advance selection on add/insert', '', '',
-                 "Move the selection to the added/pasted item",
-                 self.advance_selection_onoff),
-                ('sep2', ),
-                ('&Resync preview', 'F5', '', 'Reset the preview window to the '
-                 'contents of the treeview', self.refresh_preview))),
-            ('&Edit', (
-                ('Edit', 'F2', '', 'Modify the element/text and/or its attributes',
-                 self.edit),
-                ('Comment/Uncomment', '#', 'C', 'Comment (out) the current item and '
-                 'everything below', self.comment),
-                ('Add condition', '', '', 'Put a condition on showing the current '
-                 'item', self.make_conditional),
-                ('Remove condition', '', '', 'Remove this condition from the '
-                 'elements below it', self.remove_condition),
-                ('sep1', ),
-                ('Cut', 'X', 'C', 'Copy and delete the current element', self.cut),
-                ('Copy', 'C', 'C', 'Copy the current element', self.copy),
-                ('Paste Before', 'V', 'SC', 'Paste before of the current element',
-                 self.paste),
-                ('Paste After', 'V', 'CA', 'Paste after the current element',
-                 self.paste_aft),
-                ('Paste Under', 'V', 'C', 'Paste below the current element',
-                 self.paste_blw),
-                ('sep2', ),
-                ('Delete', 'Del', '', 'Delete the current element', self.delete),
-                ('Insert Text (under)', 'Ins', 'S',
-                 'Add a text node under the current one', self.add_textchild),
-                ('Insert Text before', 'Ins', 'SC',
-                 'Add a text node before the current one', self.add_text),
-                ('Insert Text after', 'Ins', 'SA',
-                 'Add a text node after the current one', self.add_text_aft),
-                ('Insert Element Before', 'Ins', 'C',
-                 'Add a new element in front of the current', self.insert),
-                ('Insert Element After', 'Ins', 'A',
-                 'Add a new element after the current', self.ins_aft),
-                ('Insert Element Under', 'Ins', '',
-                 'Add a new element under the current', self.ins_chld))),
-            ('&Search', (
-                ("&Find", 'F', 'C',
-                 'Open dialog to specify search and find first', self.search),
-                ## ("&Replace", 'H', 'C', 'Search and replace', self.replace),
-                ("Find &Last", 'F', 'SC',
-                 'Find last occurrence of search argument', self.search_last),
-                ("Find &Next", 'F3', '',
-                 'Find next occurrence of search argument', self.search_next),
-                ("Find &Previous", 'F3', 'S',
-                 'Find previous occurrence of search argument', self.search_prev))),
-            ("&HTML", (
-                ('Add &DTD', '', '', 'Add a document type description', self.add_dtd),
-                ('Add &Stylesheet', '', '', 'Add a stylesheet', self.add_css),
-                ('sep1', ),
-                ('Create &link (under)', '', '', 'Add a document reference',
-                 self.add_link),
-                ('Add i&mage (under)', '', '', 'Include an image', self.add_image),
-                ('Add v&ideo (under)', '', '', 'Add a video element', self.add_video),
-                ('Add a&udio (under)', '', '', 'Add an audio fragment', self.add_audio),
-                ('sep1', ),
-                ('Add l&ist (under)', '', '', 'Create a list', self.add_list),
-                ('Add &table (under)', '', '', 'Create a table', self.add_table),
-                ('sep3', ),
-                ('&View code', '', '', 'Shows the html pretty-printed',
-                 self.view_code),
-                ('&Check syntax', '', '', 'Validate HTML with Tidy', self.validate))),
-            ("Help", (
-                ('&About', '', '', 'Info about this application', self.about),)))
+        self.menulist = self.get_menulist()
         menu_bar = self.menuBar()
         self.contextmenu_items = []
         for menu_text, data in self.menulist:
@@ -316,6 +233,83 @@ class MainFrame(qtw.QMainWindow, ed.EditorMixin):
                 self.contextmenu_items.append(('', ''))
             menu_bar.addMenu(menu)
 
+    def get_menulist(self):
+        """menu definition
+        """
+        return (('&File', (('&New', 'N', 'C', "Start a new HTML document", self.newxml),
+                           ('&Open', 'O', 'C', "Open an existing HTML document", self.openxml),
+                           ('&Save', 'S', 'C', "Save the current document", self.savexml),
+                           ('Save &As', 'S', 'SC', "Save the current document under a different "
+                            "name", self.savexmlas),
+                           ('&Revert', 'R', 'C', "Discard all changes since the last save",
+                            self.reopenxml),
+                           ('sep1', ),
+                           ('E&xit', 'Q', 'C', 'Quit the application', self.close))),
+                ('&View', (('E&xpand All (sub)Levels', '+', 'C', "Show what's beneath "
+                            "the current element", self.expand, True),
+                           ('&Collapse All (sub)Levels', '-', 'C', "Hide what's beneath "
+                            "the current element", self.collapse, True),
+                           ('sep1', ),
+                           ('Advance selection on add/insert', '', '', "Move the selection to the "
+                            "added/pasted item", self.advance_selection_onoff),
+                           ('sep2', ),
+                           ('&Resync preview', 'F5', '', 'Reset the preview window to the '
+                            'contents of the treeview', self.refresh_preview))),
+                ('&Edit', (('Edit', 'F2', '', 'Modify the element/text and/or its attributes',
+                            self.edit),
+                           ('Comment/Uncomment', '#', 'C', 'Comment (out) the current item and '
+                            'everything below', self.comment),
+                           ('Add condition', '', '', 'Put a condition on showing the current '
+                            'item', self.make_conditional),
+                           ('Remove condition', '', '', 'Remove this condition from the '
+                            'elements below it', self.remove_condition),
+                           ('sep1', ),
+                           ('Cut', 'X', 'C', 'Copy and delete the current element', self.cut),
+                           ('Copy', 'C', 'C', 'Copy the current element', self.copy),
+                           ('Paste Before', 'V', 'SC', 'Paste before of the current element',
+                            self.paste),
+                           ('Paste After', 'V', 'CA', 'Paste after the current element',
+                            self.paste_after),
+                           ('Paste Under', 'V', 'C', 'Paste below the current element',
+                            self.paste_below),
+                           ('sep2', ),
+                           ('Delete', 'Del', '', 'Delete the current element', self.delete),
+                           ('Insert Text (under)', 'Ins', 'S', 'Add a text node under the current '
+                            'one', self.add_textchild),
+                           ('Insert Text before', 'Ins', 'SC', 'Add a text node before the current '
+                            'one', self.add_text),
+                           ('Insert Text after', 'Ins', 'SA', 'Add a text node after the current '
+                            'one', self.add_text_after),
+                           ('Insert Element Before', 'Ins', 'C', 'Add a new element in front of the '
+                            'current', self.insert),
+                           ('Insert Element After', 'Ins', 'A', 'Add a new element after the current',
+                            self.insert_after),
+                           ('Insert Element Under', 'Ins', '', 'Add a new element under the current',
+                            self.insert_child))),
+                ('&Search', (("&Find", 'F', 'C', 'Open dialog to specify search and find first',
+                              self.search),
+                             ## ("&Replace", 'H', 'C', 'Search and replace', self.replace),
+                             ("Find &Last", 'F', 'SC', 'Find last occurrence of search argument',
+                              self.search_last),
+                             ("Find &Next", 'F3', '', 'Find next occurrence of search argument',
+                              self.search_next),
+                             ("Find &Previous", 'F3', 'S', 'Find previous occurrence of search '
+                              'argument', self.search_prev))),
+                ("&HTML", (('Add &DTD', '', '', 'Add a document type description', self.add_dtd),
+                           ('Add &Stylesheet', '', '', 'Add a stylesheet', self.add_css),
+                           ('sep1', ),
+                           ('Create &link (under)', '', '', 'Add a document reference', self.add_link),
+                           ('Add i&mage (under)', '', '', 'Include an image', self.add_image),
+                           ('Add v&ideo (under)', '', '', 'Add a video element', self.add_video),
+                           ('Add a&udio (under)', '', '', 'Add an audio fragment', self.add_audio),
+                           ('sep1', ),
+                           ('Add l&ist (under)', '', '', 'Create a list', self.add_list),
+                           ('Add &table (under)', '', '', 'Create a table', self.add_table),
+                           ('sep3', ),
+                           ('&View code', '', '', 'Shows the html pretty-printed', self.view_code),
+                           ('&Check syntax', '', '', 'Validate HTML with Tidy', self.validate))),
+                ("Help", (('&About', '', '', 'Info about this application', self.about), )))
+
     def _check_tree(self):
         """vraag of de wijzigingen moet worden opgeslagen
         keuze uitvoeren en teruggeven (i.v.m. eventueel gekozen Cancel)
@@ -331,6 +325,7 @@ class MainFrame(qtw.QMainWindow, ed.EditorMixin):
             if hlp == qtw.QMessageBox.Yes:
                 self.savexml()
             return retval[hlp]
+        return None
 
     def close(self):
         """kijken of er wijzigingen opgeslagen moeten worden
@@ -342,12 +337,12 @@ class MainFrame(qtw.QMainWindow, ed.EditorMixin):
         """kijken of er wijzigingen opgeslagen moeten worden
         daarna nieuwe html aanmaken"""
         if self._check_tree() != -1:
-            try:
-                ed.EditorMixin.getsoup(self, fname=None)
+            err = ed.EditorMixin.getsoup(self, fname=None)
+            if not err:
                 self.adv_menu.setChecked(True)
                 self.sb.showMessage("started new document")
                 self.refresh_preview()
-            except Exception as err:
+            else:
                 qtw.QMessageBox.information(self, self.title, str(err))
 
     def openxml(self):
@@ -398,13 +393,13 @@ class MainFrame(qtw.QMainWindow, ed.EditorMixin):
 
     def reopenxml(self):
         """onvoorwaardelijk html bestand opnieuw laden"""
-        try:
-            ed.EditorMixin.getsoup(self, fname=self.xmlfn)
+        ret = ed.EditorMixin.getsoup(self, fname=self.xmlfn)
+        if ret:
+            qtw.QMessageBox(self, self.title, str(ret))
+        else:
             self.adv_menu.setChecked(True)
             self.sb.showMessage("reloaded {}".format(self.xmlfn))
             self.refresh_preview()
-        except Exception as err:
-            qtw.QMessageBox(self, self.title, str(err))
 
     def advance_selection_onoff(self):
         "callback for menu option"
@@ -1319,17 +1314,20 @@ def ashe_gui(args):
     fname = ''
     if len(args) > 1:
         fname = args[1]
-        if fname and not os.path.exists(fname):
-            print('Kan file {} niet openen, '
-                  'geef s.v.p. een absoluut pad op\n'.format(fname))
-            return
+        # if fname and not os.path.exists(fname):
+        #     print('Kan file {} niet openen, '
+        #           'geef s.v.p. een absoluut pad op\n'.format(fname))
+        #     return
     app = qtw.QApplication(sys.argv)
     if fname:
         frm = MainFrame(fname=fname, app=app)
     else:
         frm = MainFrame(app=app)
     frm.show()
+    if frm.err:
+        qtw.QMessageBox.information(frm, frm.title, str(frm.err))
     sys.exit(app.exec_())
+
 
 if __name__ == "__main__":
     ashe_gui(sys.argv)
