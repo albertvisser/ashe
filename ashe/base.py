@@ -1,17 +1,19 @@
 ﻿# -*- coding: utf-8 -*-
-"""PyQt5 versie van mijn op een treeview gebaseerde HTML-editor
+"""Dit is mijn op een treeview gebaseerde HTML-editor
 
-startfunctie en hoofdscherm
+nieuwe aanpak: de GUI routines worden van hieruit aangeroepen zodat alle business logica hier
+blijft
 """
 import os
 import sys
+import shutil
 import pathlib
+import subprocess
 import bs4 as bs  # BeautifulSoup as bs
 
 import ashe.gui_qt as gui
 
 ICO = str(pathlib.Path(__file__).parent / "ashe.ico")
-DESKTOP = True  # was bedoeld om onderscheid te maken met de pythonce versie, nog nodig?
 TITEL = "Albert's Simple HTML-editor"
 CMSTART = "<!>"
 ELSTART = '<>'
@@ -21,9 +23,6 @@ IFSTART = '!IF'
 BL = "&nbsp;"
 INLINE_1 = 'inline stylesheet'
 
-
-if __name__ == "__main__":
-    ashe_gui(sys.argv)
 
 # shared code
 dtdlist = (('HTML 4.1 Strict', 'HTML PUBLIC "-//W3C//DTD HTML 4.01//EN'
@@ -55,10 +54,10 @@ class ConversionError(ValueError):
 def comment_out(node, commented):
     "subitem(s) (ook) op commentaar zetten"
     for subnode in gui.get_element_children(node):
-        txt = gui.get_element_text()
+        txt = gui.get_element_text(subnode)
         if commented:
             if not txt.startswith(CMSTART):
-                new_text = " ".join((CMSTART, txt)))
+                new_text = " ".join((CMSTART, txt))
         else:
             if txt.startswith(CMSTART):
                 new_text(0, txt.split(None, 1)[1])
@@ -69,11 +68,12 @@ def comment_out(node, commented):
 def is_stylesheet_node(node):
     """determine if node is for stylesheet definition
     """
-    if gui.get_element_text(node) == ' '.join((ELSTART, 'link')):
-        attrdict = gui.get_element_attrs(node)
+    test = gui.get_element_text(node)
+    if test == ' '.join((ELSTART, 'link')):
+        attrdict = gui.get_element_data(node)
         if attrdict.get('rel', '') == 'stylesheet':
             return True
-    elif gui.get_element_text(node) == ' '.join((ELSTART, 'style')):
+    elif test == ' '.join((ELSTART, 'style')):
         return True
     return False
 
@@ -84,13 +84,15 @@ def in_body(node):
     def is_node_ok(node):
         """check node and parents until body or head tag reached
         """
-        if gui.get_element_text(node) == ' '.join((ELSTART, 'body')):
+        test = gui.get_element_text(node)
+        parent = gui.get_element_parent(node)
+        if test == ' '.join((ELSTART, 'body')):
             return True
-        elif gui.get_element_text(node) == ' '.join((ELSTART, 'head'))
+        elif test == ' '.join((ELSTART, 'head')):
             return False
-        elif gui.get_element_parent(node) is None:  # only for <html> tag - do we need this?
+        elif parent is None:  # only for <html> tag - do we need this?
             return False
-        return is_node_ok(gui.get_element_parent(node))
+        return is_node_ok(parent)
     return is_node_ok(node)
 
 
@@ -107,7 +109,7 @@ def flatten_tree(node, top=True):
     if count:
         splits = name.split(None, count)
         name = ' '.join(splits[:count])
-    elem_list = [(element, name, gui.get_element_attrs(node))]
+    elem_list = [(node, name, gui.get_element_data(node))]
 
     subel_list = []
     for subitem in gui.get_element_children(node):
@@ -275,16 +277,17 @@ class Editor(object):
     def __init__(self, fname=''):
         err = self.getsoup(fname) or ''
         self.title = "(untitled) - Albert's Simple HTML Editor"
+        self.constants = {'ELSTART': ELSTART}
         self.tree_dirty = False
         self.xmlfn = fname                                  # ingesteld in getsoup
-        self.gui = gui.MainFrame(editor=self, err=err)
+        self.gui = gui.MainFrame(editor=self, err=err, icon=ICO)
         sys.exit(self.gui.app.exec_())
 
     def mark_dirty(self, state):
         """set "modified" indicator
         """
         self.tree_dirty = state
-        self.gui.mark_dirty(self, state)
+        self.gui.mark_dirty(state)
 
     def getsoup(self, fname="", preserve=False):  # voor consistentie misschien file2soup
         """build initial html or read from file and initialize tree
@@ -377,7 +380,7 @@ class Editor(object):
             titel = '[untitled]'
         self.gui.tree.clear()
         self.gui.addtreetop(titel, " - ".join((os.path.basename(titel), TITEL)))
-        add_to_tree(self.top, self.root)
+        add_to_tree(self.gui.top, self.root)
         self.gui.adjust_dtd_menu()
         self.gui.init_tree()
         self.mark_dirty(False)
@@ -445,7 +448,7 @@ class Editor(object):
                         sub = bs.Comment(data)  # .decode("utf-8")) niet voor Py3
                     root.append(sub)  # data.decode("latin-1")) # insert(0,sub)
         self.soup = bs.BeautifulSoup('', 'lxml')  # self.root.originalEncoding)
-        for tag in self.gui.get_element_children(self.top):
+        for tag in self.gui.get_element_children(self.gui.top):
             text = self.gui.get_element_text(tag)
             data = self.gui.get_element_attrs(tag)
             if text.startswith(DTDSTART):
@@ -465,52 +468,364 @@ class Editor(object):
             f_out.write(str(self.soup))
         self.mark_dirty(False)
 
+    def check_tree_state(self):
+        """vraag of de wijzigingen moet worden opgeslagen
+        keuze uitvoeren en teruggeven (i.v.m. eventueel gekozen Cancel)
+        retourneert 1 = Yes, 0 = No, -1 = Cancel
+        """
+        if self.tree_dirty:
+            text = "HTML data has been modified - save before continuing?"
+            retval = self.gui.ask_how_to_continue(self.title, text)
+            if retval > 0:
+                self.savexml()
+            return retval
+        return None
+
+    def get_menulist(self):
+        """menu definition
+        """
+        return (('&File', (('&New', 'N', 'C', "Start a new HTML document", self.newxml),
+                           ('&Open', 'O', 'C', "Open an existing HTML document", self.openxml),
+                           ('&Save', 'S', 'C', "Save the current document", self.savexml),
+                           ('Save &As', 'S', 'SC', "Save the current document under a different "
+                            "name", self.savexmlas),
+                           ('&Revert', 'R', 'C', "Discard all changes since the last save",
+                            self.reopenxml),
+                           ('sep1', ),
+                           ('E&xit', 'Q', 'C', 'Quit the application', self.close))),
+                ('&View', (('E&xpand All (sub)Levels', '+', 'C', "Show what's beneath "
+                            "the current element", self.expand, True),
+                           ('&Collapse All (sub)Levels', '-', 'C', "Hide what's beneath "
+                            "the current element", self.collapse, True),
+                           ('sep1', ),
+                           ('Advance selection on add/insert', '', '', "Move the selection to the "
+                            "added/pasted item", self.advance_selection_onoff),
+                           ('sep2', ),
+                           ('&Resync preview', 'F5', '', 'Reset the preview window to the '
+                            'contents of the treeview', self.refresh_preview))),
+                ('&Edit', (('Edit', 'F2', '', 'Modify the element/text and/or its attributes',
+                            self.edit),
+                           ('Comment/Uncomment', '#', 'C', 'Comment (out) the current item and '
+                            'everything below', self.comment),
+                           ('Add condition', '', '', 'Put a condition on showing the current '
+                            'item', self.make_conditional),
+                           ('Remove condition', '', '', 'Remove this condition from the '
+                            'elements below it', self.remove_condition),
+                           ('sep1', ),
+                           ('Cut', 'X', 'C', 'Copy and delete the current element', self.cut),
+                           ('Copy', 'C', 'C', 'Copy the current element', self.copy),
+                           ('Paste Before', 'V', 'SC', 'Paste before of the current element',
+                            self.paste),
+                           ('Paste After', 'V', 'CA', 'Paste after the current element',
+                            self.paste_after),
+                           ('Paste Under', 'V', 'C', 'Paste below the current element',
+                            self.paste_below),
+                           ('sep2', ),
+                           ('Delete', 'Del', '', 'Delete the current element', self.delete),
+                           ('Insert Text (under)', 'Ins', 'S', 'Add a text node under the current '
+                            'one', self.add_textchild),
+                           ('Insert Text before', 'Ins', 'SC', 'Add a text node before the current'
+                            ' one', self.add_text),
+                           ('Insert Text after', 'Ins', 'SA', 'Add a text node after the current '
+                            'one', self.add_text_after),
+                           ('Insert Element Before', 'Ins', 'C', 'Add a new element in front of '
+                            'the current', self.insert),
+                           ('Insert Element After', 'Ins', 'A', 'Add a new element after the '
+                            'current', self.insert_after),
+                           ('Insert Element Under', 'Ins', '', 'Add a new element under the '
+                            'current', self.insert_child))),
+                ('&Search', (("&Find", 'F', 'C', 'Open dialog to specify search and find first',
+                              self.search),
+                             ## ("&Replace", 'H', 'C', 'Search and replace', self.replace),
+                             ("Find &Last", 'F', 'SC', 'Find last occurrence of search argument',
+                              self.search_last),
+                             ("Find &Next", 'F3', '', 'Find next occurrence of search argument',
+                              self.search_next),
+                             ("Find &Previous", 'F3', 'S', 'Find previous occurrence of search '
+                              'argument', self.search_prev))),
+                ("&HTML", (('Add &DTD', '', '', 'Add a document type description', self.add_dtd),
+                           ('Add &Stylesheet', '', '', 'Add a stylesheet', self.add_css),
+                           ('sep1', ),
+                           ('Create &link (under)', '', '', 'Add a document reference',
+                            self.add_link),
+                           ('Add i&mage (under)', '', '', 'Include an image', self.add_image),
+                           ('Add v&ideo (under)', '', '', 'Add a video element', self.add_video),
+                           ('Add a&udio (under)', '', '', 'Add an audio fragment', self.add_audio),
+                           ('sep1', ),
+                           ('Add l&ist (under)', '', '', 'Create a list', self.add_list),
+                           ('Add &table (under)', '', '', 'Create a table', self.add_table),
+                           ('sep3', ),
+                           ('&View code', '', '', 'Shows the html pretty-printed', self.view_code),
+                           ('&Check syntax', '', '', 'Validate HTML with Tidy', self.validate))),
+                ("Help", (('&About', '', '', 'Info about this application', self.about), )))
+
     def newxml(self):
-        pass
+        """kijken of er wijzigingen opgeslagen moeten worden
+        daarna nieuwe html aanmaken"""
+        if self.check_tree_state() != -1:
+            err = self.getsoup()
+            if not err:
+                self.gui.adv_menu.setChecked(True)           # FIXME Gui specific
+                self.sb.showMessage("started new document")  # FIXME Gui specific
+                self.refresh_preview()
+            else:
+                self.gui.meld(str(err))
 
     def openxml(self):
-        pass
+        """kijken of er wijzigingen opgeslagen moeten worden
+        daarna een html bestand kiezen"""
+        if self.check_tree_state() != -1:
+            fnaam = self.gui.ask_for_open_filename()
+            if fnaam:
+                self.getsoup(fname=str(fnaam))
+                self.adv_menu.setChecked(True)                       # FIXME Gui specific
+                self.sb.showMessage("loaded {}".format(self.xmlfn))  # FIXME Gui specific
+                self.refresh_preview()
 
     def savexml(self):
-        pass
+        "save html to file"
+        if self.xmlfn == '':
+            self.savexmlas()
+        else:
+            self.data2soup()
+            try:
+                self.soup2file()
+            except IOError as err:
+                self.gui.meld(str(err))
+                return
+            self.sb.showMessage("saved {}".format(self.xmlfn))  # FIXME Gui specific
 
     def savexmlas(self):
-        pass
+        """vraag bestand om html op te slaan
+        bestand opslaan en naam in titel en root element zetten"""
+        fname = self.gui.ask_for_save_filename()
+        if fname:
+            self.xmlfn = str(fname)
+            self.data2soup()
+            try:
+                self.soup2file(saveas=True)
+            except IOError as err:
+                self.gui.meld(str(err))
+                return
+            self.gui.tree.set_element_text(self.gui.top, self.xmlfn)
+            self.sb.showMessage("saved as {}".format(self.xmlfn))  # FIXME Gui specific
 
     def reopenxml(self):
-        pass
+        """onvoorwaardelijk html bestand opnieuw laden"""
+        ret = self.getsoup(fname=self.xmlfn)
+        if ret:
+            self.gui.meld(str(ret))
+        else:
+            self.adv_menu.setChecked(True)  # FIXME Gui specific
+            self.sb.showMessage("reloaded {}".format(self.xmlfn))  # FIXME Gui specific
+            self.refresh_preview()
 
     def close(self):
-        pass
+        """kijken of er wijzigingen opgeslagen moeten worden -  daarna afsluiten
+        """
+        if self.check_tree_state() != -1:
+            self.gui.close()
 
     def expand(self):
-        pass
+        "expandeer tree vanaf huidige item"
+        self.gui.expand()
 
     def collapse(self):
-        pass
+        "collapse huidige item en daaronder"
+        self.gui.collapse()
 
     def advance_selection_onoff(self):
-        pass
+        "callback for menu option"
+        self.advance_selection_on_add = self.gui.get_adv_sel_setting()
 
     def refresh_preview(self):
-        pass
+        "update display"
+        self.gui.refresh_preview(self.data2soup())
+
+    def checkselection(self):
+        "controleer of er wel iets geselecteerd is (behalve de filenaam)"
+        sel = True
+        self.item = self.gui.get_selected_item()
+        if self.item is None or self.item == self.gui.top:
+            self.gui.meld('You need to select an element or text first')
+            sel = False
+        return sel
 
     def edit(self):
-        "placeholder for gui-specific method"
-        pass
+        "start edit m.b.v. dialoog"
+        if not self.checkselection():
+            return
+        data = gui.get_element_text(self.item)
+        style_item = gui.get_element_children(self.item)[0]
+        if data.startswith(DTDSTART):
+            data = gui.get_element_data(self.item)
+            prefix = 'HTML PUBLIC "-//W3C//DTD'
+            if data.upper().startswith(prefix):
+                data = data.upper().replace(prefix, '')
+                text = 'doctype is ' + data.split('//EN')[0].strip()
+            elif data.strip().lower() == 'html':
+                text = 'doctype is HTML 5'
+            else:
+                text = 'doctype cannot be determined'
+            self.gui.meld(text)
+            return
+        elif data.startswith(IFSTART):
+            self.gui.meld("About to edit this conditional")
+            # start dialog to edit condition
+            cond, ok = self.gui.ask_for_text(data)
+            # if confirmed: change element
+            if ok:
+                self.gui.meld("changing to " + str(cond))
+                # nou nog echt doen (of gebeurt dat in de dialoog? dacht het niet)
+            return
+        under_comment = gui.get_element_text(gui.get_element_parent(self.item)).startswith(CMELSTART)
+        modified = False
+        if data.startswith(ELSTART) or data.startswith(CMELSTART):
+            oldtag = get_tag_from_elname(data)
+            attrdict = self.gui.get_item_text(self.item)
+            if oldtag == 'style':
+                attrdict['styledata'] = self.gui.get_item_attrs(style_item)
+            was_commented = data.startswith(CMSTART)
+            ok, dialog_data = self.gui.do_edit_element(data, attrdict)
+            if ok:
+                modified = True
+                tag, attrs, commented = dialog_data
+                if under_comment:
+                    commented = True
+                if tag == 'style':
+                    # style data zit in attrs['styledata'] en moet naar tekst element onder tag
+                    newtext = str(attrs.pop('styledata', ''))  # en daarna moet deze hier weg
+                    oldtext = gui.get_element_data(style_item)
+                    if newtext != oldtext:
+                        gui.set_element_text(style_item, getshortname(newtext))
+                        gui.set_element_data(style_item, newtext)
+                attrdict.pop('styledata', '')
+                if tag != oldtag or attrs != attrdict:
+                    gui.set_element_text(self.item, getelname(tag, attrs, commented))
+                gui.set_element_data(self.item, attrs)
+                if commented != was_commented:
+                    comment_out(self.item, commented)
+        else:
+            txt = CMSTART + " " if data.startswith(CMSTART) else ""
+            data = gui.get_element_data(self.item)
+            test = gui.get_element_text(gui.get_element_parent(self.item))
+            if test in (' '.join((ELSTART, 'style')), ' '.join((CMELSTART, 'style'))):
+                self.gui.meld("Please edit style through parent tag")
+                return
+            ok, dialog_data = self.gui.do_edit_textvalue(txt + data)
+            if ok:
+                modified = True
+                txt, commented = dialog_data
+                if under_comment:
+                    commented = True
+                    gui.set_element_text(self.item, getshortname(txt, commented))
+                    gui.set_element_data(self.item, txt)
+        if modified:
+            self.mark_dirty(True)
+            self.refresh_preview()
 
     def comment(self):
-        pass
+        "(un)comment zonder de edit dialoog"
+        if not self.checkselection():
+            return
+        tag = gui.get_element_text(self.item)
+        attrs = gui.get_element_data(self.item)
+        commented = tag.startswith(CMSTART)
+        if commented:
+            _, tag = tag.split(None, 1)  # CMSTART eraf halen
+        under_comment = gui.get_element_text(gui.get_element_parent(self.item)).startswith(CMELSTART)
+        commented = not commented  # het (un)commenten uitvoeren
+        if under_comment:
+            commented = True
+        if tag.startswith(ELSTART):
+            _, tag = tag.split(None, 1)  # ELSTART eraf halen
+            gui.set_element_text(self.item, getelname(tag, attrs, commented))
+            gui.set_element_data(self.item, attrs)
+            comment_out(self.item, commented)
+        else:
+            gui.set_element_text(self.item, commented)
+            gui.set_element_data(self.item, tag)
+        self.refresh_preview()
 
     def make_conditional(self):
-        pass
+        "zet een IE conditie om het element heen"
+        if not self.checkselection():
+            return
+        text = gui.get_element_text(self.item)
+        if text.startswith(IFSTART):
+            self.gui.meld("This is already a conditional")
+            return
+        # ask for the condition
+        ok, cond = self.gui.ask_for_condition()
+        if ok:
+            # remember and remove the current element (use "cut"?)
+            parent, pos = gui.get_element_parentpos(self.item)
+            self.cut()
+            # add the conditional in its place
+            new_item = self.gui.addtreeitem(parent, ' '.join((IFSTART, cond)), None, pos)
+            # put the current element back ("insert under")
+            self.gui.set_selected_item(new_item)
+            self.paste()
 
     def remove_condition(self):
-        pass
+        "haal de IE conditie om het element weg"
+        if not self.checkselection():
+            return
+        text = gui.get_element_text(self.item)
+        if not text.startswith(IFSTART):
+            self.gui.meld("This is not a conditional")
+            return
+        # for all elements below this one:
+        for item in gui.get_element_children(self.item):
+            # remember and remove it (use "cut"?)
+            self.gui.set_selected_item(item)
+            self.copy()
+            # "insert" after the conditional or under its parent
+            self.gui.set_selected_item(self.item)
+            self.paste()
+        # remove the conditional
+        self.gui.set_selected_item(self.item)
+        self.delete(ifcheck=False)
 
     def _copy(self, cut=False, retain=True, ifcheck=True):
-        "call gui-specific method"
-        self.gui.do_copy(cut, retain, ifcheck)
+        "start copy/cut/delete actie"
+        def push_el(elm, result):
+            "subitem(s) toevoegen aan copy buffer"
+            text = gui.get_element_text(elm)
+            data = gui.get_element_data(elm)
+            atrlist = []
+            if text.startswith(ELSTART):
+                for node in gui.get_element_children(elm):
+                    push_el(node, atrlist)
+            result.append((text, data, atrlist))
+            return result
+        if not self.checkselection():
+            return
+        if self.item == self.root:
+            txt = 'cut' if cut else 'copy' if retain else 'delete'
+            self.gui.meld("Can't %s the root" % txt)
+            return
+        text = str(self.item.text(0))
+        if ifcheck and text.startswith(IFSTART):
+            self.gui.meld("Can't do thisJ on a conditional (use menu option to delete)")
+            return
+        data = gui.get_element_data(self.item)
+        if str(text).startswith(DTDSTART):
+            self.gui.meld("Please use the HTML menu's DTD option to remove the DTD")
+            return
+        if retain:
+            if text.startswith(ELSTART):
+                self.cut_el = []
+                self.cut_el = push_el(self.item, self.cut_el)
+                self.cut_txt = None
+            else:
+                self.cut_el = None
+                self.cut_txt = data
+        if cut:
+            prev_item = self.gui.do_delete_item(self.item)
+            self.mark_dirty(True)
+            self.gui.set_selected_item(prev_item)
+            self.refresh_preview()
 
     def cut(self):
         "cut = copy with removing item from tree"
@@ -525,8 +840,58 @@ class Editor(object):
         self._copy()
 
     def _paste(self, before=True, below=False):
-        "call gui-specific method"
-        self.gui.do_paste(before, below)
+        "start paste actie"
+        def zetzeronder(node, elm, pos=-1):
+            "paste copy buffer into tree"
+            subnode = self.gui.addtreeitem(node, elm[0], elm[1], pos)
+            for item in elm[2]:
+                zetzeronder(subnode, item)
+            return subnode
+        if not self.checkselection():
+            return
+        data = gui.get_element_data(self.item)
+        if below:
+            text = gui.get_element_text(self.item)
+            if text.startswith(CMSTART):
+                self.gui.meld("Can't paste below comment")
+                return
+            if not text.startswith(ELSTART) and not text.startswith(IFSTART):
+                self.gui.meld("Can't paste below text")
+                return
+        if self.item == self.root:
+            if before:
+                self.gui.meld("Can't paste before the root")
+                return
+            else:
+                self.gui.meld("Pasting as first element below root")
+                below = True
+        if self.cut_txt:
+            item = getshortname(self.cut_txt)
+            data = self.cut_txt
+            if below:
+                node = self.gui.addtreeitem(self.item, item, data, -1)
+            else:
+                add_to, idx = self.gui.get_item_parentpos(self.item)
+                if not before:
+                    idx += 1
+                node = self.gui.addtreeitem(add_to, self.item, data, idx)
+            if self.advance_selection_on_add:
+                self.gui.set_selected_item(node)
+        else:
+            if below:
+                add_to = self.item
+                idx = -1
+            else:
+                add_to, idx = gui.get_element_parentpos(self.item)
+                if not before:
+                    idx += 1
+                if idx == len(gui.get_element_children(add_to)):
+                    idx = -1
+            new_item = zetzeronder(add_to, self.cut_el[0], idx)
+            if self.advance_selection_on_add:
+                self.gui.set_selected_item(new_item)
+        self.mark_dirty(True)
+        self.refresh_preview()
 
     def paste_after(self):
         "paste after instead of before"
@@ -541,8 +906,43 @@ class Editor(object):
         self._paste()
 
     def _insert(self, before=True, below=False):
-        "call gui-specific method"
-        self.gui.do_insert(before, below)
+        "start invoeg actie"
+        if not self.checkselection():
+            return
+        if below:
+            text = gui.get_element_text(self.item)
+            if text.startswith(CMSTART):
+                self.gui.meld("Can't insert below comment")
+                return
+            if not text.startswith(ELSTART) and not text.startswith(CMELSTART):
+                self.gui.meld("Can't insert below text")
+                return
+            under_comment = text.startswith(CMSTART)
+            where = "under"
+        elif before:
+            where = "before"
+        else:
+            where = "after"
+        ok, dialog_data = self.gui.do_add_element(where)
+        if ok:
+            tag, attrs, commented = dialog_data
+            item = self.item if below else gui.get_element_parent(self.item)
+            under_comment = gui.get_element_text(item).startswith(CMSTART)
+            text = getelname(tag, attrs, commented or under_comment)
+            if below:
+                new_item = self.gui.addtreeitem(self.item, text, attrs, -1)
+            else:
+                parent, pos = gui.get_element_parentpos(self.item)
+                if not before:
+                    pos += 1
+                if pos >= gui.get_element_children(parent):
+                    pos = -1
+                new_item = self.gui.addtreeitem(parent, text, attrs, pos)
+            if self.advance_selection_on_add:
+                self.gui.set_selected_item(new_item)
+            self.mark_dirty(True)
+            self.refresh_preview()
+            self.gui.set_item_expanded(self.item, True)
 
     def insert(self):
         "insert element before"
@@ -557,8 +957,32 @@ class Editor(object):
         self._insert()
 
     def _add_text(self, before=True, below=False):
-        "call gui-specific method"
-        self.gui.do_add_text(before, below)
+        "tekst toevoegen onder huidige element"
+        if not self.checkselection():
+            return
+        if below and not gui.get_element_text(self.item).startswith(ELSTART):
+            self.gui.meld("Can't add text below text")
+            return
+        ok, dialog_data = self.gui.do_add_textvalue()
+        if ok:
+            txt, commented = dialog_data
+            item = self.item if below else gui.get_element_parent(self.item)
+            under_comment = gui.get_element_text(item).startswith(CMSTART)
+            text = getshortname(txt, commented or under_comment)
+            if below:
+                new_item = self.gui.addtreeitem(self.item, text, txt, -1)
+            else:
+                parent, pos = gui.get_element_parentpos(self.item)
+                if not before:
+                    pos += 1
+                if pos >= gui.get_element_children(parent):
+                    pos = -1
+                new_item = self.gui.addtreeitem(parent, text, txt, pos)
+            if self.advance_selection_on_add:
+                self.gui.set_selected_item(new_item)
+            self.mark_dirty(True)
+            self.refresh_preview()
+            self.gui.set_item_expanded(self.item, True)
 
     def add_text(self):
         "insert text before"
@@ -572,47 +996,191 @@ class Editor(object):
         "insert text below instead of before"
         self._add_text(below=True)
 
-    def search(self):
-        pass
+    def search(self, reverse=False):
+        "start search after asking for options"
+        self._search_pos = None
+        ok = False
+        if not reverse or not self.search_args:
+            ok, self.search_args = self.gui.get_search_args()
+        if reverse or ok:
+            found = find_next(flatten_tree(self.gui.top), self.search_args, reverse)
+            if found:
+                self.gui.set_selected_item(found[1])
+                self._search_pos = found
+            else:
+                self.gui.meld('Niks (meer) gevonden')
 
     def search_last(self):
-        pass
+        "start backwards search"
+        self.search(reverse=True)
 
-    def search_next(self):
-        pass
+    def search_next(self, reverse=False):
+        "find (default is forward)"
+        found = find_next(flatten_tree(self.gui.top), self.search_args, reverse, self._search_pos)
+        if found:
+            self.gui.set_selected_item(found[1])
+            self._search_pos = found
+        else:
+            self.gui.meld('Niks (meer) gevonden')
 
     def search_prev(self):
-        pass
+        "find backwards"
+        self.search_next(reverse=True)
+
+    def replace(self):
+        "replace an element"
+        self.gui.meld('Replace: not sure if I wanna implement this')
 
     def add_dtd(self):
-        pass
+        "start toevoegen dtd m.b.v. dialoog"
+        if self.has_dtd:
+            self.gui.do_delete_item(gui.get_element_children(self.gui.top)[0])
+            self.has_dtd = False
+        else:
+            ok, dialog_data = self.gui.get_dtd()
+            if not ok:
+                return
+            dtd = dialog_data
+            self.gui.addtreeitem(self.gui.top, ' '.join((DTDSTART, getshortname(dtd))),
+                                 dtd.rstrip(), 0)
+            self.has_dtd = True
+        self.gui.adjust_dtd_menu()
+        self.mark_dirty(True)
+        self.refresh_preview()
+        self.gui.ensure_item_visible(gui.get_element_children(self.gui.top)[0])
 
     def add_css(self):
-        pass
+        "start toevoegen stylesheet m.b.v. dialoog"
+        ok, dialog_data = self.gui.get_dialog_data()
+        if not ok:
+            return
+        data = dialog_data
+        # determine the place to put the sylesheet
+        self.item = None
+        for item in gui.get_element_children(self.gui.top):
+            if gui.get_element_text(item) == ' '.join((ELSTART, 'html')):
+                for sub in gui.get_element_children(item):
+                    if gui.get_element_text(sub) == ' '.join((ELSTART, 'head')):
+                        self.item = sub
+        if not self.item:
+            self.gui.meld("Error: no <head> element")
+            return
+        # create the stylesheet node
+        if 'href' in data:
+            text = getelname('link', data)
+        else:
+            text = getelname('style', data)
+            cssdata = data.pop('cssdata')
+        node = self.gui.addtreeitem(self.item, text, data, -1)
+        if 'href' not in data:
+            self.gui.addtreeitem(node, getshortname(cssdata), cssdata, -1)
+        self.mark_dirty(True)
+        self.refresh_preview()
+
+    def check_if_adding_ok(self):
+        "check if element can be added here"
+        ok = True
+        if not self.checkselection():
+            ok = False
+        if not self.gui.get_element_text(self.item).startswith(ELSTART):
+            self.gui.meld("Can't do this below text")
+            ok = False
+        return ok
 
     def add_link(self):
-        pass
+        "start toevoegen link m.b.v. dialoog"
+        if self.check_if_adding_ok():
+            ok, dialog_data = self.gui.get_link_data()
+            if ok:
+                txt, data = dialog_data
+                node = self.gui.addtreeitem(self.item, getelname('a', data), data, -1)
+                self.gui.addtreeitem(node, getshortname(txt), txt, -1)
+                self.mark_dirty(True)
+                self.refresh_preview()
 
     def add_image(self):
-        pass
+        "start toevoegen image m.b.v. dialoog"
+        if self.check_if_adding_ok():
+            ok, dialog_data = self.gui.get_image_data()
+            if ok:
+                data = dialog_data
+                self.gui.addtreeitem(self.item, getelname('image', data), data, -1)
+                self.mark_dirty(True)
+                self.refresh_preview()
 
     def add_audio(self):
-        pass
+        "start toevoegen audio m.b.v. dialoog"
+        if self.check_if_adding_ok():
+            ok, dialog_data = self.gui.get_audio_data()
+            if ok:
+                data = dialog_data
+                data['controls'] = ''
+                self.gui.addtreeitem(self.item, getelname('audio', data), data, -1)
+                self.mark_dirty(True)
+                self.refresh_preview()
 
     def add_video(self):
-        pass
+        "start toevoegen video m.b.v. dialoog"
+        if self.check_if_adding_ok():
+            ok, dialog_data = self.gui.get_video_data()
+            if ok:
+                data = dialog_data
+                data['controls'] = ''
+                src = data.pop('src')
+                node = self.gui.addtreeitem(self.item, getelname('video', data), data, -1)
+                child_data = {'src': src,
+                              'type': 'video/{}'.format(pathlib.Path(src).suffix[1:])}
+                self.gui.addtreeitem(node, getelname('source', child_data), child_data, -1)
+                self.mark_dirty(True)
+                self.refresh_preview()
 
     def add_list(self):
-        pass
+        "start toevoegen list m.b.v. dialoog"
+        if self.check_if_adding_ok():
+            ok, dialog_data = self.gui.get_list_data()
+            if ok:
+                list_type, list_data = dialog_data
+                itemtype = "dt" if list_type == "dl" else "li"
+                new_item = self.gui.addtreeitem(self.item, getelname(list_type), None, -1)
+                for list_item in list_data:
+                    new_subitem = self.gui.addtreeitem(new_item, getelname(itemtype), None, -1)
+                    data = list_item[0]
+                    self.gui.addtreeitem(new_subitem, getshortname(data), data, -1)
+                    if list_type == "dl":
+                        new_subitem = self.gui.addtreeitem(new_item, getelname('dd'), None, -1)
+                        data = list_item[1]
+                        self.gui.addtreeitem(new_subitem, getshortname(data), data, -1)
+                self.mark_dirty(True)
+                self.refresh_preview()
 
     def add_table(self):
-        pass
+        "start toevoegen tabel m.b.v. dialoog"
+        if self.check_if_adding_ok():
+            ok, dialog_data = self.gui.get_table_data()
+            if ok:
+                summary, titles, headers, items = dialog_data
+                data = {'summary': summary}
+                self.gui.addtreeitem(self.item, getelname('table', data), data, -1)
+                if titles:
+                    new_row = self.gui.addtreeitem(self.item, getelname('tr'), None, -1)
+                    for head in headers:
+                        new_head = self.gui.addtreeitem(new_row, getelname('th'), None, -1)
+                        text = head or BL
+                        self.gui.addtreeitem(new_head, getshortname(text), text, -1)
+                for rowitem in items:
+                    new_row = self.gui.addtreeitem(self.item, getelname('tr'), None, -1)
+                    for cellitem in rowitem:
+                        new_cell = self.gui.addtreeitem(new_row, getelname('td'), None, -1)
+                        text = cellitem
+                        self.gui.addtreeitem(new_cell, getshortname(text), text, -1)
+                self.mark_dirty(True)
+                self.refresh_preview()
 
     def validate(self, htmlfile):
         """validate HTML source
         """
         output = '/tmp/ashe_check'
-        sp.run(['tidy', '-e', '-f', output, htmlfile])
+        subprocess.run(['tidy', '-e', '-f', output, htmlfile])
         data = ""
         with open(output) as f_in:
             data = f_in.read()
@@ -622,13 +1190,12 @@ class Editor(object):
         "start source viewer"
         self.data2soup()
         self.gui.show_code("Source view", "Let op: de tekst wordt niet ververst"
-                             " bij wijzigingen in het hoofdvenster", self.soup.prettify()
+                           " bij wijzigingen in het hoofdvenster", self.soup.prettify())
 
     def about(self):
         "get info about the application"
-        self.gui.about("""\
+        self.gui.meld("""\
             Tree-based HTML editor with simultaneous preview
 
             Started in 2008 by Albert Visser
             Versions for PC and PDA available""")
-

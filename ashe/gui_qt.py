@@ -1,5 +1,6 @@
 """PyQt5 specifieke routines voor mijn op een treeview gebaseerde HTML-editor
 """
+import os
 import sys
 import PyQt5.QtWidgets as qtw
 import PyQt5.QtGui as gui
@@ -23,7 +24,13 @@ def get_element_parent(node):
     return node.parent()
 
 
-def get_element_attrs(node):
+def get_element_parentpos(item):
+    "return parent and position under parent in visual tree for this element"
+    parent = item.parent()
+    return parent, parent.indexOfChild(item)
+
+
+def get_element_data(node):
     "return attributes stored with this element"
     return node.data(0, core.Qt.UserRole)
 
@@ -37,6 +44,11 @@ def get_element_children(node):
 def set_element_text(node, text):
     "change text in visual tree for this element"
     node.setText(0, text)
+
+
+def set_element_data(node, data):
+    "change stored attrs for this element"""
+    node.setData(0, core.Qt.UserRole, data)
 
 
 class VisualTree(qtw.QTreeWidget):
@@ -55,7 +67,8 @@ class VisualTree(qtw.QTreeWidget):
         "reimplemented event handler"
         item = self.itemAt(event.x(), event.y())
         if item and item != self._parent.top:
-            if str(item.text(0)).startswith(ELSTART) and item.childCount() == 0:
+            if str(item.text(0)).startswith(self._parent.editor.constants['ELSTART']) and \
+                    item.childCount() == 0:
                 self._parent.edit()
                 return
         super().mouseDoubleClickEvent(event)
@@ -78,9 +91,8 @@ class VisualTree(qtw.QTreeWidget):
         deze methode breidt de Treewidget methode uit met wat visuele zaken
         """
         item = self.itemAt(event.pos())
-        if not item or not item.text(0).startswith(ELSTART):
-            qtw.QMessageBox.information(self, self._parent.title,
-                                        'Can only drop on element')
+        if not item or not item.text(0).startswith(self._parent.editor.constants['ELSTART']):
+            self._parent.meld('Can only drop on element')
             return
         dragitem = self.selectedItems()[0]
         super().dropEvent(event)
@@ -94,19 +106,18 @@ class VisualTree(qtw.QTreeWidget):
 class MainFrame(qtw.QMainWindow):
     "Main GUI"
 
-    def __init__(self, parent=None, editor=None, err=None):
-
+    def __init__(self, parent=None, editor=None, err=None, icon=None):
         self.parent = parent
         self.editor = editor
         self.app = qtw.QApplication(sys.argv)
         super().__init__()
         if err:
-            qtw.QMessageBox.information(self, self.editor.title, err)
+            self.meld(err)
             return
 
         self.dialog_data = {}
         self.search_args = []
-        self.appicon = gui.QIcon(ICO)
+        self.appicon = gui.QIcon(icon)
         self.setWindowIcon(self.appicon)
         self.resize(1020, 900)
 
@@ -130,15 +141,14 @@ class MainFrame(qtw.QMainWindow):
 
         self.adv_menu.setChecked(True)
         self.show()
-        self.refresh_preview()
+        self.editor.refresh_preview()
 
     def _setup_menu(self):
         """build application menu
         """
-        self.menulist = self.get_menulist()
         menu_bar = self.menuBar()
         self.contextmenu_items = []
-        for menu_text, data in self.menulist:
+        for menu_text, data in self.editor.get_menulist():
             menu = qtw.QMenu(menu_text, self)
             for item in data:
                 if len(item) == 1:
@@ -173,183 +183,15 @@ class MainFrame(qtw.QMainWindow):
                 self.contextmenu_items.append(('', ''))
             menu_bar.addMenu(menu)
 
-    def get_menulist(self):
-        """menu definition
-        """
-        return (('&File', (('&New', 'N', 'C', "Start a new HTML document", self.newxml),
-                           ('&Open', 'O', 'C', "Open an existing HTML document", self.openxml),
-                           ('&Save', 'S', 'C', "Save the current document", self.savexml),
-                           ('Save &As', 'S', 'SC', "Save the current document under a different "
-                            "name", self.savexmlas),
-                           ('&Revert', 'R', 'C', "Discard all changes since the last save",
-                            self.reopenxml),
-                           ('sep1', ),
-                           ('E&xit', 'Q', 'C', 'Quit the application', self.close))),
-                ('&View', (('E&xpand All (sub)Levels', '+', 'C', "Show what's beneath "
-                            "the current element", self.expand, True),
-                           ('&Collapse All (sub)Levels', '-', 'C', "Hide what's beneath "
-                            "the current element", self.collapse, True),
-                           ('sep1', ),
-                           ('Advance selection on add/insert', '', '', "Move the selection to the "
-                            "added/pasted item", self.advance_selection_onoff),
-                           ('sep2', ),
-                           ('&Resync preview', 'F5', '', 'Reset the preview window to the '
-                            'contents of the treeview', self.refresh_preview))),
-                ('&Edit', (('Edit', 'F2', '', 'Modify the element/text and/or its attributes',
-                            self.edit),
-                           ('Comment/Uncomment', '#', 'C', 'Comment (out) the current item and '
-                            'everything below', self.comment),
-                           ('Add condition', '', '', 'Put a condition on showing the current '
-                            'item', self.make_conditional),
-                           ('Remove condition', '', '', 'Remove this condition from the '
-                            'elements below it', self.remove_condition),
-                           ('sep1', ),
-                           ('Cut', 'X', 'C', 'Copy and delete the current element', self.cut),
-                           ('Copy', 'C', 'C', 'Copy the current element', self.copy),
-                           ('Paste Before', 'V', 'SC', 'Paste before of the current element',
-                            self.paste),
-                           ('Paste After', 'V', 'CA', 'Paste after the current element',
-                            self.paste_after),
-                           ('Paste Under', 'V', 'C', 'Paste below the current element',
-                            self.paste_below),
-                           ('sep2', ),
-                           ('Delete', 'Del', '', 'Delete the current element', self.delete),
-                           ('Insert Text (under)', 'Ins', 'S', 'Add a text node under the current '
-                            'one', self.add_textchild),
-                           ('Insert Text before', 'Ins', 'SC', 'Add a text node before the current '
-                            'one', self.add_text),
-                           ('Insert Text after', 'Ins', 'SA', 'Add a text node after the current '
-                            'one', self.add_text_after),
-                           ('Insert Element Before', 'Ins', 'C', 'Add a new element in front of the '
-                            'current', self.insert),
-                           ('Insert Element After', 'Ins', 'A', 'Add a new element after the current',
-                            self.insert_after),
-                           ('Insert Element Under', 'Ins', '', 'Add a new element under the current',
-                            self.insert_child))),
-                ('&Search', (("&Find", 'F', 'C', 'Open dialog to specify search and find first',
-                              self.search),
-                             ## ("&Replace", 'H', 'C', 'Search and replace', self.replace),
-                             ("Find &Last", 'F', 'SC', 'Find last occurrence of search argument',
-                              self.search_last),
-                             ("Find &Next", 'F3', '', 'Find next occurrence of search argument',
-                              self.search_next),
-                             ("Find &Previous", 'F3', 'S', 'Find previous occurrence of search '
-                              'argument', self.search_prev))),
-                ("&HTML", (('Add &DTD', '', '', 'Add a document type description', self.add_dtd),
-                           ('Add &Stylesheet', '', '', 'Add a stylesheet', self.add_css),
-                           ('sep1', ),
-                           ('Create &link (under)', '', '', 'Add a document reference', self.add_link),
-                           ('Add i&mage (under)', '', '', 'Include an image', self.add_image),
-                           ('Add v&ideo (under)', '', '', 'Add a video element', self.add_video),
-                           ('Add a&udio (under)', '', '', 'Add an audio fragment', self.add_audio),
-                           ('sep1', ),
-                           ('Add l&ist (under)', '', '', 'Create a list', self.add_list),
-                           ('Add &table (under)', '', '', 'Create a table', self.add_table),
-                           ('sep3', ),
-                           ('&View code', '', '', 'Shows the html pretty-printed', self.view_code),
-                           ('&Check syntax', '', '', 'Validate HTML with Tidy', self.validate))),
-                ("Help", (('&About', '', '', 'Info about this application', self.about), )))
-
-    def _check_tree(self):
-        """vraag of de wijzigingen moet worden opgeslagen
-        keuze uitvoeren en teruggeven (i.v.m. eventueel gekozen Cancel)
-        retourneert 1 = Yes, 0 = No, -1 = Cancel
-        """
-        if self.tree_dirty:
-            retval = dict(zip((qtw.QMessageBox.Yes, qtw.QMessageBox.No,
-                               qtw.QMessageBox.Cancel), (1, 0, -1)))
-            hlp = qtw.QMessageBox.question(
-                self, self.title, "HTML data has been modified - save before continuing?",
-                qtw.QMessageBox.Yes | qtw.QMessageBox.No | qtw.QMessageBox.Cancel,
-                defaultButton=qtw.QMessageBox.Yes)
-            if hlp == qtw.QMessageBox.Yes:
-                self.savexml()
-            return retval[hlp]
-        return None
-
-    def close(self):
-        """kijken of er wijzigingen opgeslagen moeten worden
-        daarna afsluiten"""
-        if self._check_tree() != -1:
-            super().close()
-
-    def newxml(self):
-        """kijken of er wijzigingen opgeslagen moeten worden
-        daarna nieuwe html aanmaken"""
-        if self._check_tree() != -1:
-            err = ed.EditorMixin.getsoup(self, fname=None)
-            if not err:
-                self.adv_menu.setChecked(True)
-                self.sb.showMessage("started new document")
-                self.refresh_preview()
-            else:
-                qtw.QMessageBox.information(self, self.title, str(err))
-
-    def openxml(self):
-        """kijken of er wijzigingen opgeslagen moeten worden
-        daarna een html bestand kiezen"""
-        if self._check_tree() != -1:
-            fnaam, _ = qtw.QFileDialog.getOpenFileName(self, "Choose a file",
-                                                       self.xmlfn or os.getcwd(), HMASK)
-            if fnaam:
-                ed.EditorMixin.getsoup(self, fname=str(fnaam))
-                self.adv_menu.setChecked(True)
-                self.sb.showMessage("loaded {}".format(self.xmlfn))
-                self.refresh_preview()
-
     # def setfilenametooltip((self):
         # """bedoeld om de filename ook als tooltip te tonen, uit te voeren
         # aan het eind van new, open, save, saveas en reload"""
         # zie ticket 406 voor een overweging om dit helemaal achterwege te laten
 
-    def savexml(self):
-        "save html to file"
-        if self.xmlfn == '':
-            self.savexmlas()
-        else:
-            self.data2soup()
-            try:
-                self.soup2file()
-            except IOError as err:
-                qtw.QMessageBox.information(self, self.title, str(err))
-                return
-            self.sb.showMessage("saved {}".format(self.xmlfn))
-
-    def savexmlas(self):
-        """vraag bestand om html op te slaan
-        bestand opslaan en naam in titel en root element zetten"""
-        name, _ = qtw.QFileDialog.getSaveFileName(self, "Save file as ...",
-                                                  self.xmlfn or os.getcwd(), HMASK)
-        if name:
-            self.xmlfn = str(name)
-            self.data2soup()
-            try:
-                self.soup2file(saveas=True)
-            except IOError as err:
-                qtw.QMessageBox.information(self, self.title, str(err))
-                return
-            self.top.setText(0, self.xmlfn)
-            self.sb.showMessage("saved as {}".format(self.xmlfn))
-
-    def reopenxml(self):
-        """onvoorwaardelijk html bestand opnieuw laden"""
-        ret = ed.EditorMixin.getsoup(self, fname=self.xmlfn)
-        if ret:
-            qtw.QMessageBox(self, self.title, str(ret))
-        else:
-            self.adv_menu.setChecked(True)
-            self.sb.showMessage("reloaded {}".format(self.xmlfn))
-            self.refresh_preview()
-
-    def advance_selection_onoff(self):
-        "callback for menu option"
-        self.advance_selection_on_add = self.adv_menu.isChecked()
-
     def mark_dirty(self, state):
         "update visual signs that the source was changed"
-        ed.EditorMixin.mark_dirty(self, state)
         title = str(self.windowTitle())
-        test = ' - ' + TITEL
+        test = ' - ' + self.editor.title
         test2 = '*' + test
         if state:
             if test2 not in title:
@@ -357,17 +199,6 @@ class MainFrame(qtw.QMainWindow):
         else:
             title = title.replace(test2, test)
         self.setWindowTitle(title)
-
-    def refresh_preview(self):
-        "update display"
-        self.data2soup()
-        self.html.setHtml(str(self.soup).replace('%SOUP-ENCODING%', 'utf-8'))
-        self.tree.setFocus()
-
-    def about(self):
-        "toon programma info"
-        abouttext = ed.EditorMixin.about(self)
-        qtw.QMessageBox.information(self, self.title, abouttext)
 
     def addtreeitem(self, node, naam, data, index=-1):
         """itemnaam en -data toevoegen aan de interne tree
@@ -391,96 +222,19 @@ class MainFrame(qtw.QMainWindow):
         self.top.setText(0, fname)
         self.tree.addTopLevelItem(self.top)  # AddRoot(titel)
 
-    def init_tree(self, name=''):
-        "nieuwe tree initialiseren"
-        self.tree.clear()
-        ed.EditorMixin.init_tree(self, name)
-        self.adjust_dtd_menu()
-        if DESKTOP:
-            self.tree.setCurrentItem(self.top)
+    def get_selected_item(self):
+        """geef het in de tree geselecteerde item terug
+        """
+        return self.tree.currentItem()
 
-    def data2soup(self):
-        "interne tree omzetten in BeautifulSoup object"
-        def expandnode(node, root, data, commented=False):
-            "tree item (node) met inhoud (data) toevoegen aan BS node (root)"
-            try:
-                for att in data:
-                    root[str(att)] = str(data[att])
-            except TypeError:
-                pass
-            for ix in range(node.childCount()):
-                elm = node.child(ix)
-                text = str(elm.text(0))
-                data = elm.data(0, core.Qt.UserRole)
-                if sys.version < '3':
-                    data = data.toPyObject()
-                if text.startswith(ELSTART) or text.startswith(CMELSTART):
-                    # data is een dict: leeg of een mapping van data op attributen
-                    if text.startswith(CMSTART):
-                        text = text.split(None, 1)[1]
-                        if not commented:
-                            is_comment = True
-                            soup = bs.BeautifulSoup('', 'lxml')
-                            sub = soup.new_tag(text.split()[1])
-                            expandnode(elm, sub, data, is_comment)
-                            sub = bs.Comment(str(sub))  # .decode("utf-8")) niet voor Py3
-                        else:
-                            is_comment = False
-                            sub = self.soup.new_tag(text.split()[1])
-                    else:
-                        is_comment = False
-                        sub = self.soup.new_tag(text.split()[1])
-                    root.append(sub)  # insert(0,sub)
-                    if not is_comment:
-                        expandnode(elm, sub, data, commented)
-                elif text.startswith(DTDSTART):
-                    text = text.split(None, 1)[1]
-                    sub = bs.Doctype(data)
-                    root.append(sub)
-                elif text.startswith(IFSTART):
-                    # onthou conditie
-                    cond = text.split(None, 1)[1]
-                    text = ''
-                    # onderliggende elementen langslopen
-                    for iy in range(elm.childCount()):
-                        subel = elm.child(iy)
-                        subtext = str(subel.text(0))
-                        data = subel.data(0, core.Qt.UserRole)
-                        if subtext.startswith(ELSTART):
-                            # element in tekst omzetten en deze aan text toevoegen
-                            onthou = self.soup
+    def set_selected_item(self, item):
+        """stel het in de tree geselecteerde item in
+        """
+        self.tree.setCurrentItem(item)
 
-                            self.soup = bs.BeautifulSoup('', 'lxml')
-                            tag = self.soup.new_tag(subtext.split()[1])
-                            expandnode(subel, tag, data)
-                            text += str(tag)
-                            self.soup = onthou
-                        else:
-                            # tekst aan text toevoegen
-                            text += str(data)
-                    # complete tekst als commentaar element aan de soup toevoegen
-                    sub = bs.Comment('[if {}]>{}<![endif]'.format(cond, text))
-                    root.append(sub)
-                else:
-                    sub = bs.NavigableString(str(data))  # .decode("utf-8")) niet voor Py3
-                    if text.startswith(CMSTART) and not commented:
-                        sub = bs.Comment(data)  # .decode("utf-8")) niet voor Py3
-                    root.append(sub)  # data.decode("latin-1")) # insert(0,sub)
-        self.soup = bs.BeautifulSoup('', 'lxml')  # self.root.originalEncoding)
-        count = self.top.childCount()
-        for ix in range(count):
-            tag = self.top.child(ix)
-            text = str(tag.text(0))
-            data = tag.data(0, core.Qt.UserRole)
-            if sys.version < '3':
-                data = data.toPyObject()
-            if text.startswith(DTDSTART):
-                root = bs.Doctype(str(data))  # Declaration(str(data))
-                self.soup.append(root)
-            elif text.startswith(ELSTART):
-                root = self.soup.new_tag(text.split(None, 2)[1])
-                self.soup.append(root)
-                expandnode(tag, root, data)
+    def init_tree(self):
+        "toolkit specifieke voortzetting van gelijknamige editor methode"
+        self.tree.setCurrentItem(self.top)
 
     def adjust_dtd_menu(self):
         "set text for dtd menu option"
@@ -513,16 +267,6 @@ class MainFrame(qtw.QMainWindow):
         self.in_contextmenu = False
         # del menu
 
-    def checkselection(self):
-        "controleer of er wel iets geselecteerd is (behalve de filenaam)"
-        sel = True
-        self.item = self.tree.currentItem()
-        if self.item is None or self.item == self.top:
-            qtw.QMessageBox.information(self, self.title,
-                                        'You need to select an element or text first')
-            sel = False
-        return sel
-
     def keyReleaseEvent(self, event):
         "reimplemented event handler"
         skip = self.on_keyup(event)
@@ -540,8 +284,39 @@ class MainFrame(qtw.QMainWindow):
                 skip = True
         return skip
 
+    def ask_how_to_continue(self, title, text):
+        """vraag of de wijzigingen moet worden opgeslagen
+        keuze uitvoeren en teruggeven (i.v.m. eventueel gekozen Cancel)
+        retourneert 1 = Yes, 0 = No, -1 = Cancel
+        """
+        retval = dict(zip((qtw.QMessageBox.Yes, qtw.QMessageBox.No, qtw.QMessageBox.Cancel),
+                          (1, 0, -1)))
+        hlp = qtw.QMessageBox.question(self, title, text, qtw.QMessageBox.Yes |
+                                       qtw.QMessageBox.No | qtw.QMessageBox.Cancel,
+                                       defaultButton=qtw.QMessageBox.Yes)
+        return retval[hlp]
+
+    def ask_for_open_filename(self):
+        """open een dkialoog om te vragen welk file geladen moet worden
+        """
+        filename, _ = qtw.QFileDialog.getOpenFileName(self, "Choose a file",
+                                                      self.editor.xmlfn or os.getcwd(), HMASK)
+        return filename
+
+    def ask_for_save_filename(self):
+        """open een dialoog om te vragen onder welke naam de html moet worden opgeslagen
+        """
+        filename = qtw.QFileDialog.getSaveFileName(self, "Save file as ...",
+                                                   self.editor.xmlfn or os.getcwd(), HMASK)
+        return filename
+
+    def set_item_expanded(self, item, state):
+        """show item's children
+        """
+        item.setExpanded(state)
+
     def expand(self):
-        "expandeer tree vanaf huidige item"
+        "toolkit specifieke voortzetting van gelijknamige editor methode"
         def expand_all(item):
             "recursively expand items"
             all_results = []
@@ -560,7 +335,7 @@ class MainFrame(qtw.QMainWindow):
         self.tree.scrollToItem(results[-1])
 
     def collapse(self):
-        "collapse huidige item en daaronder"
+        "toolkit specifieke voortzetting van gelijknamige editor methode"
         def collapse_all(item):
             "recursively collapse items"
             for ix in range(item.childCount()):
@@ -572,425 +347,104 @@ class MainFrame(qtw.QMainWindow):
         self.tree.collapseItem(item)
         self.tree.resizeColumnToContents(0)
 
-    def comment(self):
-        "(un)comment zonder de edit dialoog"
-        if DESKTOP and not self.checkselection():
-            return
-        tag = str(self.item.text(0))
-        attrs = self.item.data(0, core.Qt.UserRole)
-        if sys.version < '3':
-            attrs = attrs.toPyObject()
-        commented = tag.startswith(CMSTART)
-        if commented:
-            _, tag = tag.split(None, 1)  # CMSTART eraf halen
-        under_comment = str(self.item.parent().text(0)).startswith(CMELSTART)
-        commented = not commented  # het (un)commenten uitvoeren
-        if under_comment:
-            commented = True
-        if tag.startswith(ELSTART):
-            _, tag = tag.split(None, 1)  # ELSTART eraf halen
-            self.item.setText(0, ed.getelname(tag, attrs, commented))
-            self.item.setData(0, core.Qt.UserRole, attrs)
-            comment_out(self.item, commented)
-        else:
-            self.item.setText(0, ed.getshortname(tag, commented))
-            self.item.setData(0, core.Qt.UserRole, tag)
-        self.refresh_preview()
+    def get_adv_sel_setting(self):
+        "callback for menu option"
+        self.advance_selection_on_add = self.adv_menu.isChecked()
 
-    def edit(self):
-        "start edit m.b.v. dialoog"
-        if DESKTOP and not self.checkselection():
-            return
-        data = str(self.item.text(0))
-        if data.startswith(DTDSTART):
-            data = str(self.item.data(0, core.Qt.UserRole))
-            prefix = 'HTML PUBLIC "-//W3C//DTD'
-            if data.upper().startswith(prefix):
-                data = data.upper().replace(prefix, '')
-                text = 'doctype is ' + data.split('//EN')[0].strip()
-            elif data.strip().lower() == 'html':
-                text = 'doctype is HTML 5'
-            else:
-                text = 'doctype cannot be determined'
-            qtw.QMessageBox.information(self, self.title, text)
-            return
-        elif data.startswith(IFSTART):
-            qtw.QMessageBox.information(self, self.title,
-                                        "About to edit this conditional")
-            # start dialog to edit condition
-            cond, ok = qtw.QInputDialog(self, self.title, data)
-            # if confirmed: change element
-            if ok:
-                qtw.QMessageBox.information(self, self.title,
-                                            "changing to " + str(cond))
-            return
-        under_comment = str(self.item.parent().text(0)).startswith(CMELSTART)
-        modified = False
-        if data.startswith(ELSTART) or data.startswith(CMELSTART):
-            oldtag = ed.get_tag_from_elname(data)
-            attrdict = self.item.data(0, core.Qt.UserRole)
-            if oldtag == 'style':
-                attrdict['styledata'] = str(
-                    self.item.child(0).data(0, core.Qt.UserRole))
-            if sys.version < '3':
-                attrdict = attrdict.toPyObject()
-            was_commented = data.startswith(CMSTART)
-            edt = ElementDialog(self, title='Edit an element', tag=data,
-                                attrs=attrdict).exec_()
-            if edt == qtw.QDialog.Accepted:
-                modified = True
-                tag, attrs, commented = self.dialog_data
-                if under_comment:
-                    commented = True
-                if tag == 'style':
-                    # style data zit in attrs['styledata'] en moet naar tekst element onder tag
-                    newtext = str(attrs.pop('styledata', ''))  # en daarna moet deze hier weg
-                    oldtext = str(self.item.child(0).data(0, core.Qt.UserRole))
-                    if newtext != oldtext:
-                        self.item.child(0).setText(0, ed.getshortname(newtext))
-                        self.item.child(0).setData(0, core.Qt.UserRole, newtext)
-                attrdict.pop('styledata', '')
-                if tag != oldtag or attrs != attrdict:
-                    self.item.setText(0, ed.getelname(tag, attrs, commented))
-                self.item.setData(0, core.Qt.UserRole, attrs)
-                if commented != was_commented:
-                    comment_out(self.item, commented)
-        else:
-            txt = CMSTART + " " if data.startswith(CMSTART) else ""
-            data = self.item.data(0, core.Qt.UserRole)
-            if sys.version < '3':
-                data = str(data.toPyObject())
-            test = str(self.item.parent().text(0))
-            if test in (' '.join((ELSTART, 'style')), ' '.join((CMELSTART, 'style'))):
-                qtw.QMessageBox.information(self, self.title,
-                                            "Please edit style through parent tag")
-                return
-            edt = TextDialog(self, title='Edit Text', text=txt + data).exec_()
-            if edt == qtw.QDialog.Accepted:
-                modified = True
-                txt, commented = self.dialog_data
-                if under_comment:
-                    commented = True
-                self.item.setText(0, ed.getshortname(txt, commented))
-                self.item.setData(0, core.Qt.UserRole, txt)
-        if modified:
-            self.mark_dirty(True)
-            self.refresh_preview()
+    def refresh_preview(self, soup):
+        "toolkit specifieke voortzetting van gelijknamige editor methode"
+        self.html.setHtml(str(soup).replace('%SOUP-ENCODING%', 'utf-8'))
+        self.tree.setFocus()
 
-    def _copy(self, cut=False, retain=True, ifcheck=True):
-        "start copy/cut/delete actie"
-        def push_el(elm, result):
-            "subitem(s) toevoegen aan copy buffer"
-            text = str(elm.text(0))
-            data = elm.data(0, core.Qt.UserRole)
-            if sys.version < '3':
-                data = data.toPyObject()
-            atrlist = []
-            if text.startswith(ELSTART):
-                num = elm.childCount()
-                for idx in range(num):
-                    node = elm.child(idx)
-                    push_el(node, atrlist)
-            result.append((text, data, atrlist))
-            return result
-        if DESKTOP and not self.checkselection():
-            return
-        if self.item == self.root:
-            txt = 'cut' if cut else 'copy' if retain else 'delete'
-            qtw.QMessageBox.information(self, self.title, "Can't %s the root" % txt)
-            return
-        text = str(self.item.text(0))
-        if ifcheck and text.startswith(IFSTART):
-            qtw.QMessageBox.information(self, self.title, "Can't do this"
-                                        " on a conditional (use menu option to delete)")
-            return
-        data = self.item.data(0, core.Qt.UserRole)
-        if sys.version < '3':
-            data = data.toPyObject()
-        if str(text).startswith(DTDSTART):
-            qtw.QMessageBox.information(self, self.title, "Please use"
-                                        " the HTML menu's DTD option to remove the DTD")
-            return
-        if retain:
-            if text.startswith(ELSTART):
-                self.cut_el = []
-                self.cut_el = push_el(self.item, self.cut_el)
-                self.cut_txt = None
-            else:
-                self.cut_el = None
-                self.cut_txt = data
-        if cut:
-            parent = self.item.parent()
-            ix = parent.indexOfChild(self.item)
-            if ix > 0:
-                ix -= 1
-                prev = parent.child(ix)
-            else:
-                prev = parent
-                if prev == self.root:
-                    prev = parent.child(ix + 1)
-            parent.removeChild(self.item)
-            self.mark_dirty(True)
-            self.tree.setCurrentItem(prev)
-            self.refresh_preview()
-
-    def _paste(self, before=True, below=False):
-        "start paste actie"
-        def zetzeronder(node, elm, pos=-1):
-            "paste copy buffer into tree"
-            subnode = qtw.QTreeWidgetItem()
-            subnode.setText(0, elm[0])
-            subnode.setData(0, core.Qt.UserRole, elm[1])
-            if pos == -1:
-                node.addChild(subnode)
-            else:
-                node.insertChild(pos, subnode)
-            for item in elm[2]:
-                zetzeronder(subnode, item)
-            return subnode
-        if DESKTOP and not self.checkselection():
-            return
-        data = self.item.data(0, core.Qt.UserRole)
-        if sys.version < '3':
-            data = data.toPyObject()
-        if below:
-            text = str(self.item.text(0))
-            if text.startswith(CMSTART):
-                qtw.QMessageBox.information(self, self.title, "Can't paste below comment")
-                return
-            if not text.startswith(ELSTART) and not text.startswith(IFSTART):
-                qtw.QMessageBox.information(self, self.title, "Can't paste below text")
-                return
-        if self.item == self.root:
-            if before:
-                qtw.QMessageBox.information(self, self.title,
-                                            "Can't paste before the root")
-                return
-            else:
-                qtw.QMessageBox.information(self, self.title,
-                                            "Pasting as first element below root")
-                below = True
-        if self.cut_txt:
-            item = ed.getshortname(self.cut_txt)
-            data = self.cut_txt
-            node = qtw.QTreeWidgetItem()
-            node.setText(0, item)
-            node.setData(0, core.Qt.UserRole, data)
-            if below:
-                self.item.addChild(node)
-            else:
-                add_to = self.item.parent()
-                idx = add_to.indexOfChild(self.item)
-                if not before:
-                    idx += 1
-                if idx >= add_to.childCount():
-                    add_to.addChild(node)
-                else:
-                    add_to.insertChild(idx, node)
-            if self.advance_selection_on_add:
-                self.tree.setCurrentItem(node)
-        else:
-            if below:
-                add_to = self.item
-                idx = -1
-            else:
-                add_to = self.item.parent()
-                idx = add_to.indexOfChild(self.item)
-                cnt = add_to.childCount()
-                if not before:
-                    idx += 1
-                if idx == cnt:
-                    idx = -1
-            new_item = zetzeronder(add_to, self.cut_el[0], idx)
-            if self.advance_selection_on_add:
-                self.tree.setCurrentItem(new_item)
-        self.mark_dirty(True)
-        self.refresh_preview()
-
-    def _add_text(self, before=True, below=False):
-        "tekst toevoegen onder huidige element"
-        if DESKTOP and not self.checkselection():
-            return
-        if below and not str(self.item.text(0)).startswith(ELSTART):
-            qtw.QMessageBox.information(self, self.title, "Can't add text below text")
-            return
-        edt = TextDialog(self, title="New Text").exec_()
+    def call_dialog(self, obj):
+        "send dialog and transmit results"
+        edt = obj.exec_()
         if edt == qtw.QDialog.Accepted:
-            txt, commented = self.dialog_data
-            if below:
-                text = str(self.item.text(0))
-            else:
-                parent = self.item.parent()
-                text = str(parent.text(0))
-            under_comment = text.startswith(CMSTART)
-            text = ed.getshortname(txt, commented or under_comment)
-            new_item = qtw.QTreeWidgetItem()
-            new_item.setText(0, text)
-            new_item.setData(0, core.Qt.UserRole, txt)
-            if below:
-                self.item.addChild(new_item)
-            else:
-                ix = parent.indexOfChild(self.item)
-                if not before:
-                    ix += 1
-                if ix >= parent.childCount():
-                    parent.addChild(new_item)
-                else:
-                    parent.insertChild(ix, new_item)
-            if self.advance_selection_on_add:
-                self.tree.setCurrentItem(new_item)
-            self.mark_dirty(True)
-            self.refresh_preview()
-            self.item.setExpanded(True)
+            return True, self.dialog_data
+        return False, None
 
-    def _insert(self, before=True, below=False):
-        "start invoeg actie"
-        if DESKTOP and not self.checkselection():
-            return
-        if below:
-            text = str(self.item.text(0))
-            if text.startswith(CMSTART):
-                qtw.QMessageBox.information(self, self.title,
-                                            "Can't insert below comment")
-                return
-            if not text.startswith(ELSTART) and not text.startswith(CMELSTART):
-                qtw.QMessageBox.information(self, self.title,
-                                            "Can't insert below text")
-                return
-            under_comment = text.startswith(CMSTART)
-            where = "under"
-        elif before:
-            where = "before"
+    def do_edit_element(self, tagdata, attrdict):
+        """show dialog for existing element"""
+        obj = ElementDialog(self, title='Edit an element', tag=tagdata, attrs=attrdict)
+        return self.call_dialog(obj)
+        edt = ElementDialog(self, title='Edit an element', tag=tagdata, attrs=attrdict).exec_()
+        if edt == qtw.QDialog.Accepted:
+            return True, self.dialog_data
         else:
-            where = "after"
+            return False, None
+
+    def do_add_element(self, where):
+        """show dialog for new element"""
+        obj = ElementDialog(self, title="New element (insert {0})".format(where))
+        return self.call_dialog(obj)
         edt = ElementDialog(self, title="New element (insert {0})".format(where)).exec_()
         if edt == qtw.QDialog.Accepted:
-            tag, attrs, commented = self.dialog_data
-            if below:
-                text = str(self.item.text(0))
-            else:
-                parent = self.item.parent()
-                text = str(parent.text(0))
-            under_comment = text.startswith(CMSTART)
-            text = ed.getelname(tag, attrs, commented or under_comment)
-            new_item = qtw.QTreeWidgetItem()
-            new_item.setText(0, text)
-            new_item.setData(0, core.Qt.UserRole, attrs)
-
-            if below:
-                self.item.addChild(new_item)
-            else:
-                ix = parent.indexOfChild(self.item)
-                if not before:
-                    ix += 1
-                if ix >= parent.childCount():
-                    parent.addChild(new_item)
-                else:
-                    parent.insertChild(ix, new_item)
-            if self.advance_selection_on_add:
-                self.tree.setCurrentItem(new_item)
-            self.mark_dirty(True)
-            self.refresh_preview()
-            self.item.setExpanded(True)
-
-    def make_conditional(self):
-        "zet een IE conditie om het element heen"
-        if DESKTOP and not self.checkselection():
-            return
-        text = str(self.item.text(0))
-        if text.startswith(IFSTART):
-            qtw.QMessageBox.information(self, self.title,
-                                        "This is already a conditional")
-            return
-        # ask for the condition
-        cond, ok = qtw.QInputDialog.getText(self, self.title, 'Enter the condition',
-                                            text='')
-        if ok:
-            # remember and remove the current element (use "cut"?)
-            parent = self.item.parent()
-            test = parent.indexOfChild(self.item)
-            self.cut()
-            # add the conditional in its place
-            if parent.childCount() == 1:
-                new = self.addtreeitem(parent, ' '.join((IFSTART, cond)), '')
-            else:
-                new = self.addtreeitem(parent, ' '.join((IFSTART, cond)), '',
-                                       index=test)
-            # put the current element back ("insert under")
-            self.tree.setCurrentItem(new)
-            self.paste_blw()
-
-    def remove_condition(self):
-        "haal de IE conditie om het element weg"
-        if DESKTOP and not self.checkselection():
-            return
-        text = str(self.item.text(0))
-        if not text.startswith(IFSTART):
-            qtw.QMessageBox.information(self, self.title, "This is not a conditional")
-            return
-        cond = self.item
-        ## parent = cond.parent()
-        # for all elements below this one:
-        for ix in range(cond.childCount()):
-            # remember and remove it (use "cut"?)
-            self.tree.setCurrentItem(cond.child(ix))
-            self.copy()
-            # "insert" after the conditional or under its parent
-            self.tree.setCurrentItem(cond)
-            self.paste()
-        # remove the conditional -
-        self.tree.setCurrentItem(cond)
-        self.delete(ifcheck=False)
-
-    def search(self, reverse=False):
-        "start search after asking for options"
-        self._search_pos = None
-        if not reverse or not self.search_args:
-            edt = SearchDialog(self, title='Search options').exec_()
-        if reverse or edt == qtw.QDialog.Accepted:
-            found = ed.find_next(flatten_tree(self.top), self.search_args,
-                                 reverse)
-            if found:
-                self.tree.setCurrentItem(found[1])
-                self._search_pos = found
-            else:
-                self._meldinfo('Niks (meer) gevonden')
-
-    def search_last(self):
-        "start backwards search"
-        self.search(reverse=True)
-
-    def search_next(self, reverse=False):
-        "find (default is forward)"
-        found = ed.find_next(flatten_tree(self.top), self.search_args, reverse,
-                             self._search_pos)
-        if found:
-            self.tree.setCurrentItem(found[1])
-            self._search_pos = found
+            return True, self.dialog_data
         else:
-            self._meldinfo('Niks (meer) gevonden')
+            return False, None
 
-    def search_prev(self):
-        "find backwards"
-        self.search_next(reverse=True)
+    def do_edit_textvalue(self, textdata):
+        """show dialog for existing text"""
+        return self.call_dialog(TextDialog(self, title='Edit Text', text=textdata))
+        edt = TextDialog(self, title='Edit Text', text=textdata).exec_()
+        if edt == qtw.QDialog.Accepted:
+            return True, self.dialog_data
+        else:
+            return False, None
 
-    def replace(self):
-        "replace an element"
-        self._meldinfo('Replace: not sure if I wanna implement this')
+    def do_add_textvalue(self):
+        """show dialog for new text"""
+        return self.call_dialog(TextDialog(self, title="New Text"))
+        edt = TextDialog(self, title="New Text").exec_()
+        if edt == qtw.QDialog.Accepted:
+            return True, self.dialog_data
+        else:
+            return False, None
 
-    def _meldinfo(self, text):   # letterlijk overgenomen uit axe
+    def ask_for_condition(self):
+        "zet een IE conditie om het element heen"
+        cond, ok = qtw.QInputDialog.getText(self, self.title, 'Enter the condition', text='')
+        if ok:
+            return cond
+        return ''
+
+    def do_delete_item(self, item):
+        """remove element from tree
+        """
+        parent = item.parent()
+        ix = parent.indexOfChild(item)
+        if ix > 0:
+            ix -= 1
+            prev = parent.child(ix)
+        else:
+            prev = parent
+            if prev == self.root:
+                prev = parent.child(ix + 1)
+        parent.removeChild(item)
+        return prev
+
+    def get_search_args(self):
+        """show search options dialog"""
+        return self.call_dialog(SearchDialog(self, title='Search options'))
+        edt = SearchDialog(self, title='Search options').exec_()
+        if edt == qtw.QDialog.Accepted:
+            return True, self.search_args
+        else:
+            return False, None
+
+    def meld(self, text):
         """notify about some information"""
         self.in_dialog = True
-        qtw.QMessageBox.information(self, self.title, text)
+        qtw.QMessageBox.information(self, self.editor.title, text)
 
-    def _meldfout(self, text, abort=False):   # letterlijk overgenomen uit axe
+    def meld_fout(self, text, abort=False):
         """notify about an error"""
         self.in_dialog = True
         qtw.QMessageBox.critical(self, self.title, text)
         if abort:
             self.quit()
 
-    def _ask_yesnocancel(self, prompt):   # letterlijk overgenomen uit axe
+    def ask_yesnocancel(self, prompt):
         """stelt een vraag en retourneert het antwoord
         1 = Yes, 0 = No, -1 = Cancel
         """
@@ -1003,245 +457,94 @@ class MainFrame(qtw.QMainWindow):
             defaultButton=qtw.QMessageBox.Yes)
         return retval[h]
 
-    def _ask_for_text(self, prompt):   # letterlijk overgenomen uit axe
+    def ask_for_text(self, prompt):
         """vraagt om tekst en retourneert het antwoord"""
         self.in_dialog = True
-        data, *_ = qtw.QInputDialog.getText(self, self.title, prompt,
-                                            qtw.QLineEdit.Normal, "")
-        return data
+        data, ok = qtw.QInputDialog.getText(self, self.title, prompt, qtw.QLineEdit.Normal, "")
+        return data, ok
 
-    def add_dtd(self):
-        "start toevoegen dtd m.b.v. dialoog"
-        if self.has_dtd:
-            self.top.removeChild(self.top.child(0))
-            self.has_dtd = False
+    def ensure_item_visible(self, item):
+        """make sure we can see the item
+        """
+        self.tree.scrollToItem(item)
+
+    def get_dtd(self):
+        """show dialog for dtd
+        """
+        return self.call_dialog(DtdDialog(self))
+        edt = DtdDialog(self).exec_()
+        if edt == qtw.QDialog.Accepted:
+            return True, self.dialog_data
         else:
-            edt = DtdDialog(self).exec_()
-            if edt == qtw.QDialog.Rejected:
-                return
-            node = qtw.QTreeWidgetItem()
-            self.top.insertChild(0, node)
-            dtd = self.dialog_data
-            node.setText(0, ' '.join((DTDSTART, ed.getshortname(dtd))))
-            node.setData(0, core.Qt.UserRole, dtd.rstrip())
-            self.has_dtd = True
-        self.adjust_dtd_menu()
-        self.mark_dirty(True)
-        self.refresh_preview()
-        self.tree.scrollToItem(self.top.child(0))
+            return False, None
 
-    def add_css(self):
-        "start toevoegen stylesheet m.b.v. dialoog"
+    def get_css_data(self):
+        """show dialog for new style element
+        """
+        return self.call_dialog(CssDialog(self))
         edt = CssDialog(self).exec_()
-        if edt != qtw.QDialog.Accepted:
-            return
-        data = self.dialog_data
-        # determine the place to put the sylesheet
-        self.item = None
-        for ix in range(self.top.childCount()):
-            item = self.top.child(ix)
-            if item.text(0) == ' '.join((ELSTART, 'html')):
-                for ix in range(item.childCount()):
-                    sub = item.child(ix)
-                    if sub.text(0) == ' '.join((ELSTART, 'head')):
-                        self.item = sub
-        if not self.item:
-            qtw.QMessageBox.information(self, self.title, "Error: no <head> element")
-            return
-        # create the stylesheet node
-        node = qtw.QTreeWidgetItem()
-        if 'href' in data:
-            node.setText(0, ed.getelname('link', data))
-            subnode = None
+        if edt == qtw.QDialog.Accepted:
+            return True, self.dialog_data
         else:
-            node.setText(0, ed.getelname('style', data))
-            cssdata = data.pop('cssdata')
-            subnode = qtw.QTreeWidgetItem()
-            subnode.setText(0, ed.getshortname(cssdata))
-            subnode.setData(0, core.Qt.UserRole, cssdata)
-            node.addChild(subnode)
-        node.setData(0, core.Qt.UserRole, data)
-        self.item.addChild(node)
-        self.mark_dirty(True)
-        self.refresh_preview()
+            return False, None
 
-    def add_link(self):
-        "start toevoegen link m.b.v. dialoog"
-        if DESKTOP and not self.checkselection():
-            return
-        if not str(self.item.text(0)).startswith(ELSTART):
-            qtw.QMessageBox.information(self, self.title, "Can't do this below text")
-            return
+    def get_link_data(self):
+        """show dialog for new link element
+        """
+        return self.call_dialog(LinkDialog(self))
         edt = LinkDialog(self).exec_()
         if edt == qtw.QDialog.Accepted:
-            txt, data = self.dialog_data
-            node = qtw.QTreeWidgetItem()
-            node.setText(0, ed.getelname('a', data))
-            node.setData(0, core.Qt.UserRole, data)
-            self.item.addChild(node)
-            new_item = qtw.QTreeWidgetItem()
-            new_item.setText(0, ed.getshortname(txt))
-            new_item.setData(0, core.Qt.UserRole, txt)
-            node.addChild(new_item)
-            self.mark_dirty(True)
-            self.refresh_preview()
+            return True, self.dialog_data
+        else:
+            return False, None
 
-    def add_image(self):
-        "start toevoegen image m.b.v. dialoog"
-        if DESKTOP and not self.checkselection():
-            return
-        if not str(self.item.text(0)).startswith(ELSTART):
-            qtw.QMessageBox.information(self, self.title, "Can't do this below text")
-            return
+    def get_image_data(self):
+        """show dialog for new image element
+        """
+        return self.call_dialog(ImageDialog(self))
         edt = ImageDialog(self).exec_()
         if edt == qtw.QDialog.Accepted:
-            data = self.dialog_data
-            node = qtw.QTreeWidgetItem()
-            node.setText(0, ed.getelname('img', data))
-            node.setData(0, core.Qt.UserRole, data)
-            self.item.addChild(node)
-            self.mark_dirty(True)
-            self.refresh_preview()
+            return True, self.dialog_data
+        else:
+            return False, None
 
-    def add_video(self):
-        "start toevoegen video m.b.v. dialoog"
-        if DESKTOP and not self.checkselection():
-            return
-        if not str(self.item.text(0)).startswith(ELSTART):
-            qtw.QMessageBox.information(self, self.title, "Can't do this below text")
-            return
-        edt = VideoDialog(self).exec_()
-        if edt == qtw.QDialog.Accepted:
-            data = self.dialog_data
-            data['controls'] = ''
-            src = data.pop('src')
-            node = qtw.QTreeWidgetItem()
-            node.setText(0, ed.getelname('video', data))
-            node.setData(0, core.Qt.UserRole, data)
-            self.item.addChild(node)
-            child = qtw.QTreeWidgetItem()
-            child_data = {'src': src,
-                          'type': 'video/{}'.format(pathlib.Path(src).suffix[1:])}
-            child.setText(0, ed.getelname('source', child_data))
-            child.setData(0, core.Qt.UserRole, child_data)
-            node.addChild(child)
-            self.mark_dirty(True)
-            self.refresh_preview()
+    def get_video_data(self):
+        """show dialog for new video element
+        """
+        return self.call_dialog(VideoDialog(self))
 
-    def add_audio(self):
-        "start toevoegen audio m.b.v. dialoog"
-        if DESKTOP and not self.checkselection():
-            return
-        if not str(self.item.text(0)).startswith(ELSTART):
-            qtw.QMessageBox.information(self, self.title, "Can't do this below text")
-            return
-        edt = AudioDialog(self).exec_()
-        if edt == qtw.QDialog.Accepted:
-            data = self.dialog_data
-            data['controls'] = ''
-            node = qtw.QTreeWidgetItem()
-            node.setText(0, ed.getelname('audio', data))
-            node.setData(0, core.Qt.UserRole, data)
-            self.item.addChild(node)
-            self.mark_dirty(True)
-            self.refresh_preview()
+    def get_audio_data(self):
+        """show dialog for new audio element
+        """
+        return self.call_dialog(AudioDialog(self))
 
-    def add_list(self):
-        "start toevoegen list m.b.v. dialoog"
-        if DESKTOP and not self.checkselection():
-            return
-        if not str(self.item.text(0)).startswith(ELSTART):
-            qtw.QMessageBox(self, self.title, "Can't do this below text")
-            return
-        edt = ListDialog(self).exec_()
-        if edt == qtw.QDialog.Accepted:
-            list_type, list_data = self.dialog_data
-            itemtype = "dt" if list_type == "dl" else "li"
-            new_item = qtw.QTreeWidgetItem()
-            self.item.addChild(new_item)
-            new_item.setText(0, ed.getelname(list_type))
+    def get_list_data(self):
+        """show dialog for new list element
+        """
+        return self.call_dialog(ListDialog(self))
 
-            for list_item in list_data:
-                new_subitem = qtw.QTreeWidgetItem()
-                new_item.addChild(new_subitem)
-                new_subitem.setText(0, ed.getelname(itemtype))
-                data = list_item[0]
-                node = qtw.QTreeWidgetItem()
-                new_subitem.addChild(node)
-                node.setText(0, ed.getshortname(data))
-                node.setData(0, core.Qt.UserRole, data)
-                if list_type == "dl":
-                    new_subitem = qtw.QTreeWidgetItem()
-                    new_item.addChild(new_subitem)
-                    new_subitem.setText(0, ed.getelname('dd'))
-                    data = list_item[1]
-                    node = qtw.QTreeWidgetItem()
-                    new_subitem.addChild(node)
-                    node.setText(0, ed.getshortname(data))
-                    node.setData(0, core.Qt.UserRole, data)
-            self.mark_dirty(True)
-            self.refresh_preview()
-
-    def add_table(self):
-        "start toevoegen tabel m.b.v. dialoog"
-        if DESKTOP and not self.checkselection():
-            return
-        if not str(self.item.text(0)).startswith(ELSTART):
-            qtw.QMessageBox(self, self.title, "Can't do this below text")
-            return
-        edt = TableDialog(self).exec_()
-        if edt == qtw.QDialog.Accepted:
-            summary, titles, headers, items = self.dialog_data
-            new_item = qtw.QTreeWidgetItem()
-            self.item.addChild(new_item)
-            data = {'summary': summary}
-            new_item.setText(0, ed.getelname('table', data))
-            new_item.setData(0, core.Qt.UserRole, data)
-            if titles:
-                new_row = qtw.QTreeWidgetItem()
-                new_item.addChild(new_row)
-                new_row.setText(0, ed.getelname('tr'))
-                for head in headers:
-                    new_head = qtw.QTreeWidgetItem()
-                    new_row.addChild(new_head)
-                    new_head.setText(0, ed.getelname('th'))
-                    node = qtw.QTreeWidgetItem()
-                    new_head.addChild(node)
-                    text = head or BL
-                    node.setText(0, ed.getshortname(text))
-                    node.setData(0, core.Qt.UserRole, text)
-            for rowitem in items:
-                new_row = qtw.QTreeWidgetItem()
-                new_item.addChild(new_row)
-                new_row.setText(0, ed.getelname('tr'))
-                for cellitem in rowitem:
-                    new_cell = qtw.QTreeWidgetItem()
-                    new_row.addChild(new_cell)
-                    new_cell.setText(0, ed.getelname('td'))
-                    text = cellitem
-                    node = qtw.QTreeWidgetItem()
-                    new_cell.addChild(node)
-                    node.setText(0, ed.getshortname(text))
-                    node.setData(0, core.Qt.UserRole, text)
-            self.mark_dirty(True)
-            self.refresh_preview()
+    def get_table_data(self):
+        """show dialog for new table element
+        """
+        return self.call_dialog(TableDialog(self))
 
     def validate(self):
         "start validation"
         if self.tree_dirty or not self.xmlfn:
             htmlfile = '/tmp/ashe_check.html'
             fromdisk = False
-            self.data2soup()
+            self.data2soup()  # zit nu in base.py
             with open(htmlfile, "w") as f_out:
                 f_out.write(self.soup.prettify())
         else:
             htmlfile = self.xmlfn
             fromdisk = True
-        # deze dialoog is gecodeerd in de dialogs module maar moet het valideren daarbinnen wel gebeuren?
-        dlg = ScrolledTextDialog(self, "Validation output", htmlfile=htmlfile,
-                                 fromdisk=fromdisk)
+        # deze dialoog is gecodeerd in de dialogs module maar moet het valideren daarbinnen wel
+        # gebeuren?
+        dlg = ScrolledTextDialog(self, "Validation output", htmlfile=htmlfile, fromdisk=fromdisk)
         dlg.show()
 
     def show_code(self, title, caption, data):
-        dlg = CodeViewDialog(self, title, caption, data))
+        "show dialog for view source"
+        dlg = CodeViewDialog(self, title, caption, data)
         dlg.show()
