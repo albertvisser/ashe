@@ -38,7 +38,8 @@ def get_element_data(node):
 def get_element_children(node):
     "return iterator over children in visual tree for this element"
     count = node.childCount()
-    return (node.child(idx) for idx in range(count))
+    # return (node.child(idx) for idx in range(count))
+    return [node.child(idx) for idx in range(count)]
 
 
 def set_element_text(node, text):
@@ -139,9 +140,12 @@ class MainFrame(qtw.QMainWindow):
         self.tree.resize(500, 100)
         self.tree.setFocus()
 
+    def go(self):
         self.adv_menu.setChecked(True)
         self.show()
-        self.editor.refresh_preview()
+        err = self.editor.getsoup(self.editor.xmlfn) or ''
+        if not err:
+            self.editor.refresh_preview()
 
     def _setup_menu(self):
         """build application menu
@@ -232,13 +236,20 @@ class MainFrame(qtw.QMainWindow):
         """
         self.tree.setCurrentItem(item)
 
-    def init_tree(self):
+    def init_tree(self, message):
         "toolkit specifieke voortzetting van gelijknamige editor methode"
         self.tree.setCurrentItem(self.top)
+        self.adv_menu.setChecked(True)
+        self.show_statusbar_message(message)
+
+    def show_statusbar_message(self, text):
+        """toon tekst in de statusbar
+        """
+        self.sb.showMessage(text)
 
     def adjust_dtd_menu(self):
         "set text for dtd menu option"
-        if self.has_dtd:
+        if self.editor.has_dtd:
             self.dtd_menu.setText('Remove &DTD')
             self.dtd_menu.setStatusTip('Remove the document type declaration')
         else:
@@ -308,6 +319,7 @@ class MainFrame(qtw.QMainWindow):
         """
         filename = qtw.QFileDialog.getSaveFileName(self, "Save file as ...",
                                                    self.editor.xmlfn or os.getcwd(), HMASK)
+        print(filename)
         return filename
 
     def set_item_expanded(self, item, state):
@@ -418,7 +430,7 @@ class MainFrame(qtw.QMainWindow):
             prev = parent.child(ix)
         else:
             prev = parent
-            if prev == self.root:
+            if prev == self.editor.root:
                 prev = parent.child(ix + 1)
         parent.removeChild(item)
         return prev
@@ -528,17 +540,8 @@ class MainFrame(qtw.QMainWindow):
         """
         return self.call_dialog(TableDialog(self))
 
-    def validate(self):
+    def validate(self, htmlfile, fromdisk):
         "start validation"
-        if self.tree_dirty or not self.xmlfn:
-            htmlfile = '/tmp/ashe_check.html'
-            fromdisk = False
-            self.data2soup()  # zit nu in base.py
-            with open(htmlfile, "w") as f_out:
-                f_out.write(self.soup.prettify())
-        else:
-            htmlfile = self.xmlfn
-            fromdisk = True
         # deze dialoog is gecodeerd in de dialogs module maar moet het valideren daarbinnen wel
         # gebeuren?
         dlg = ScrolledTextDialog(self, "Validation output", htmlfile=htmlfile, fromdisk=fromdisk)

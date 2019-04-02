@@ -1,5 +1,4 @@
-﻿# -*- coding: utf-8 -*-
-"""Dit is mijn op een treeview gebaseerde HTML-editor
+﻿"""Dit is mijn op een treeview gebaseerde HTML-editor
 
 nieuwe aanpak: de GUI routines worden van hieruit aangeroepen zodat alle business logica hier
 blijft
@@ -11,44 +10,9 @@ import pathlib
 import subprocess
 import bs4 as bs  # BeautifulSoup as bs
 
-import ashe.gui_qt as gui
-
-ICO = str(pathlib.Path(__file__).parent / "ashe.ico")
-TITEL = "Albert's Simple HTML-editor"
-CMSTART = "<!>"
-ELSTART = '<>'
+from ashe.gui import gui
+from ashe.constants import ICO, TITEL, CMSTART, ELSTART, DTDSTART, IFSTART, BL
 CMELSTART = ' '.join((CMSTART, ELSTART))
-DTDSTART = "DOCTYPE"
-IFSTART = '!IF'
-BL = "&nbsp;"
-INLINE_1 = 'inline stylesheet'
-
-
-# shared code
-dtdlist = (('HTML 4.1 Strict', 'HTML PUBLIC "-//W3C//DTD HTML 4.01//EN'
-            ' http://www.w3.org/TR/html4/strict.dtd" '),
-           ('HTML 4.1 Transitional', 'HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN'
-            ' http://www.w3.org/TR/html4/loose.dtd" '),
-           ('HTML 4.1 Frameset', 'HTML PUBLIC "-//W3C//DTD HTML 4.01 Frameset//EN'
-            ' http://www.w3.org/TR/html4/frameset.dtd" '),
-           ('', '', ''),
-           ('HTML 5', 'html'),
-           ('', '', ''),
-           ('XHTML 1.0 Strict', 'html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN'
-            ' http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd" '),
-           ('XHTML 1.0 Transitional', 'html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN'
-            ' http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd" '),
-           ('XHTML 1.0 Frameset', 'html PUBLIC "-//W3C//DTD XHTML 1.0 Frameset//EN'
-            ' http://www.w3.org/TR/xhtml1/DTD/xhtml1-frameset.dtd" '),
-           ('', '', ''),
-           ('XHTML 1.1', 'html PUBLIC "-//W3C//DTD XHTML 1.1//EN'
-            ' http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd" '))
-
-
-class ConversionError(ValueError):
-    """project-specific error
-    """
-    pass
 
 
 def comment_out(node, commented):
@@ -60,7 +24,7 @@ def comment_out(node, commented):
                 new_text = " ".join((CMSTART, txt))
         else:
             if txt.startswith(CMSTART):
-                new_text(0, txt.split(None, 1)[1])
+                new_text = txt.split(None, 1)[1]
         gui.set_element_text(subnode, new_text)
         comment_out(subnode, commented)
 
@@ -122,29 +86,6 @@ def flatten_tree(node, top=True):
     if top:
         elem_list = elem_list[1:]
     return elem_list
-
-
-def convert_link(link, root):
-    """attempt to turn the link into one relative to the document
-    """
-    nice_link = '', ''
-    test = link.split('/', 1)
-    if not link:
-        raise ConversionError("link opgeven of cancel kiezen s.v.p")
-    elif not os.path.exists(link):
-        nice_link = link
-    elif link == '/' or len(test) == 1 or test[0] in ('http://', './', '../'):
-        nice_link = link
-    else:
-        link = os.path.abspath(link)
-        if root:
-            whereami = os.path.dirname(root)          # os.path.abspath(self._parent.xmlfn)
-        else:
-            whereami = os.getcwd()                    # os.path.join(os.getcwd(), 'index.html')
-        nice_link = os.path.relpath(link, whereami)   # getrelativepath(link, whereami)
-    if not nice_link:
-        raise ConversionError('Unable to make this local link relative')
-    return nice_link
 
 
 def getelname(tag, attrs=None, comment=False):
@@ -273,14 +214,33 @@ def find_next(data, search_args, reverse=False, pos=None):
 
 class Editor(object):
     "mixin class to add gui-independent methods to main frame"
+    dtdlist = (('HTML 4.1 Strict', 'HTML PUBLIC "-//W3C//DTD HTML 4.01//EN'
+                ' http://www.w3.org/TR/html4/strict.dtd" '),
+               ('HTML 4.1 Transitional', 'HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN'
+                ' http://www.w3.org/TR/html4/loose.dtd" '),
+               ('HTML 4.1 Frameset', 'HTML PUBLIC "-//W3C//DTD HTML 4.01 Frameset//EN'
+                ' http://www.w3.org/TR/html4/frameset.dtd" '),
+               ('', '', ''),
+               ('HTML 5', 'html'),
+               ('', '', ''),
+               ('XHTML 1.0 Strict', 'html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN'
+                ' http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd" '),
+               ('XHTML 1.0 Transitional', 'html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN'
+                ' http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd" '),
+               ('XHTML 1.0 Frameset', 'html PUBLIC "-//W3C//DTD XHTML 1.0 Frameset//EN'
+                ' http://www.w3.org/TR/xhtml1/DTD/xhtml1-frameset.dtd" '),
+               ('', '', ''),
+               ('XHTML 1.1', 'html PUBLIC "-//W3C//DTD XHTML 1.1//EN'
+                ' http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd" '))
 
     def __init__(self, fname=''):
-        err = self.getsoup(fname) or ''
+        print(fname)
         self.title = "(untitled) - Albert's Simple HTML Editor"
         self.constants = {'ELSTART': ELSTART}
         self.tree_dirty = False
-        self.xmlfn = fname                                  # ingesteld in getsoup
-        self.gui = gui.MainFrame(editor=self, err=err, icon=ICO)
+        self.xmlfn = fname
+        self.gui = gui.MainFrame(editor=self, icon=ICO)
+        self.gui.go()
         sys.exit(self.gui.app.exec_())
 
     def mark_dirty(self, state):
@@ -319,11 +279,11 @@ class Editor(object):
 
         self.root = root
         self.xmlfn = fname
-        self.init_tree(fname)
+        self.init_tree()
         self.advance_selection_on_add = True
         return None
 
-    def init_tree(self, name=''):  # voor consistentie hernoemen naar soup2data
+    def init_tree(self, name='', message=''):  # voor consistentie hernoemen naar soup2data
         """build internal tree representation of the html
 
         calls gui-specific methods to build the visual structure
@@ -382,7 +342,7 @@ class Editor(object):
         self.gui.addtreetop(titel, " - ".join((os.path.basename(titel), TITEL)))
         add_to_tree(self.gui.top, self.root)
         self.gui.adjust_dtd_menu()
-        self.gui.init_tree()
+        self.gui.init_tree(message)
         self.mark_dirty(False)
 
     def data2soup(self):
@@ -394,9 +354,9 @@ class Editor(object):
                     root[str(att)] = str(data[att])
             except TypeError:
                 pass
-            for elm in self.gui.get_element_children(node):
-                text = self.gui.get_element_text(elm)
-                data = self.gui.get_element_attrs(elm)
+            for elm in gui.get_element_children(node):
+                text = gui.get_element_text(elm)
+                data = gui.get_element_data(elm)
                 if text.startswith(ELSTART) or text.startswith(CMELSTART):
                     # data is een dict: leeg of een mapping van data op attributen
                     if text.startswith(CMSTART):
@@ -425,9 +385,9 @@ class Editor(object):
                     cond = text.split(None, 1)[1]
                     text = ''
                     # onderliggende elementen langslopen
-                    for subel in self.gui.get_element_children(elm):
-                        subtext = self.gui.get_element_text(subel)
-                        data = self.gui.get_element_attrs(subel)
+                    for subel in gui.get_element_children(elm):
+                        subtext = gui.get_element_text(subel)
+                        data = gui.get_element_attrs(subel)
                         if subtext.startswith(ELSTART):
                             # element in tekst omzetten en deze aan text toevoegen
                             onthou = self.soup
@@ -448,9 +408,9 @@ class Editor(object):
                         sub = bs.Comment(data)  # .decode("utf-8")) niet voor Py3
                     root.append(sub)  # data.decode("latin-1")) # insert(0,sub)
         self.soup = bs.BeautifulSoup('', 'lxml')  # self.root.originalEncoding)
-        for tag in self.gui.get_element_children(self.gui.top):
-            text = self.gui.get_element_text(tag)
-            data = self.gui.get_element_attrs(tag)
+        for tag in gui.get_element_children(self.gui.top):
+            text = gui.get_element_text(tag)
+            data = gui.get_element_data(tag)
             if text.startswith(DTDSTART):
                 root = bs.Doctype(str(data))  # Declaration(str(data))
                 self.soup.append(root)
@@ -458,6 +418,7 @@ class Editor(object):
                 root = self.soup.new_tag(text.split(None, 2)[1])
                 self.soup.append(root)
                 expandnode(tag, root, data)
+        return self.soup
 
     def soup2file(self, saveas=False):
         "write HTML to file"
@@ -564,12 +525,11 @@ class Editor(object):
         daarna nieuwe html aanmaken"""
         if self.check_tree_state() != -1:
             err = self.getsoup()
-            if not err:
-                self.gui.adv_menu.setChecked(True)           # FIXME Gui specific
-                self.sb.showMessage("started new document")  # FIXME Gui specific
-                self.refresh_preview()
-            else:
+            if err:
                 self.gui.meld(str(err))
+            else:
+                self.init_tree(message='started new document')
+                self.refresh_preview()
 
     def openxml(self):
         """kijken of er wijzigingen opgeslagen moeten worden
@@ -577,10 +537,12 @@ class Editor(object):
         if self.check_tree_state() != -1:
             fnaam = self.gui.ask_for_open_filename()
             if fnaam:
-                self.getsoup(fname=str(fnaam))
-                self.adv_menu.setChecked(True)                       # FIXME Gui specific
-                self.sb.showMessage("loaded {}".format(self.xmlfn))  # FIXME Gui specific
-                self.refresh_preview()
+                err = self.getsoup(fname=str(fnaam))
+                if err:
+                    self.gui.meld(str(err))
+                else:
+                    self.init_tree(fnaam, 'loaded {}'.format(fnaam))  # self.xmlfn
+                    self.refresh_preview()
 
     def savexml(self):
         "save html to file"
@@ -593,22 +555,22 @@ class Editor(object):
             except IOError as err:
                 self.gui.meld(str(err))
                 return
-            self.sb.showMessage("saved {}".format(self.xmlfn))  # FIXME Gui specific
+            self.gui.show_statusbar_message("saved {}".format(self.xmlfn))
 
     def savexmlas(self):
         """vraag bestand om html op te slaan
         bestand opslaan en naam in titel en root element zetten"""
         fname = self.gui.ask_for_save_filename()
         if fname:
-            self.xmlfn = str(fname)
+            self.xmlfn = str(fname[0])
             self.data2soup()
             try:
                 self.soup2file(saveas=True)
             except IOError as err:
                 self.gui.meld(str(err))
                 return
-            self.gui.tree.set_element_text(self.gui.top, self.xmlfn)
-            self.sb.showMessage("saved as {}".format(self.xmlfn))  # FIXME Gui specific
+            gui.tree.set_element_text(self.gui.top, self.xmlfn)
+            self.gui.show_statusbar_message("saved as {}".format(self.xmlfn))
 
     def reopenxml(self):
         """onvoorwaardelijk html bestand opnieuw laden"""
@@ -616,8 +578,7 @@ class Editor(object):
         if ret:
             self.gui.meld(str(ret))
         else:
-            self.adv_menu.setChecked(True)  # FIXME Gui specific
-            self.sb.showMessage("reloaded {}".format(self.xmlfn))  # FIXME Gui specific
+            self.init_tree(self.xmlfn, 'reloaded {}'.format(self.xmlfn))
             self.refresh_preview()
 
     def close(self):
@@ -656,7 +617,9 @@ class Editor(object):
         if not self.checkselection():
             return
         data = gui.get_element_text(self.item)
-        style_item = gui.get_element_children(self.item)[0]
+        test = gui.get_element_children(self.item)
+        if test:
+            style_item = test[0]
         if data.startswith(DTDSTART):
             data = gui.get_element_data(self.item)
             prefix = 'HTML PUBLIC "-//W3C//DTD'
@@ -682,11 +645,12 @@ class Editor(object):
         modified = False
         if data.startswith(ELSTART) or data.startswith(CMELSTART):
             oldtag = get_tag_from_elname(data)
-            attrdict = self.gui.get_item_text(self.item)
+            attrdict = gui.get_element_data(self.item)
             if oldtag == 'style':
-                attrdict['styledata'] = self.gui.get_item_attrs(style_item)
+                attrdict['styledata'] = gui.get_element_attrs(style_item)
             was_commented = data.startswith(CMSTART)
             ok, dialog_data = self.gui.do_edit_element(data, attrdict)
+            print(ok, dialog_data)
             if ok:
                 modified = True
                 tag, attrs, commented = dialog_data
@@ -713,13 +677,14 @@ class Editor(object):
                 self.gui.meld("Please edit style through parent tag")
                 return
             ok, dialog_data = self.gui.do_edit_textvalue(txt + data)
+            print(ok, dialog_data)
             if ok:
                 modified = True
                 txt, commented = dialog_data
                 if under_comment:
                     commented = True
-                    gui.set_element_text(self.item, getshortname(txt, commented))
-                    gui.set_element_data(self.item, txt)
+                gui.set_element_text(self.item, getshortname(txt, commented))
+                gui.set_element_data(self.item, txt)
         if modified:
             self.mark_dirty(True)
             self.refresh_preview()
@@ -935,7 +900,7 @@ class Editor(object):
                 parent, pos = gui.get_element_parentpos(self.item)
                 if not before:
                     pos += 1
-                if pos >= gui.get_element_children(parent):
+                if pos >= len(gui.get_element_children(parent)):
                     pos = -1
                 new_item = self.gui.addtreeitem(parent, text, attrs, pos)
             if self.advance_selection_on_add:
@@ -946,7 +911,7 @@ class Editor(object):
 
     def insert(self):
         "insert element before"
-        self._insert(below=True)
+        self._insert()
 
     def insert_after(self):
         "insert element after instead of before"
@@ -954,7 +919,7 @@ class Editor(object):
 
     def insert_child(self):
         "insert element below instead of before"
-        self._insert()
+        self._insert(below=True)
 
     def _add_text(self, before=True, below=False):
         "tekst toevoegen onder huidige element"
@@ -975,9 +940,18 @@ class Editor(object):
                 parent, pos = gui.get_element_parentpos(self.item)
                 if not before:
                     pos += 1
-                if pos >= gui.get_element_children(parent):
+                    br = 'br'
+                    brs = getelname('br', {}, commented or under_comment)
+                    self.gui.addtreeitem(parent, brs, br, pos)
+                    pos += 1
+                if pos >= len(gui.get_element_children(parent)):
                     pos = -1
                 new_item = self.gui.addtreeitem(parent, text, txt, pos)
+                if before:
+                    pos += 1
+                    br = 'br'
+                    brs = getelname('br', {}, commented or under_comment)
+                    self.gui.addtreeitem(parent, brs, br, pos)
             if self.advance_selection_on_add:
                 self.gui.set_selected_item(new_item)
             self.mark_dirty(True)
@@ -1051,7 +1025,7 @@ class Editor(object):
 
     def add_css(self):
         "start toevoegen stylesheet m.b.v. dialoog"
-        ok, dialog_data = self.gui.get_dialog_data()
+        ok, dialog_data = self.gui.get_css_data()
         if not ok:
             return
         data = dialog_data
@@ -1082,10 +1056,33 @@ class Editor(object):
         ok = True
         if not self.checkselection():
             ok = False
-        if not self.gui.get_element_text(self.item).startswith(ELSTART):
+        if not gui.get_element_text(self.item).startswith(ELSTART):
             self.gui.meld("Can't do this below text")
             ok = False
         return ok
+
+    @staticmethod
+    def convert_link(link, root):
+        """attempt to turn the link into one relative to the document
+        """
+        nice_link = '', ''
+        test = link.split('/', 1)
+        if not link:
+            raise ValueError("link opgeven of cancel kiezen s.v.p")
+        elif not os.path.exists(link):
+            nice_link = link
+        elif link == '/' or len(test) == 1 or test[0] in ('http://', './', '../'):
+            nice_link = link
+        else:
+            link = os.path.abspath(link)
+            if root:
+                whereami = os.path.dirname(root)          # os.path.abspath(self._parent.xmlfn)
+            else:
+                whereami = os.getcwd()                    # os.path.join(os.getcwd(), 'index.html')
+            nice_link = os.path.relpath(link, whereami)   # getrelativepath(link, whereami)
+        if not nice_link:
+            raise ValueError('Unable to make this local link relative')
+        return nice_link
 
     def add_link(self):
         "start toevoegen link m.b.v. dialoog"
@@ -1176,10 +1173,26 @@ class Editor(object):
                 self.mark_dirty(True)
                 self.refresh_preview()
 
-    def validate(self, htmlfile):
+    def validate(self):
         """validate HTML source
         """
+        if self.tree_dirty or not self.xmlfn:
+            htmlfile = '/tmp/ashe_check.html'
+            fromdisk = False
+            self.data2soup()
+            with open(htmlfile, 'w') as f_out:
+                f_out.write(self.soup.prettify)
+        else:
+            htmlfile = self.xmlfn
+            fromdisk = True
+        self.gui.validate(htmlfile, fromdisk)
+
+    @staticmethod
+    def do_validate(htmlfile):
+        """get validated html
+        """
         output = '/tmp/ashe_check'
+        print(output, htmlfile)
         subprocess.run(['tidy', '-e', '-f', output, htmlfile])
         data = ""
         with open(output) as f_in:

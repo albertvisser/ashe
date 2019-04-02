@@ -10,24 +10,20 @@ import PyQt5.QtWidgets as qtw
 import PyQt5.QtGui as gui
 import PyQt5.QtCore as core
 import PyQt5.Qsci as sci  # scintilla
-import ashe.ashe_mixin as ed
-
+from ashe.constants import CMSTART, ELSTART
 try:
     import cssedit.editor.csseditor_qt as csed
     cssedit_available = True
 except ImportError:
     cssedit_available = False
 
-CMSTART = ed.CMSTART
-ELSTART = ed.ELSTART
-CMELSTART = ed.CMELSTART
-DTDSTART = ed.DTDSTART
-IFSTART = ed.IFSTART
 IMASK = "All files (*.*)"
 if os.name == "nt":
     HMASK = "HTML files (*.htm *.html);;" + IMASK
+    CMASK = "CSS files (*.css);;" + IMASK
 elif os.name == "posix":
     HMASK = "HTML files (*.htm *.HTM *.html *.HTML);;" + IMASK
+    CMASK = "CSS files (*.css *.CSS);;" + IMASK
 
 
 class ElementDialog(qtw.QDialog):
@@ -194,7 +190,7 @@ class ElementDialog(qtw.QDialog):
                 fname = h_fname
             else:
                 h_fname = fname
-                xmlfn_path = pathlib.Path(self._parent.xmlfn)
+                xmlfn_path = pathlib.Path(self._parent.editor.xmlfn)
                 while h_fname.startswith('../'):
                     h_fname = h_fname[3:]
                     xmlfn_path = xmlfn_path.parent
@@ -209,7 +205,7 @@ class ElementDialog(qtw.QDialog):
                 css.setWindowModality(core.Qt.ApplicationModal)
                 css.show()
         if mld:
-            qtw.QMessageBox.information(self, self._parent.title, mld)
+            qtw.QMessageBox.information(self, self._parent.editor.title, mld)
 
     def accept(self):
         "controle bij OK aanklikken"
@@ -218,7 +214,7 @@ class ElementDialog(qtw.QDialog):
         test = string.ascii_letters + string.digits
         for letter in tag:
             if letter not in test:
-                qtw.QMessageBox.information(self, self._parent.title,
+                qtw.QMessageBox.information(self, self._parent.editor.title,
                                             'Illegal character(s) in tag name')
                 break
         commented = self.comment_button.checkState()
@@ -459,7 +455,7 @@ class DtdDialog(qtw.QDialog):
         first = True
         button_groups = []
         self.dtd_list = []
-        for idx, x in enumerate(ed.dtdlist):
+        for idx, x in enumerate(self._parent.editor.dtdlist):
             if not x[0]:
                 vhsbox.addSpacing(8)
                 continue
@@ -522,7 +518,7 @@ class CssDialog(qtw.QDialog):
         self.link_text = qtw.QLineEdit("http://", self)
         gbox.addWidget(self.link_text, 0, 1)
 
-        self.choose_button = qtw.QPushButton('Search', self)
+        self.choose_button = qtw.QPushButton('&Browse', self)
         self.choose_button.clicked.connect(self.kies)
         box = qtw.QHBoxLayout()
         box.addStretch()
@@ -558,9 +554,8 @@ class CssDialog(qtw.QDialog):
 
     def kies(self):
         "methode om het te linken document te selecteren"
-        loc = self._parent.xmlfn or os.getcwd()
-        mask = HMASK.replace('html', 'css').replace('HTML', 'CSS')
-        fnaam, _ = qtw.QFileDialog.getOpenFileName(self, "Choose a file", loc, mask)
+        loc = self._parent.editor.xmlfn or os.getcwd()
+        fnaam, _ = qtw.QFileDialog.getOpenFileName(self, "Choose a file", loc, CMASK)
         if fnaam:
             self.link_text.setText(fnaam)
 
@@ -578,8 +573,8 @@ class CssDialog(qtw.QDialog):
                                         " of inline stylesheet definiëren s.v.p")
             return
         try:
-            link = ed.convert_link(link, self._parent.xmlfn)
-        except ed.ConversionError as msg:
+            link = self._parent.editor.convert_link(link, self._parent.editor.xmlfn)
+        except ValueError as msg:
             qtw.QMessageBox.information(self, self._parent.title, msg)
             return
         self._parent.dialog_data = {"rel": 'stylesheet',
@@ -596,7 +591,7 @@ class CssDialog(qtw.QDialog):
         test = str(self.text_text.text())
         if test:
             self._parent.dialog_data["media"] = test
-        css = csed.MainWindow(self)
+        css = csed.MainWindow(self, self._parent.app)
         css.open(text="")
         css.setWindowModality(core.Qt.ApplicationModal)
         css.show()
@@ -626,7 +621,7 @@ class LinkDialog(qtw.QDialog):
         self.linktxt = ""
         gbox.addWidget(self.link_text, 1, 1)
 
-        self.choose_button = qtw.QPushButton('Search', self)
+        self.choose_button = qtw.QPushButton('&Browse', self)
         self.choose_button.clicked.connect(self.kies)
         box = qtw.QHBoxLayout()
         box.addStretch()
@@ -660,7 +655,7 @@ class LinkDialog(qtw.QDialog):
 
     def kies(self):
         "methode om het te linken document te selecteren"
-        loc = self._parent.xmlfn or os.getcwd()
+        loc = self._parent.editor.xmlfn or os.getcwd()
         fnaam, _ = qtw.QFileDialog.getOpenFileName(self, "Choose a file", loc, HMASK)
         if fnaam:
             self.link_text.setText(fnaam)
@@ -688,8 +683,9 @@ class LinkDialog(qtw.QDialog):
             if hlp == qtw.QMessageBox.No:
                 return
         try:
-            link = ed.convert_link(self.link_text.text(), self._parent.xmlfn)
-        except ed.ConversionError as msg:
+            link = self._parent.editor.convert_link(self.link_text.text(),
+                                                    self._parent.editor.xmlfn)
+        except ValueError as msg:
             qtw.QMessageBox.information(self, self._parent.title, msg)
             return
         self._parent.dialog_data = [txt, {"href": link,
@@ -721,7 +717,7 @@ class ImageDialog(qtw.QDialog):
         self.linktxt = ""
         gbox.addWidget(self.link_text, 1, 1)
 
-        self.choose_button = qtw.QPushButton('Search', self)
+        self.choose_button = qtw.QPushButton('&Browse', self)
         self.choose_button.clicked.connect(self.kies)
         box = qtw.QHBoxLayout()
         box.addStretch()
@@ -755,7 +751,7 @@ class ImageDialog(qtw.QDialog):
 
     def kies(self):
         "methode om het te linken image te selecteren"
-        loc = self._parent.xmlfn or os.getcwd()
+        loc = self._parent.editor.xmlfn or os.getcwd()
         mask = '*.png *.jpg *.gif *.jpeg *.ico *.xpm *.svg'
         if os.name == "posix":
             mask += ' ' + mask.upper()
@@ -779,8 +775,9 @@ class ImageDialog(qtw.QDialog):
     def accept(self):
         "bij OK: het geselecteerde (absolute) pad omzetten in een relatief pad"
         try:
-            link = ed.convert_link(self.link_text.text(), self._parent.xmlfn)
-        except ed.ConversionError as msg:
+            link = self._parent.editor.convert_link(self.link_text.text(),
+                                                    self._parent.editor.xmlfn)
+        except ValueError as msg:
             qtw.QMessageBox.information(self, self._parent.title, msg)
             return
         self._parent.dialog_data = {"src": link,
@@ -812,7 +809,7 @@ class VideoDialog(qtw.QDialog):
         gbox.addWidget(self.link_text, row, 1)
 
         row += 1
-        self.choose_button = qtw.QPushButton('Search', self)
+        self.choose_button = qtw.QPushButton('&Browse', self)
         self.choose_button.clicked.connect(self.kies)
         box = qtw.QHBoxLayout()
         box.addStretch()
@@ -863,7 +860,7 @@ class VideoDialog(qtw.QDialog):
 
     def kies(self):
         "methode om het te linken element te selecteren"
-        loc = self._parent.xmlfn or os.getcwd()
+        loc = self._parent.editor.xmlfn or os.getcwd()
         mask = '*.mp4 *.avi *.mpeg'  # TODO: add other types
         if os.name == "posix":
             mask += ' ' + mask.upper()
@@ -884,8 +881,9 @@ class VideoDialog(qtw.QDialog):
     def accept(self):
         "bij OK: het geselecteerde (absolute) pad omzetten in een relatief pad"
         try:
-            link = ed.convert_link(self.link_text.text(), self._parent.xmlfn)
-        except ed.ConversionError as msg:
+            link = self._parent.editor.ed.convert_link(self.link_text.text(),
+                                                       self._parent.editor.xmlfn)
+        except ValueError as msg:
             qtw.QMessageBox.information(self, self._parent.title, msg)
             return
         self._parent.dialog_data = {"src": link,
@@ -915,7 +913,7 @@ class AudioDialog(qtw.QDialog):
         gbox.addWidget(self.link_text, row, 1)
 
         row += 1
-        self.choose_button = qtw.QPushButton('Search', self)
+        self.choose_button = qtw.QPushButton('&Browse', self)
         self.choose_button.clicked.connect(self.kies)
         box = qtw.QHBoxLayout()
         box.addStretch()
@@ -944,7 +942,7 @@ class AudioDialog(qtw.QDialog):
 
     def kies(self):
         "methode om het te linken element te selecteren"
-        loc = self._parent.xmlfn or os.getcwd()
+        loc = self._parent.editor.xmlfn or os.getcwd()
         mask = '*.mp3 *.wav *.ogg'  # TODO: add other types
         if os.name == "posix":
             mask += ' ' + mask.upper()
@@ -956,8 +954,9 @@ class AudioDialog(qtw.QDialog):
     def accept(self):
         "bij OK: het geselecteerde (absolute) pad omzetten in een relatief pad"
         try:
-            link = ed.convert_link(self.link_text.text(), self._parent.xmlfn)
-        except ed.ConversionError as msg:
+            link = self._parent.editor.convert_link(self.link_text.text(),
+                                                    self._parent.editor.xmlfn)
+        except ValueError as msg:
             qtw.QMessageBox.information(self, self._parent.title, msg)
             return
         self._parent.dialog_data = {"src": link}
@@ -971,6 +970,7 @@ class ListDialog(qtw.QDialog):
         self._parent = parent
         self.items = []
         self.dataitems = []
+        initialrows = 1
         super().__init__(parent)
         self.setWindowTitle('Add a list')
         self.setWindowIcon(self._parent.appicon)
@@ -988,20 +988,21 @@ class ListDialog(qtw.QDialog):
 
         tbox.addWidget(qtw.QLabel("initial number of items:", self), 1, 0)
         self.rows_text = qtw.QSpinBox(self)  # .pnl, -1, size = (40, -1))
-        self.rows_text.valueChanged.connect(self.on_text)
+        self.rows_text.setValue(initialrows)
+        self.rows_text.valueChanged.connect(self.on_rows)
         hbox = qtw.QHBoxLayout()
         hbox.addWidget(self.rows_text)
         hbox.addStretch()
         tbox.addLayout(hbox, 1, 1)
         vsbox.addLayout(tbox)
 
-        tbl = qtw.QTableWidget(self)
-        tbl.setColumnCount(1)
-        tbl.setHorizontalHeaderLabels(['list item'])
-        hdr = tbl.horizontalHeader()
+        self.list_table = qtw.QTableWidget(self)
+        self.list_table.setRowCount(initialrows)
+        self.list_table.setColumnCount(1)
+        self.list_table.setHorizontalHeaderLabels(['list item'])
+        hdr = self.list_table.horizontalHeader()
         hdr.resizeSection(0, 252)
-        tbl.verticalHeader().setVisible(False)
-        self.list_table = tbl
+        self.list_table.verticalHeader().setVisible(False)
         hbox = qtw.QHBoxLayout()
         hbox.addStretch()
         hbox.addWidget(self.list_table)
@@ -1041,7 +1042,7 @@ class ListDialog(qtw.QDialog):
             self.list_table.setHorizontalHeaderLabels(['list item'])
             hdr.resizeSection(0, 254)
 
-    def on_text(self):  # , number=None):
+    def on_rows(self):  # , number=None):
         "controle en actie bij invullen/aanpassen aantal regels"
         try:
             cur_rows = int(self.rows_text.value())
@@ -1064,9 +1065,17 @@ class ListDialog(qtw.QDialog):
         list_type = str(self.type_select.currentText()[0]) + "l"
         list_data = []
         for row in range(self.list_table.rowCount()):
-            list_item = [str(self.list_table.item(row, 0).text())]
+            try:
+                list_item = [str(self.list_table.item(row, 0).text())]
+            except AttributeError:
+                self._parent.meld('Graag nog even het laatste item bevestigen (...)')
+                return
             if list_type == "dl":
-                list_item.append(str(self.list_table.item(row, 1).text()))
+                try:
+                    list_item.append(str(self.list_table.item(row, 1).text()))
+                except AttributeError:
+                    self._parent.meld('Graag nog even het laatste item bevestigen (...)')
+                    return
             list_data.append(list_item)
         self._parent.dialog_data = list_type, list_data
         super().accept()
@@ -1209,7 +1218,11 @@ class TableDialog(qtw.QDialog):
         for row in range(rows):
             rowitems = []
             for col in range(cols):
-                rowitems.append(str(self.table_table.item(row, col).text()))
+                try:
+                    rowitems.append(str(self.table_table.item(row, col).text()))
+                except AttributeError:
+                    self._parent.meld('Graag nog even het laatste item bevestigen (...)')
+                    return
             items.append(rowitems)
         self._parent.dialog_data = (summary, self.show_titles.isChecked(),
                                     self.headings, items)
@@ -1223,11 +1236,11 @@ class ScrolledTextDialog(qtw.QDialog):
     """
     def __init__(self, parent, title='', data='', htmlfile='', fromdisk=False,
                  size=(600, 400)):
-        self._parent = parent
+        # self._parent = parent
         self.htmlfile = htmlfile
         super().__init__(parent)
         self.setWindowTitle(title)
-        self.setWindowIcon(self._parent.appicon)
+        self.setWindowIcon(parent.appicon)
         self.resize(size[0], size[1])
         vbox = qtw.QVBoxLayout()
         hbox = qtw.QHBoxLayout()
@@ -1238,7 +1251,7 @@ class ScrolledTextDialog(qtw.QDialog):
                 "some errors/warnings may already have been corrected by "
                 "BeautifulSoup",
                 "(you'll know when they don't show up inthe tree or text view",
-                " or when you save the file in memory back to disk)")))
+                " ozr when you save the file in memory back to disk)")))
         hbox.addWidget(self.message)
         vbox.addLayout(hbox)
         hbox = qtw.QHBoxLayout()
@@ -1261,7 +1274,7 @@ class ScrolledTextDialog(qtw.QDialog):
         vbox.addLayout(hbox)
         self.setLayout(vbox)
         if htmlfile:
-            data = ed.EditorMixin.validate(self, htmlfile)
+            data = parent.editor.do_validate(htmlfile)
         if data:
             text.setPlainText(data)
 
@@ -1284,7 +1297,7 @@ class CodeViewDialog(qtw.QDialog):
         self._parent = parent
         super().__init__(parent)
         self.setWindowTitle(title)
-        self.setWindowIcon(self._parent.appicon)
+        # self.setWindowIcon(self._parent.appicon)
         self.resize(size[0], size[1])
         vbox = qtw.QVBoxLayout()
         hbox = qtw.QHBoxLayout()
