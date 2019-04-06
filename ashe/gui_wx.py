@@ -1,12 +1,10 @@
-"""PyQt5 specifieke routines voor mijn op een treeview gebaseerde HTML-editor
+"""wxPython specifieke routines voor mijn op een treeview gebaseerde HTML-editor
 """
 import os
 import sys
-import PyQt5.QtWidgets as qtw
-import PyQt5.QtGui as gui
-import PyQt5.QtCore as core
-## import PyQt5.QtWebKit as webkit
-import PyQt5.QtWebKitWidgets as webkit
+import wx
+import wx.grid as wxgrid
+import wx.html as wxhtml #  webkit
 
 from ashe.dialogs_wx import cssedit_available, HMASK, ElementDialog, \
     TextDialog, DtdDialog, CssDialog, LinkDialog, ImageDialog, VideoDialog, \
@@ -14,65 +12,46 @@ from ashe.dialogs_wx import cssedit_available, HMASK, ElementDialog, \
     SearchDialog
 
 
-def get_element_text(node):
-    "return text in visual tree for this element"
-    return node.text(0)
 
-
-def get_element_parent(node):
-    "return parent in visual tree for this element"
-    return node.parent()
-
-
-def get_element_parentpos(item):
-    "return parent and position under parent in visual tree for this element"
-    parent = item.parent()
-    return parent, parent.indexOfChild(item)
-
-
-def get_element_data(node):
-    "return attributes stored with this element"
-    return node.data(0, core.Qt.UserRole)
-
-
-def get_element_children(node):
-    "return iterator over children in visual tree for this element"
-    count = node.childCount()
-    # return (node.child(idx) for idx in range(count))
-    return [node.child(idx) for idx in range(count)]
-
-
-def set_element_text(node, text):
-    "change text in visual tree for this element"
-    node.setText(0, text)
-
-
-def set_element_data(node, data):
-    "change stored attrs for this element"""
-    node.setData(0, core.Qt.UserRole, data)
-
-
-## class VisualTree(qtw.QTreeWidget):
-    ## """tree representation of HTML
-    ## """
-    ## def __init__(self, parent):
-        ## self._parent = parent
-        ## super().__init__()
+class VisualTree(wx.TreeWidget):
+    """tree representation of HTML
+    """
+    def __init__(self, parent):
+        self._parent = parent
+        super().__init__()
+        self.Bind(wx.EVT_LEFT_DCLICK, self.on_leftdclick)
+        self.Bind(wx.EVT_RIGHT_DOWN, self.on_rightdown)
+        ## self.Bind(wx.EVT_CONTEXT_MENU, self.onContextMenu)
+        self.Bind(wx.EVT_CHAR, self.on_char)
+        self.Bind(wx.EVT_KEY_UP, self.on_key)
         ## self.setAcceptDrops(True)
         ## self.setDragEnabled(True)
         ## self.setSelectionMode(self.SingleSelection)
         ## self.setDragDropMode(self.InternalMove)
         ## self.setDropIndicatorShown(True)
 
-    ## def mouseDoubleClickEvent(self, event):
-        ## "reimplemented event handler"
-        ## item = self.itemAt(event.x(), event.y())
-        ## if item and item != self._parent.top:
-            ## if str(item.text(0)).startswith(self._parent.editor.constants['ELSTART']) and \
-                    ## item.childCount() == 0:
-                ## self._parent.edit()
-                ## return
-        ## super().mouseDoubleClickEvent(event)
+    def on_leftdclick(self, evt=None):
+        "start edit bij dubbelklikken tenzij op filenaam"
+        item = self.HitTest(evt.GetPosition())[0]
+        if item:
+            if item == self._parent.top:
+                edit = False
+            else:
+                data = self.GetItemText(item)
+                edit = True
+                if data.startswith(ELSTART):
+                    if self.GetChildrenCount(item):
+                        edit = False
+        if edit:
+            self._parent.edit()
+        evt.Skip()
+
+    def on_rightdown(self, evt=None):
+        "context menu bij rechtsklikken"
+        item = self.HitTest(evt.GetPosition())[0]
+        if item and item != self._parent.top:
+            self._parent.contextmenu(item)  # dan wel self._parent.popup_menu(item)
+        evt.Skip()
 
     ## def mouseReleaseEvent(self, event):
         ## "reimplemented event handler"
@@ -80,8 +59,6 @@ def set_element_data(node, data):
             ## xc, yc = event.x(), event.y()
             ## item = self.itemAt(xc, yc)
             ## if item and item != self._parent.top:
-                ## self.setCurrentItem(item)
-                ## self._parent.popup_menu(item)
                 ## return
         ## super().mouseReleaseEvent(event)
 
@@ -104,41 +81,61 @@ def set_element_data(node, data):
         ## self._parent.refresh_preview()
 
 
-class MainFrame(qtw.QMainWindow):
+class MainFrame(wx.MainWindow):
     "Main GUI"
 
     def __init__(self, parent=None, editor=None, err=None, icon=None):
         self.parent = parent
         self.editor = editor
-        self.app = qtw.QApplication(sys.argv)
-        super().__init__()
+        self.app = wx.App()
+        super().__init__(parent, self.editor.title)
         if err:
             self.meld(err)
             return
 
         self.dialog_data = {}
         self.search_args = []
-        self.appicon = gui.QIcon(icon)
-        self.setWindowIcon(self.appicon)
-        self.resize(1020, 900)
+        if icon:
+            self.appicon = gui.QIcon(icon, wx.BITMAP_TYPE_ICO)
+            self.SetIcon(self.appicon)
+        dsp = wx.Display().GetClientArea()
+        high = dsp.height if dsp.height < 900 else 900
+        wide = dsp.width if dsp.width < 1020 else 1020
+        self.resize(wide, high)
 
         self._setup_menu()
         self.in_contextmenu = False
 
-        self.pnl = qtw.QSplitter(self)
-        self.setCentralWidget(self.pnl)
+        self.pnl = wx.Splitter(self)
+        self.pnl.SetMinimumPaneSize(1)
 
         self.tree = VisualTree(self)
-        self.tree.headerItem().setHidden(True)
-        self.pnl.addWidget(self.tree)
+        # self.tree.headerItem().setHidden(True)
 
-        self.html = webkit.QWebView(self.pnl)  # , -1,
-        self.pnl.addWidget(self.html)
+        self.html = html.HtmlWindow(self.pnl, -1)
+        if "gtk2" in wx.PlatformInfo:
+            self.html.SetStandardFonts()
 
-        self.sb = self.statusBar()
+        self.pnl.SplitVertically(self.tree, self.html)
+        self.pnl.SetSashPosition(400, True)
 
-        self.tree.resize(500, 100)
-        self.tree.setFocus()
+        self.sb = wx.StatusBar(self)
+        self.SetStatusBar(self.sb)
+
+        # self.tree.resize(500, 100)
+        sizer0 = wx.BoxSizer(wx.VERTICAL)
+        sizer1 = wx.BoxSizer(wx.HORIZONTAL)
+        sizer1.Add(self.panel, 1, wx.EXPAND)
+        sizer0.Add(sizer1, 1, wx.EXPAND)
+
+        self.SetSizer(sizer0)
+        self.SetAutoLayout(True)
+        sizer0.Fit(self)
+        sizer0.SetSizeHints(self)
+        self.Layout()
+        self.Show(True)
+        self.tree.SetFocus()
+        self.Bind(wx.EVT_CLOSE, self.exit)
 
     def go(self):
         self.adv_menu.setChecked(True)
@@ -146,17 +143,18 @@ class MainFrame(qtw.QMainWindow):
         err = self.editor.getsoup(self.editor.xmlfn) or ''
         if not err:
             self.editor.refresh_preview()
+        self.app.MainLoop()
 
     def _setup_menu(self):
         """build application menu
         """
-        menu_bar = self.menuBar()
+        menu_bar = wx.MenuBar()
         self.contextmenu_items = []
         for menu_text, data in self.editor.get_menulist():
-            menu = qtw.QMenu(menu_text, self)
+            menu = wx.Menu()
             for item in data:
                 if len(item) == 1:
-                    menu.addSeparator()
+                    menu.AppendSeparator()
                     continue
                 menuitem_text, hotkey, modifiers, status_text, callback = item[:5]
                 if 'A' in modifiers:
@@ -165,27 +163,31 @@ class MainFrame(qtw.QMainWindow):
                     hotkey = "+".join(("Ctrl", hotkey))
                 if 'S' in modifiers:
                     hotkey = "+".join(("Shift", hotkey))
-                act = qtw.QAction(menuitem_text, self)
-                menu.addAction(act)
-                act.setStatusTip(status_text)
-                act.setShortcut(hotkey)
-                act.triggered.connect(callback)
+                # act = wx.Action(menuitem_text, self)
+                # menu.addAction(act)
+                # act.setStatusTip(status_text)
+                # act.setShortcut(hotkey)
+                # act.triggered.connect(callback)
+                menuid = wx.NewId()
+                caption = "\n".join((menuitem_text, hotkey))
                 if menuitem_text.startswith('Advance selection'):
-                    act.setCheckable(True)
-                    self.adv_menu = act
-                elif menu_text == '&View':
-                    self.contextmenu_items.append(('A', act))
-                elif menuitem_text == 'Add &DTD':
-                    self.dtd_menu = act
-                elif menuitem_text == 'Add &Stylesheet':
-                    self.css_menu = act
-                    if not cssedit_available:
-                        act.setDisabled(True)
+                    self.adv_menu = menu.Append(menuid, caption, status_text, True)  # checkable=True)
+                else:
+                    mnu = menu.Append(menu_id, caption, status_text)
+                    if menu_text == '&View':
+                        self.contextmenu_items.append(('A', mnu))
+                    elif menuitem_text == 'Add &DTD':
+                        self.dtd_menu = mnu
+                    elif menuitem_text == 'Add &Stylesheet':
+                        self.css_menu = mnu
+                        if not cssedit_available:
+                            mnu.Enable(False)
+                    self.Connect(menuid, -1, wx.wxEVT_COMMAND_MENU_SELECTED, callback)
                 if menu_text in ('&Edit', '&HTML'):
                     self.contextmenu_items.append(('M', menu))
             if menu_text == '&View':
                 self.contextmenu_items.append(('', ''))
-            menu_bar.addMenu(menu)
+            menu_bar.append(menu, menu_text)
 
     # def setfilenametooltip((self):
         # """bedoeld om de filename ook als tooltip te tonen, uit te voeren
@@ -194,7 +196,7 @@ class MainFrame(qtw.QMainWindow):
 
     def mark_dirty(self, state):
         "update visual signs that the source was changed"
-        title = str(self.windowTitle())
+        title = str(self.GetTitle())
         test = ' - ' + self.editor.title
         test2 = '*' + test
         if state:
@@ -202,81 +204,118 @@ class MainFrame(qtw.QMainWindow):
                 title = title.replace(test, test2)
         else:
             title = title.replace(test2, test)
-        self.setWindowTitle(title)
+        self.SetTitle(title)
+
+    def get_element_text(self, node):
+        "return text in visual tree for this element"
+        return self.tree.GetItemText(node)
+
+    def get_element_parent(self, node):
+        "return parent in visual tree for this element"
+        return self.tree.GetItemParent(node)
+
+    def get_element_parentpos(self, item):
+        "return parent and position under parent in visual tree for this element"
+        parent = self.tree.item.GetItemParent()
+        pos = 0
+        state, child = self.tree.GetFirstChild(parent)
+        while child.IsOk():
+            if child == item:
+                break
+            pos += 1
+            state, child = self.tree.GetNextChild(parent, state)
+        return parent, pos
+
+    def get_element_data(self, node):
+        "return attributes stored with this element"
+        return self.tree.GetItemData(node)
+
+    def get_element_children(self, node):
+        "return iterator over children in visual tree for this element"
+        children = []
+        state, child = self.tree.GetFirstChild(parent)
+        while child.IsOk():
+            children.append(child)
+            state, child = self.tree.GetNextChild(parent, state)
+        return children
+
+    def set_element_text(self, node, text):
+        "change text in visual tree for this element"
+        self.tree.SetItemText(node, text)
+
+    def set_element_data(self, node, data):
+        "change stored attrs for this element"""
+        self.tree.SetItemData(node, data)
 
     def addtreeitem(self, node, naam, data, index=-1):
         """itemnaam en -data toevoegen aan de interne tree
-        default is achteraan onder node, anders index meegeven
         geeft referentie naar treeitem terug
         """
-        newnode = qtw.QTreeWidgetItem()
-        newnode.setText(0, naam)  # self.tree.AppendItem(node, naam)
+        newnode = self.tree.AppendItem(node, naam)
         # data is ofwel leeg, ofwel een string, ofwel een dictionary
-        newnode.setData(0, core.Qt.UserRole, data)  # self.tree.SetPyData(newnode, data)
-        if index == -1:
-            node.addChild(newnode)
-        else:
-            node.insertChild(index, newnode)
+        self.tree.SetItemData(newnode, data)
         return newnode
 
     def addtreetop(self, fname, titel):
         """titel en root item in tree instellen"""
-        self.setWindowTitle(titel)
-        self.top = qtw.QTreeWidgetItem()
-        self.top.setText(0, fname)
-        self.tree.addTopLevelItem(self.top)  # AddRoot(titel)
+        self.SetTitle(titel)
+        self.tree.DeleteAllItems()
+        self.top = self.tree.AddRoot(titel)
 
     def get_selected_item(self):
         """geef het in de tree geselecteerde item terug
         """
-        return self.tree.currentItem()
+        return self.tree.GetSelection()
 
     def set_selected_item(self, item):
         """stel het in de tree geselecteerde item in
         """
-        self.tree.setCurrentItem(item)
+        self.tree.SelectItem(item)
 
     def init_tree(self, message):
         "toolkit specifieke voortzetting van gelijknamige editor methode"
-        self.tree.setCurrentItem(self.top)
-        self.adv_menu.setChecked(True)
+        self.tree.set_selected_item(self.top)
+        # self.adv_menu.setChecked(True)
         self.show_statusbar_message(message)
 
     def show_statusbar_message(self, text):
         """toon tekst in de statusbar
         """
-        self.sb.showMessage(text)
+        self.sb.SetStatusText(text)
 
     def adjust_dtd_menu(self):
         "set text for dtd menu option"
         if self.editor.has_dtd:
-            self.dtd_menu.setText('Remove &DTD')
-            self.dtd_menu.setStatusTip('Remove the document type declaration')
+            self.dtd_menu.SetText('Remove &DTD')
+            self.dtd_menu.SetHelp('Remove the document type declaration')
         else:
-            self.dtd_menu.setText('Add &DTD')
-            self.dtd_menu.setStatusTip('Add a document type description')
+            self.dtd_menu.SetText('Add &DTD')
+            self.dtd_menu.SetHelp('Add a document type description')
 
     def popup_menu(self, arg=None):
         'build/show context menu'
         # get type of node
-        menu = qtw.QMenu()
+        itemtext = self.tree.get_element_text(self.tree.get_selected_item())
+        menu = wx.Menu()
         for itemtype, item in self.contextmenu_items:
             if itemtype == 'A':
-                act = menu.addAction(item)
+                menu.Append(item)
                 if item == self.css_menu:
                     if not cssedit_available:
-                        act.setDisabled(True)
+                        item.enable(False)
             elif itemtype == 'M':
-                menu.addMenu(item)
+                menu.Append(item)
             else:
-                menu.addSeparator()
-        y = self.tree.visualItemRect(arg).bottom()
-        x = self.tree.visualItemRect(arg).left()
-        popup_location = core.QPoint(int(x) + 200, y)
-        self.in_contextmenu = True
-        menu.exec_(self.tree.mapToGlobal(popup_location))
-        self.in_contextmenu = False
+                menu.AppendSeparator()
+        # y = self.tree.visualItemRect(arg).bottom()
+        # x = self.tree.visualItemRect(arg).left()
+        # popup_location = core.QPoint(int(x) + 200, y)
+        # self.in_contextmenu = True
+        # menu.exec_(self.tree.mapToGlobal(popup_location))
+        # self.in_contextmenu = False
         # del menu
+        self.PopupMenu(menu)
+        menu.Destroy()
 
     def keyReleaseEvent(self, event):
         "reimplemented event handler"
@@ -300,159 +339,128 @@ class MainFrame(qtw.QMainWindow):
         keuze uitvoeren en teruggeven (i.v.m. eventueel gekozen Cancel)
         retourneert 1 = Yes, 0 = No, -1 = Cancel
         """
-        retval = dict(zip((qtw.QMessageBox.Yes, qtw.QMessageBox.No, qtw.QMessageBox.Cancel),
-                          (1, 0, -1)))
-        hlp = qtw.QMessageBox.question(self, title, text, qtw.QMessageBox.Yes |
-                                       qtw.QMessageBox.No | qtw.QMessageBox.Cancel,
-                                       defaultButton=qtw.QMessageBox.Yes)
+        retval = dict(zip((wx.ID_YES, wx.ID_NO, wx.CANCEL), (1, 0, -1)))
+        hlp = wx.MessageBox(text, title, style=wx.YES_NO | wx.CANCEL)
         return retval[hlp]
 
     def ask_for_open_filename(self):
-        """open een dkialoog om te vragen welk file geladen moet worden
+        """open een dialoog om te vragen welk file geladen moet worden
         """
-        filename, _ = qtw.QFileDialog.getOpenFileName(self, "Choose a file",
-                                                      self.editor.xmlfn or os.getcwd(), HMASK)
+        filename = ''
+        loc = self.editor.xmlfn or os.getcwd()
+        with wx.FileDialog(self, message="Choose a file", defaultDir=loc, wildcard=HMASK,
+                           style=wx.FD_OPEN) as dlg:
+            if dlg.ShowModal() == wx.ID_OK:
+                filename = dlg.GetPath()
         return filename
 
     def ask_for_save_filename(self):
         """open een dialoog om te vragen onder welke naam de html moet worden opgeslagen
         """
-        filename = qtw.QFileDialog.getSaveFileName(self, "Save file as ...",
-                                                   self.editor.xmlfn or os.getcwd(), HMASK)
-        print(filename)
+        filename = ''
+        if self.xmlfn:
+            dname, fname = os.path.split(self.xmlfn)
+        else:
+            dname = os.getcwd()
+            fname = ""
+        with wx.FileDialog(self, message="Save file as ...", defaultDir=dname,
+                           defaultFile=fname, wildcard=HMASK, style=wx.FD_SAVE) as dlg:
+            if dlg.ShowModal() == wx.ID_OK:
+                filename = dlg.GetPath()
         return filename
 
     def set_item_expanded(self, item, state):
         """show item's children
         """
-        item.setExpanded(state)
+        if self.tree.IsExpanded(item):
+            self.tree.Collapse(item)
+        else:
+            self.tree.ExpandItem(item)
 
     def expand(self):
         "toolkit specifieke voortzetting van gelijknamige editor methode"
-        def expand_all(item):
-            "recursively expand items"
-            all_results = []
-            for ix in range(item.childCount()):
-                sub = item.child(ix)
-                sub.setExpanded(True)
-                all_results.append(sub)
-                result = expand_all(sub)
-                if result:
-                    all_results.extend(result)
-            return all_results
-        item = self.tree.currentItem()
-        self.tree.expandItem(item)
-        results = expand_all(item)
-        self.tree.resizeColumnToContents(0)
-        self.tree.scrollToItem(results[-1])
+        item = self.tree.Selection
+        if item:
+            self.tree.ExpandAllChildren(item)
+        # self.tree.scrollToItem(results[-1]) -- laatste item onder huidige
 
     def collapse(self):
         "toolkit specifieke voortzetting van gelijknamige editor methode"
-        def collapse_all(item):
-            "recursively collapse items"
-            for ix in range(item.childCount()):
-                sub = item.child(ix)
-                collapse_all(sub)
-                sub.setExpanded(False)
-        item = self.tree.currentItem()
-        collapse_all(item)
-        self.tree.collapseItem(item)
-        self.tree.resizeColumnToContents(0)
+        item = self.tree.Selection
+        if item:
+            self.tree.CollapseAllChildren(item)
 
     def get_adv_sel_setting(self):
         "callback for menu option"
-        self.advance_selection_on_add = self.adv_menu.isChecked()
+        self.advance_selection_on_add = self.adv_menu.IsChecked()
 
     def refresh_preview(self, soup):
         "toolkit specifieke voortzetting van gelijknamige editor methode"
-        self.html.setHtml(str(soup).replace('%SOUP-ENCODING%', 'utf-8'))
-        self.tree.setFocus()
+        self.data_file = os.path.join(PPATH, "tempfile.html")
+        with open(self.data_file, "w") as f_out:
+            f_out.write(str(soup).replace('%SOUP-ENCODING%', 'utf-8'))
+        self.html.LoadPage(self.data_file)
+        self.tree.SetFocus()
 
     def call_dialog(self, obj):
         "send dialog and transmit results"
-        edt = obj.exec_()
-        if edt == qtw.QDialog.Accepted:
-            return True, self.dialog_data
+        with obj:
+            edt = obj.ShowModal()
+            if edt == wx.Dialog.Accepted:
+                dialog_data = obj.on_ok()
+                return True, dialog_data
         return False, None
 
     def do_edit_element(self, tagdata, attrdict):
         """show dialog for existing element"""
         obj = ElementDialog(self, title='Edit an element', tag=tagdata, attrs=attrdict)
         return self.call_dialog(obj)
-        edt = ElementDialog(self, title='Edit an element', tag=tagdata, attrs=attrdict).exec_()
-        if edt == qtw.QDialog.Accepted:
-            return True, self.dialog_data
-        else:
-            return False, None
 
     def do_add_element(self, where):
         """show dialog for new element"""
         obj = ElementDialog(self, title="New element (insert {0})".format(where))
         return self.call_dialog(obj)
-        edt = ElementDialog(self, title="New element (insert {0})".format(where)).exec_()
-        if edt == qtw.QDialog.Accepted:
-            return True, self.dialog_data
-        else:
-            return False, None
 
     def do_edit_textvalue(self, textdata):
         """show dialog for existing text"""
         return self.call_dialog(TextDialog(self, title='Edit Text', text=textdata))
-        edt = TextDialog(self, title='Edit Text', text=textdata).exec_()
-        if edt == qtw.QDialog.Accepted:
-            return True, self.dialog_data
-        else:
-            return False, None
 
     def do_add_textvalue(self):
         """show dialog for new text"""
         return self.call_dialog(TextDialog(self, title="New Text"))
-        edt = TextDialog(self, title="New Text").exec_()
-        if edt == qtw.QDialog.Accepted:
-            return True, self.dialog_data
-        else:
-            return False, None
 
     def ask_for_condition(self):
         "zet een IE conditie om het element heen"
-        cond, ok = qtw.QInputDialog.getText(self, self.title, 'Enter the condition', text='')
-        if ok:
-            return cond
+        with wx.textEntryDialog(self, 'Enter the condition', self.title) as dlg:
+            if dlg.ShowModal() == wx.ID_OK:
+                return dlg.GetValue()
         return ''
 
     def do_delete_item(self, item):
         """remove element from tree
         """
-        parent = item.parent()
-        ix = parent.indexOfChild(item)
-        if ix > 0:
-            ix -= 1
-            prev = parent.child(ix)
-        else:
-            prev = parent
-            if prev == self.editor.root:
-                prev = parent.child(ix + 1)
-        parent.removeChild(item)
+        prev = self.tree.GetPrevSibling(self.item)
+        if not prev.IsOk():
+            prev = self.tree.GetItemParent(self.item)
+            if self.tree.GetItemData(prev) == self.editor.root:
+                prev = self.tree.GetNextSibling(self.item)
+        self.tree.Delete(self.item)
         return prev
 
     def get_search_args(self):
         """show search options dialog"""
+        # self._parent.search_args =
         return self.call_dialog(SearchDialog(self, title='Search options'))
-        edt = SearchDialog(self, title='Search options').exec_()
-        if edt == qtw.QDialog.Accepted:
-            return True, self.search_args
-        else:
-            return False, None
 
     def meld(self, text):
         """notify about some information"""
         self.in_dialog = True
-        qtw.QMessageBox.information(self, self.editor.title, text)
+        wx.MessageBox(text, self.editor.title, parent=self)
 
     def meld_fout(self, text, abort=False):
         """notify about an error"""
         self.in_dialog = True
-        qtw.QMessageBox.critical(self, self.title, text)
+        wx.MessageBox(text, self.title, wx.ICON_ERROR, parent=self)
         if abort:
             self.quit()
 
@@ -460,32 +468,30 @@ class MainFrame(qtw.QMainWindow):
         """stelt een vraag en retourneert het antwoord
         1 = Yes, 0 = No, -1 = Cancel
         """
-        retval = dict(zip((qtw.QMessageBox.Yes, qtw.QMessageBox.No,
-                           qtw.QMessageBox.Cancel), (1, 0, -1)))
+        retval = dict(zip((wx.ID_YES, wx.ID_NO, wx.CANCEL), (1, 0, -1)))
         self.in_dialog = True
-        h = qtw.QMessageBox.question(
-            self, self.title, prompt,
-            qtw.QMessageBox.Yes | qtw.QMessageBox.No | qtw.QMessageBox.Cancel,
-            defaultButton=qtw.QMessageBox.Yes)
-        return retval[h]
+        hlp = wx.MessageBox(text, title, style=wx.YES_NO | wx.CANCEL)
+        return retval[hlp]
 
     def ask_for_text(self, prompt):
         """vraagt om tekst en retourneert het antwoord"""
         self.in_dialog = True
-        data, ok = qtw.QInputDialog.getText(self, self.title, prompt, qtw.QLineEdit.Normal, "")
-        return data, ok
+        with wx.textEntryDialog(self, prompt, self.title) as dlg:
+            if dlg.ShowModal() == wx.ID_OK:
+                return dlg.GetValue(), True
+        return '', False
 
     def ensure_item_visible(self, item):
         """make sure we can see the item
         """
-        self.tree.scrollToItem(item)
-
+        self.tree.EnsureVisible(iiem)
+# tot hiertoe omgeschreven naar gebruik wx
     def get_dtd(self):
         """show dialog for dtd
         """
         return self.call_dialog(DtdDialog(self))
         edt = DtdDialog(self).exec_()
-        if edt == qtw.QDialog.Accepted:
+        if edt == wx.Dialog.Accepted:
             return True, self.dialog_data
         else:
             return False, None
@@ -495,7 +501,7 @@ class MainFrame(qtw.QMainWindow):
         """
         return self.call_dialog(CssDialog(self))
         edt = CssDialog(self).exec_()
-        if edt == qtw.QDialog.Accepted:
+        if edt == wx.Dialog.Accepted:
             return True, self.dialog_data
         else:
             return False, None
@@ -505,7 +511,7 @@ class MainFrame(qtw.QMainWindow):
         """
         return self.call_dialog(LinkDialog(self))
         edt = LinkDialog(self).exec_()
-        if edt == qtw.QDialog.Accepted:
+        if edt == wx.Dialog.Accepted:
             return True, self.dialog_data
         else:
             return False, None
@@ -515,7 +521,7 @@ class MainFrame(qtw.QMainWindow):
         """
         return self.call_dialog(ImageDialog(self))
         edt = ImageDialog(self).exec_()
-        if edt == qtw.QDialog.Accepted:
+        if edt == wx.Dialog.Accepted:
             return True, self.dialog_data
         else:
             return False, None

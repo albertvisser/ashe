@@ -14,43 +14,6 @@ from ashe.dialogs_qt import cssedit_available, HMASK, ElementDialog, \
     SearchDialog
 
 
-def get_element_text(node):
-    "return text in visual tree for this element"
-    return node.text(0)
-
-
-def get_element_parent(node):
-    "return parent in visual tree for this element"
-    return node.parent()
-
-
-def get_element_parentpos(item):
-    "return parent and position under parent in visual tree for this element"
-    parent = item.parent()
-    return parent, parent.indexOfChild(item)
-
-
-def get_element_data(node):
-    "return attributes stored with this element"
-    return node.data(0, core.Qt.UserRole)
-
-
-def get_element_children(node):
-    "return iterator over children in visual tree for this element"
-    count = node.childCount()
-    # return (node.child(idx) for idx in range(count))
-    return [node.child(idx) for idx in range(count)]
-
-
-def set_element_text(node, text):
-    "change text in visual tree for this element"
-    node.setText(0, text)
-
-
-def set_element_data(node, data):
-    "change stored attrs for this element"""
-    node.setData(0, core.Qt.UserRole, data)
-
 
 class VisualTree(qtw.QTreeWidget):
     """tree representation of HTML
@@ -146,6 +109,7 @@ class MainFrame(qtw.QMainWindow):
         err = self.editor.getsoup(self.editor.xmlfn) or ''
         if not err:
             self.editor.refresh_preview()
+        sys.exit(self.app.exec_())
 
     def _setup_menu(self):
         """build application menu
@@ -204,6 +168,44 @@ class MainFrame(qtw.QMainWindow):
             title = title.replace(test2, test)
         self.setWindowTitle(title)
 
+    @staticmethod
+    def get_element_text(node):
+        "return text in visual tree for this element"
+        return node.text(0)
+
+    @staticmethod
+    def get_element_parent(node):
+        "return parent in visual tree for this element"
+        return node.parent()
+
+    @staticmethod
+    def get_element_parentpos(item):
+        "return parent and position under parent in visual tree for this element"
+        parent = item.parent()
+        return parent, parent.indexOfChild(item)
+
+    @staticmethod
+    def get_element_data(node):
+        "return attributes stored with this element"
+        return node.data(0, core.Qt.UserRole)
+
+    @staticmethod
+    def get_element_children(node):
+        "return iterator over children in visual tree for this element"
+        count = node.childCount()
+        # return (node.child(idx) for idx in range(count))
+        return [node.child(idx) for idx in range(count)]
+
+    @staticmethod
+    def set_element_text(node, text):
+        "change text in visual tree for this element"
+        node.setText(0, text)
+
+    @staticmethod
+    def set_element_data(node, data):
+        "change stored attrs for this element"""
+        node.setData(0, core.Qt.UserRole, data)
+
     def addtreeitem(self, node, naam, data, index=-1):
         """itemnaam en -data toevoegen aan de interne tree
         default is achteraan onder node, anders index meegeven
@@ -222,6 +224,7 @@ class MainFrame(qtw.QMainWindow):
     def addtreetop(self, fname, titel):
         """titel en root item in tree instellen"""
         self.setWindowTitle(titel)
+        self.tree.clear()
         self.top = qtw.QTreeWidgetItem()
         self.top.setText(0, fname)
         self.tree.addTopLevelItem(self.top)  # AddRoot(titel)

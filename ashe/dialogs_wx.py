@@ -70,14 +70,14 @@ class ElementDialog(wx.Dialog):
         self.attr_table.SetColSize(1, tbl.Size[0] - 162)  # 178) # 160)   ## FIXME: werkt dit?
         if attrs:
             for attr, value in attrs.items():
-                ## if attr == 'styledata':
-                    ## self.old_styledata = value
-                    ## continue
-                ## elif origtag == 'link' and attr == 'rel' and value == 'stylesheet':
-                    ## self.is_stylesheet = True
-                ## elif attr == 'style':
-                    ## has_style = True
-                    ## self.old_styledata = value
+                if attr == 'styledata':
+                    self.old_styledata = value
+                    continue
+                elif origtag == 'link' and attr == 'rel' and value == 'stylesheet':
+                    self.is_stylesheet = True
+                elif attr == 'style':
+                    has_style = True
+                    self.old_styledata = value
                 self.attr_table.AppendRows(1)
                 idx = tbl.GetNumberRows() - 1
                 self.attr_table.SetRowLabelValue(idx, '')
@@ -203,8 +203,8 @@ class ElementDialog(wx.Dialog):
         if mld:
             qtw.QMessageBox.information(self, self._parent.editor.title, mld)
 
-    def accept(self):
-        "controle bij OK aanklikken"
+    def on_ok(self):
+        "doorgeven in dialoog gewijzigde waarden aan hoofdscherm"
         # TODO: ensure no duplicate items are added
         tag = self.tag_text.GetValue()
         okay = True
@@ -212,35 +212,33 @@ class ElementDialog(wx.Dialog):
         for letter in tag:
             if letter not in test:
                 ok = False
-                wx.MessageBox('Illegal character(s) in tag name', self._parent.editor.title, wx.ICON_ERROR)
-                break
-        if okay:
-            evt.Skip()
-        ## commented = self.comment_button.checkState()
-        ## attrs = {}
-        ## for i in range(self.attr_table.rowCount()):
-            ## try:
-                ## name = str(self.attr_table.item(i, 0).text())
-                ## value = str(self.attr_table.item(i, 1).text())
-            ## except AttributeError:
-                ## qtw.QMessageBox.information(self, 'Add an element',
-                                            ## 'Press enter on this item first')
-                ## return
-            ## if name != 'style':
-                ## attrs[name] = value
-        ## try:
-            ## self.styledata = self.styledata.decode()
-        ## except AttributeError:
-            ## pass
-        ## if self.styledata != self.old_styledata:
-            ## self.old_styledata = self.styledata
-        ## if tag == 'style':
-            ## attrs['styledata'] = self.old_styledata
-        ## else:
-            ## if self.old_styledata:
-                ## attrs['style'] = self.old_styledata
-        ## self._parent.dialog_data = tag, attrs, commented
-        ## super().accept()
+                wx.MessageBox('Illegal character(s) in tag name',
+                              'Add an item', wx.ICON_ERROR)
+                return
+        commented = self.comment_button.checkState()
+        attrs = {}
+        for i in range(self.attr_table.GetNumberRows()):
+            try:
+                name = self.attr_table.GetCellValue(i, 0)
+                value = self.attr_table.GetCellValue(i, 1)
+            except AttributeError:
+                wx.MessageBox('Press enter on this item first',
+                              'Add an item', wx.ICON_ERROR)
+                return
+            if name != 'style':
+                attrs[name] = value
+        try:
+            self.styledata = self.styledata.decode()
+        except AttributeError:
+            pass
+        if self.styledata != self.old_styledata:
+            self.old_styledata = self.styledata
+        if tag == 'style':
+            attrs['styledata'] = self.old_styledata
+        else:
+            if self.old_styledata:
+                attrs['style'] = self.old_styledata
+        return tag, attrs, commented
 
 
 class TextDialog(wx.Dialog):
@@ -287,6 +285,12 @@ class TextDialog(wx.Dialog):
         vbox.SetSizeHints(self)
         self.Layout()
         self.data_text.SetFocus()
+
+    def on_ok(self):
+        "doorgeven in dialoog gewijzigde waarden aan hoofdscherm"
+        commented = self.comment_button.checkState()
+        tag = self.data_text.GetValue()
+        return txt, commented
 
 
 class SearchDialog(wx.Dialog):
@@ -413,21 +417,19 @@ class SearchDialog(wx.Dialog):
             out = 'search for' + attr
         self.lbl_search.setText(out)
 
-    def accept(self):
+    def on_ok(self):
         """confirm dialog and pass changed data to parent"""
-        return
-        ele = str(self.txt_element.text())
-        attr_name = str(self.txt_attr_name.text())
-        attr_val = str(self.txt_attr_val.text())
-        text = str(self.txt_text.text())
+        ele = str(self.txt_element.GetValue())
+        attr_name = str(self.txt_attr_name.GetValue())
+        attr_val = str(self.txt_attr_val.GetValue())
+        text = str(self.txt_text.GetValue())
         if not any((ele, attr_name, attr_val, text)):
-            qtw.QMessageBox.information(self, self._parent.title, 'Please'
-                                        ' enter search criteria or press cancel')
+            wx.MessageBox('Please enter search criteria or press cancel',
+                          self._parent.editor.title, self)
             self.txt_element.setFocus()
             return
 
-        self._parent.search_args = (ele, attr_name, attr_val, text)
-        super().accept()
+        return (ele, attr_name, attr_val, text)
 
 
 class DtdDialog(wx.Dialog):

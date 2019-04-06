@@ -17,24 +17,24 @@ CMELSTART = ' '.join((CMSTART, ELSTART))
 
 def comment_out(node, commented):
     "subitem(s) (ook) op commentaar zetten"
-    for subnode in gui.get_element_children(node):
-        txt = gui.get_element_text(subnode)
+    for subnode in self.gui.get_element_children(node):
+        txt = self.gui.get_element_text(subnode)
         if commented:
             if not txt.startswith(CMSTART):
                 new_text = " ".join((CMSTART, txt))
         else:
             if txt.startswith(CMSTART):
                 new_text = txt.split(None, 1)[1]
-        gui.set_element_text(subnode, new_text)
+        self.gui.set_element_text(subnode, new_text)
         comment_out(subnode, commented)
 
 
 def is_stylesheet_node(node):
     """determine if node is for stylesheet definition
     """
-    test = gui.get_element_text(node)
+    test = self.gui.get_element_text(node)
     if test == ' '.join((ELSTART, 'link')):
-        attrdict = gui.get_element_data(node)
+        attrdict = self.gui.get_element_data(node)
         if attrdict.get('rel', '') == 'stylesheet':
             return True
     elif test == ' '.join((ELSTART, 'style')):
@@ -48,8 +48,8 @@ def in_body(node):
     def is_node_ok(node):
         """check node and parents until body or head tag reached
         """
-        test = gui.get_element_text(node)
-        parent = gui.get_element_parent(node)
+        test = self.gui.get_element_text(node)
+        parent = self.gui.get_element_parent(node)
         if test == ' '.join((ELSTART, 'body')):
             return True
         elif test == ' '.join((ELSTART, 'head')):
@@ -64,7 +64,7 @@ def flatten_tree(node, top=True):
     """return the tree's structure as a flat list
     probably nicer as a generator function
     """
-    name = gui.get_element_text(node)
+    name = self.gui.get_element_text(node)
     count = 0
     if name.startswith(ELSTART):
         count = 2
@@ -73,11 +73,11 @@ def flatten_tree(node, top=True):
     if count:
         splits = name.split(None, count)
         name = ' '.join(splits[:count])
-    elem_list = [(node, name, gui.get_element_data(node))]
+    elem_list = [(node, name, self.gui.get_element_data(node))]
 
     subel_list = []
-    for subitem in gui.get_element_children(node):
-        text = gui.get_element_text(subitem)
+    for subitem in self.gui.get_element_children(node):
+        text = self.gui.get_element_text(subitem)
         if text.startswith(ELSTART) or text.startswith(CMELSTART):
             subel_list = flatten_tree(subitem, top=False)
             elem_list.extend(subel_list)
@@ -213,7 +213,7 @@ def find_next(data, search_args, reverse=False, pos=None):
 
 
 class Editor(object):
-    "mixin class to add gui-independent methods to main frame"
+    "Gui-independent start of application"
     dtdlist = (('HTML 4.1 Strict', 'HTML PUBLIC "-//W3C//DTD HTML 4.01//EN'
                 ' http://www.w3.org/TR/html4/strict.dtd" '),
                ('HTML 4.1 Transitional', 'HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN'
@@ -241,7 +241,6 @@ class Editor(object):
         self.xmlfn = fname
         self.gui = gui.MainFrame(editor=self, icon=ICO)
         self.gui.go()
-        sys.exit(self.gui.app.exec_())
 
     def mark_dirty(self, state):
         """set "modified" indicator
@@ -338,7 +337,6 @@ class Editor(object):
             titel = self.xmlfn
         else:
             titel = '[untitled]'
-        self.gui.tree.clear()
         self.gui.addtreetop(titel, " - ".join((os.path.basename(titel), TITEL)))
         add_to_tree(self.gui.top, self.root)
         self.gui.adjust_dtd_menu()
@@ -354,9 +352,9 @@ class Editor(object):
                     root[str(att)] = str(data[att])
             except TypeError:
                 pass
-            for elm in gui.get_element_children(node):
-                text = gui.get_element_text(elm)
-                data = gui.get_element_data(elm)
+            for elm in self.gui.get_element_children(node):
+                text = self.gui.get_element_text(elm)
+                data = self.gui.get_element_data(elm)
                 if text.startswith(ELSTART) or text.startswith(CMELSTART):
                     # data is een dict: leeg of een mapping van data op attributen
                     if text.startswith(CMSTART):
@@ -385,9 +383,9 @@ class Editor(object):
                     cond = text.split(None, 1)[1]
                     text = ''
                     # onderliggende elementen langslopen
-                    for subel in gui.get_element_children(elm):
-                        subtext = gui.get_element_text(subel)
-                        data = gui.get_element_attrs(subel)
+                    for subel in self.gui.get_element_children(elm):
+                        subtext = self.gui.get_element_text(subel)
+                        data = self.gui.get_element_attrs(subel)
                         if subtext.startswith(ELSTART):
                             # element in tekst omzetten en deze aan text toevoegen
                             onthou = self.soup
@@ -408,9 +406,9 @@ class Editor(object):
                         sub = bs.Comment(data)  # .decode("utf-8")) niet voor Py3
                     root.append(sub)  # data.decode("latin-1")) # insert(0,sub)
         self.soup = bs.BeautifulSoup('', 'lxml')  # self.root.originalEncoding)
-        for tag in gui.get_element_children(self.gui.top):
-            text = gui.get_element_text(tag)
-            data = gui.get_element_data(tag)
+        for tag in self.gui.get_element_children(self.gui.top):
+            text = self.gui.get_element_text(tag)
+            data = self.gui.get_element_data(tag)
             if text.startswith(DTDSTART):
                 root = bs.Doctype(str(data))  # Declaration(str(data))
                 self.soup.append(root)
@@ -616,12 +614,12 @@ class Editor(object):
         "start edit m.b.v. dialoog"
         if not self.checkselection():
             return
-        data = gui.get_element_text(self.item)
-        test = gui.get_element_children(self.item)
+        data = self.gui.get_element_text(self.item)
+        test = self.gui.get_element_children(self.item)
         if test:
             style_item = test[0]
         if data.startswith(DTDSTART):
-            data = gui.get_element_data(self.item)
+            data = self.gui.get_element_data(self.item)
             prefix = 'HTML PUBLIC "-//W3C//DTD'
             if data.upper().startswith(prefix):
                 data = data.upper().replace(prefix, '')
@@ -641,13 +639,13 @@ class Editor(object):
                 self.gui.meld("changing to " + str(cond))
                 # nou nog echt doen (of gebeurt dat in de dialoog? dacht het niet)
             return
-        under_comment = gui.get_element_text(gui.get_element_parent(self.item)).startswith(CMELSTART)
+        under_comment = self.gui.get_element_text(gui.get_element_parent(self.item)).startswith(CMELSTART)
         modified = False
         if data.startswith(ELSTART) or data.startswith(CMELSTART):
             oldtag = get_tag_from_elname(data)
-            attrdict = gui.get_element_data(self.item)
+            attrdict = self.gui.get_element_data(self.item)
             if oldtag == 'style':
-                attrdict['styledata'] = gui.get_element_attrs(style_item)
+                attrdict['styledata'] = self.gui.get_element_attrs(style_item)
             was_commented = data.startswith(CMSTART)
             ok, dialog_data = self.gui.do_edit_element(data, attrdict)
             print(ok, dialog_data)
@@ -659,20 +657,20 @@ class Editor(object):
                 if tag == 'style':
                     # style data zit in attrs['styledata'] en moet naar tekst element onder tag
                     newtext = str(attrs.pop('styledata', ''))  # en daarna moet deze hier weg
-                    oldtext = gui.get_element_data(style_item)
+                    oldtext = self.gui.get_element_data(style_item)
                     if newtext != oldtext:
-                        gui.set_element_text(style_item, getshortname(newtext))
-                        gui.set_element_data(style_item, newtext)
+                        self.gui.set_element_text(style_item, getshortname(newtext))
+                        self.gui.set_element_data(style_item, newtext)
                 attrdict.pop('styledata', '')
                 if tag != oldtag or attrs != attrdict:
-                    gui.set_element_text(self.item, getelname(tag, attrs, commented))
-                gui.set_element_data(self.item, attrs)
+                    self.gui.set_element_text(self.item, getelname(tag, attrs, commented))
+                self.gui.set_element_data(self.item, attrs)
                 if commented != was_commented:
                     comment_out(self.item, commented)
         else:
             txt = CMSTART + " " if data.startswith(CMSTART) else ""
-            data = gui.get_element_data(self.item)
-            test = gui.get_element_text(gui.get_element_parent(self.item))
+            data = self.gui.get_element_data(self.item)
+            test = self.gui.get_element_text(gui.get_element_parent(self.item))
             if test in (' '.join((ELSTART, 'style')), ' '.join((CMELSTART, 'style'))):
                 self.gui.meld("Please edit style through parent tag")
                 return
@@ -683,8 +681,8 @@ class Editor(object):
                 txt, commented = dialog_data
                 if under_comment:
                     commented = True
-                gui.set_element_text(self.item, getshortname(txt, commented))
-                gui.set_element_data(self.item, txt)
+                self.gui.set_element_text(self.item, getshortname(txt, commented))
+                self.gui.set_element_data(self.item, txt)
         if modified:
             self.mark_dirty(True)
             self.refresh_preview()
@@ -693,30 +691,30 @@ class Editor(object):
         "(un)comment zonder de edit dialoog"
         if not self.checkselection():
             return
-        tag = gui.get_element_text(self.item)
-        attrs = gui.get_element_data(self.item)
+        tag = self.gui.get_element_text(self.item)
+        attrs = self.gui.get_element_data(self.item)
         commented = tag.startswith(CMSTART)
         if commented:
             _, tag = tag.split(None, 1)  # CMSTART eraf halen
-        under_comment = gui.get_element_text(gui.get_element_parent(self.item)).startswith(CMELSTART)
+        under_comment = self.gui.get_element_text(gui.get_element_parent(self.item)).startswith(CMELSTART)
         commented = not commented  # het (un)commenten uitvoeren
         if under_comment:
             commented = True
         if tag.startswith(ELSTART):
             _, tag = tag.split(None, 1)  # ELSTART eraf halen
-            gui.set_element_text(self.item, getelname(tag, attrs, commented))
-            gui.set_element_data(self.item, attrs)
+            self.gui.set_element_text(self.item, getelname(tag, attrs, commented))
+            self.gui.set_element_data(self.item, attrs)
             comment_out(self.item, commented)
         else:
-            gui.set_element_text(self.item, commented)
-            gui.set_element_data(self.item, tag)
+            self.gui.set_element_text(self.item, commented)
+            self.gui.set_element_data(self.item, tag)
         self.refresh_preview()
 
     def make_conditional(self):
         "zet een IE conditie om het element heen"
         if not self.checkselection():
             return
-        text = gui.get_element_text(self.item)
+        text = self.gui.get_element_text(self.item)
         if text.startswith(IFSTART):
             self.gui.meld("This is already a conditional")
             return
@@ -724,7 +722,7 @@ class Editor(object):
         ok, cond = self.gui.ask_for_condition()
         if ok:
             # remember and remove the current element (use "cut"?)
-            parent, pos = gui.get_element_parentpos(self.item)
+            parent, pos = self.gui.get_element_parentpos(self.item)
             self.cut()
             # add the conditional in its place
             new_item = self.gui.addtreeitem(parent, ' '.join((IFSTART, cond)), None, pos)
@@ -736,12 +734,12 @@ class Editor(object):
         "haal de IE conditie om het element weg"
         if not self.checkselection():
             return
-        text = gui.get_element_text(self.item)
+        text = self.gui.get_element_text(self.item)
         if not text.startswith(IFSTART):
             self.gui.meld("This is not a conditional")
             return
         # for all elements below this one:
-        for item in gui.get_element_children(self.item):
+        for item in self.gui.get_element_children(self.item):
             # remember and remove it (use "cut"?)
             self.gui.set_selected_item(item)
             self.copy()
@@ -756,11 +754,11 @@ class Editor(object):
         "start copy/cut/delete actie"
         def push_el(elm, result):
             "subitem(s) toevoegen aan copy buffer"
-            text = gui.get_element_text(elm)
-            data = gui.get_element_data(elm)
+            text = self.gui.get_element_text(elm)
+            data = self.gui.get_element_data(elm)
             atrlist = []
             if text.startswith(ELSTART):
-                for node in gui.get_element_children(elm):
+                for node in self.gui.get_element_children(elm):
                     push_el(node, atrlist)
             result.append((text, data, atrlist))
             return result
@@ -774,7 +772,7 @@ class Editor(object):
         if ifcheck and text.startswith(IFSTART):
             self.gui.meld("Can't do thisJ on a conditional (use menu option to delete)")
             return
-        data = gui.get_element_data(self.item)
+        data = self.gui.get_element_data(self.item)
         if str(text).startswith(DTDSTART):
             self.gui.meld("Please use the HTML menu's DTD option to remove the DTD")
             return
@@ -814,9 +812,9 @@ class Editor(object):
             return subnode
         if not self.checkselection():
             return
-        data = gui.get_element_data(self.item)
+        data = self.gui.get_element_data(self.item)
         if below:
-            text = gui.get_element_text(self.item)
+            text = self.gui.get_element_text(self.item)
             if text.startswith(CMSTART):
                 self.gui.meld("Can't paste below comment")
                 return
@@ -847,10 +845,10 @@ class Editor(object):
                 add_to = self.item
                 idx = -1
             else:
-                add_to, idx = gui.get_element_parentpos(self.item)
+                add_to, idx = self.gui.get_element_parentpos(self.item)
                 if not before:
                     idx += 1
-                if idx == len(gui.get_element_children(add_to)):
+                if idx == len(self.gui.get_element_children(add_to)):
                     idx = -1
             new_item = zetzeronder(add_to, self.cut_el[0], idx)
             if self.advance_selection_on_add:
@@ -875,7 +873,7 @@ class Editor(object):
         if not self.checkselection():
             return
         if below:
-            text = gui.get_element_text(self.item)
+            text = self.gui.get_element_text(self.item)
             if text.startswith(CMSTART):
                 self.gui.meld("Can't insert below comment")
                 return
@@ -891,16 +889,16 @@ class Editor(object):
         ok, dialog_data = self.gui.do_add_element(where)
         if ok:
             tag, attrs, commented = dialog_data
-            item = self.item if below else gui.get_element_parent(self.item)
-            under_comment = gui.get_element_text(item).startswith(CMSTART)
+            item = self.item if below else self.gui.get_element_parent(self.item)
+            under_comment = self.gui.get_element_text(item).startswith(CMSTART)
             text = getelname(tag, attrs, commented or under_comment)
             if below:
                 new_item = self.gui.addtreeitem(self.item, text, attrs, -1)
             else:
-                parent, pos = gui.get_element_parentpos(self.item)
+                parent, pos = self.gui.get_element_parentpos(self.item)
                 if not before:
                     pos += 1
-                if pos >= len(gui.get_element_children(parent)):
+                if pos >= len(self.gui.get_element_children(parent)):
                     pos = -1
                 new_item = self.gui.addtreeitem(parent, text, attrs, pos)
             if self.advance_selection_on_add:
@@ -925,26 +923,26 @@ class Editor(object):
         "tekst toevoegen onder huidige element"
         if not self.checkselection():
             return
-        if below and not gui.get_element_text(self.item).startswith(ELSTART):
+        if below and not self.gui.get_element_text(self.item).startswith(ELSTART):
             self.gui.meld("Can't add text below text")
             return
         ok, dialog_data = self.gui.do_add_textvalue()
         if ok:
             txt, commented = dialog_data
-            item = self.item if below else gui.get_element_parent(self.item)
-            under_comment = gui.get_element_text(item).startswith(CMSTART)
+            item = self.item if below else self.gui.get_element_parent(self.item)
+            under_comment = self.gui.get_element_text(item).startswith(CMSTART)
             text = getshortname(txt, commented or under_comment)
             if below:
                 new_item = self.gui.addtreeitem(self.item, text, txt, -1)
             else:
-                parent, pos = gui.get_element_parentpos(self.item)
+                parent, pos = self.gui.get_element_parentpos(self.item)
                 if not before:
                     pos += 1
                     br = 'br'
                     brs = getelname('br', {}, commented or under_comment)
                     self.gui.addtreeitem(parent, brs, br, pos)
                     pos += 1
-                if pos >= len(gui.get_element_children(parent)):
+                if pos >= len(self.gui.get_element_children(parent)):
                     pos = -1
                 new_item = self.gui.addtreeitem(parent, text, txt, pos)
                 if before:
@@ -1008,7 +1006,7 @@ class Editor(object):
     def add_dtd(self):
         "start toevoegen dtd m.b.v. dialoog"
         if self.has_dtd:
-            self.gui.do_delete_item(gui.get_element_children(self.gui.top)[0])
+            self.gui.do_delete_item(self.gui.get_element_children(self.gui.top)[0])
             self.has_dtd = False
         else:
             ok, dialog_data = self.gui.get_dtd()
@@ -1021,7 +1019,7 @@ class Editor(object):
         self.gui.adjust_dtd_menu()
         self.mark_dirty(True)
         self.refresh_preview()
-        self.gui.ensure_item_visible(gui.get_element_children(self.gui.top)[0])
+        self.gui.ensure_item_visible(self.gui.get_element_children(self.gui.top)[0])
 
     def add_css(self):
         "start toevoegen stylesheet m.b.v. dialoog"
@@ -1031,10 +1029,10 @@ class Editor(object):
         data = dialog_data
         # determine the place to put the sylesheet
         self.item = None
-        for item in gui.get_element_children(self.gui.top):
-            if gui.get_element_text(item) == ' '.join((ELSTART, 'html')):
-                for sub in gui.get_element_children(item):
-                    if gui.get_element_text(sub) == ' '.join((ELSTART, 'head')):
+        for item in self.gui.get_element_children(self.gui.top):
+            if self.gui.get_element_text(item) == ' '.join((ELSTART, 'html')):
+                for sub in self.gui.get_element_children(item):
+                    if self.gui.get_element_text(sub) == ' '.join((ELSTART, 'head')):
                         self.item = sub
         if not self.item:
             self.gui.meld("Error: no <head> element")
@@ -1056,7 +1054,7 @@ class Editor(object):
         ok = True
         if not self.checkselection():
             ok = False
-        if not gui.get_element_text(self.item).startswith(ELSTART):
+        if not self.gui.get_element_text(self.item).startswith(ELSTART):
             self.gui.meld("Can't do this below text")
             ok = False
         return ok
