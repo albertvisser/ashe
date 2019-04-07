@@ -9,4 +9,3 @@ ELSTART = '<>'
 DTDSTART = "DOCTYPE"
 IFSTART = '!IF'
 BL = "&nbsp;"
-INLINE_1 = 'inline stylesheet'

@@ -487,41 +487,21 @@ class MainFrame(qtw.QMainWindow):
         """show dialog for dtd
         """
         return self.call_dialog(DtdDialog(self))
-        edt = DtdDialog(self).exec_()
-        if edt == qtw.QDialog.Accepted:
-            return True, self.dialog_data
-        else:
-            return False, None
 
     def get_css_data(self):
         """show dialog for new style element
         """
         return self.call_dialog(CssDialog(self))
-        edt = CssDialog(self).exec_()
-        if edt == qtw.QDialog.Accepted:
-            return True, self.dialog_data
-        else:
-            return False, None
 
     def get_link_data(self):
         """show dialog for new link element
         """
         return self.call_dialog(LinkDialog(self))
-        edt = LinkDialog(self).exec_()
-        if edt == qtw.QDialog.Accepted:
-            return True, self.dialog_data
-        else:
-            return False, None
 
     def get_image_data(self):
         """show dialog for new image element
         """
         return self.call_dialog(ImageDialog(self))
-        edt = ImageDialog(self).exec_()
-        if edt == qtw.QDialog.Accepted:
-            return True, self.dialog_data
-        else:
-            return False, None
 
     def get_video_data(self):
         """show dialog for new video element
@@ -545,12 +525,11 @@ class MainFrame(qtw.QMainWindow):
 
     def validate(self, htmlfile, fromdisk):
         "start validation"
-        # deze dialoog is gecodeerd in de dialogs module maar moet het valideren daarbinnen wel
-        # gebeuren?
-        dlg = ScrolledTextDialog(self, "Validation output", htmlfile=htmlfile, fromdisk=fromdisk)
-        dlg.show()
+        with ScrolledTextDialog(self, "Validation output",
+                                htmlfile=htmlfile, fromdisk=fromdisk) as dlg:
+            dlg.show()
 
     def show_code(self, title, caption, data):
         "show dialog for view source"
-        dlg = CodeViewDialog(self, title, caption, data)
-        dlg.show()
+        with CodeViewDialog(self, title, caption, data) as dlg:
+            dlg.show()
