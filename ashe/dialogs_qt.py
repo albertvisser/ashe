@@ -382,36 +382,11 @@ class SearchDialog(qtw.QDialog):
 
     def set_search(self):
         """build text describing search action"""
-        out = ''
-        ele = self.txt_element.text()
-        attr_name = self.txt_attr_name.text()
-        attr_val = self.txt_attr_val.text()
-        text = self.txt_text.text()
-        attr = ''
-        if ele:
-            ele = '\n an element named `{}`'.format(ele)
-        if attr_name or attr_val:
-            attr = '\n an attribute'
-            if attr_name:
-                attr += ' named `{}`'.format(attr_name)
-            if attr_val:
-                attr += '\n that has value `{}`'.format(attr_val)
-            if ele:
-                attr = '\n with' + attr[1:]
-        if text:
-            out = 'search for text'
-            if ele:
-                out += '\n under' + ele[1:]
-            elif attr:
-                out += '\n under an element\n with'
-            if attr:
-                out += attr
-        elif ele:
-            out = 'search for' + ele
-            if attr:
-                out += attr
-        elif attr:
-            out = 'search for' + attr
+        self._parent.editor.build_search_spec(self.txt_element.text(),
+                                              self.txt_attr_name.text(),
+                                              self.txt_attr_val.text(),
+                                              self.txt_text.text(),
+                                              '')
         self.lbl_search.setText(out)
 
     def accept(self):

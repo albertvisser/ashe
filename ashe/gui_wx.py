@@ -4,26 +4,23 @@ import os
 import sys
 import wx
 import wx.grid as wxgrid
-import wx.html as wxhtml #  webkit
+import wx.html2 as wxhtml #  webkit
 
-from ashe.dialogs_wx import cssedit_available, HMASK, ElementDialog, \
-    TextDialog, DtdDialog, CssDialog, LinkDialog, ImageDialog, VideoDialog, \
-    AudioDialog, ListDialog, TableDialog, ScrolledTextDialog, CodeViewDialog, \
-    SearchDialog
+from ashe.dialogs_wx import cssedit_available, HMASK, ElementDialog, TextDialog, \
+    DtdDialog, CssDialog, LinkDialog, ImageDialog, VideoDialog, AudioDialog, \
+    ListDialog, TableDialog, ScrolledTextDialog, CodeViewDialog, SearchDialog
 
-
-
-class VisualTree(wx.TreeWidget):
+class VisualTree(wx.TreeCtrl):
     """tree representation of HTML
     """
-    def __init__(self, parent):
-        self._parent = parent
-        super().__init__()
+    def __init__(self, parent):  #  , size):
+        self._parent = parent.Parent
+        super().__init__(parent)  # , size=size)
         self.Bind(wx.EVT_LEFT_DCLICK, self.on_leftdclick)
         self.Bind(wx.EVT_RIGHT_DOWN, self.on_rightdown)
         ## self.Bind(wx.EVT_CONTEXT_MENU, self.onContextMenu)
-        self.Bind(wx.EVT_CHAR, self.on_char)
-        self.Bind(wx.EVT_KEY_UP, self.on_key)
+        # self.Bind(wx.EVT_CHAR, self.on_char)
+        # self.Bind(wx.EVT_KEY_UP, self.on_key)
         ## self.setAcceptDrops(True)
         ## self.setDragEnabled(True)
         ## self.setSelectionMode(self.SingleSelection)
@@ -50,7 +47,7 @@ class VisualTree(wx.TreeWidget):
         "context menu bij rechtsklikken"
         item = self.HitTest(evt.GetPosition())[0]
         if item and item != self._parent.top:
-            self._parent.contextmenu(item)  # dan wel self._parent.popup_menu(item)
+            self._parent.popup_menu(item)
         evt.Skip()
 
     ## def mouseReleaseEvent(self, event):
@@ -81,14 +78,18 @@ class VisualTree(wx.TreeWidget):
         ## self._parent.refresh_preview()
 
 
-class MainFrame(wx.MainWindow):
+class MainFrame(wx.Frame):
     "Main GUI"
 
     def __init__(self, parent=None, editor=None, err=None, icon=None):
         self.parent = parent
         self.editor = editor
         self.app = wx.App()
-        super().__init__(parent, self.editor.title)
+        dsp = wx.Display().GetClientArea()
+        high = dsp.height if dsp.height < 900 else 900
+        wide = dsp.width if dsp.width < 1020 else 1020
+        super().__init__(parent, title=self.editor.title, size=(wide, high),
+                         style=wx.DEFAULT_FRAME_STYLE | wx.NO_FULL_REPAINT_ON_RESIZE)
         if err:
             self.meld(err)
             return
@@ -96,25 +97,21 @@ class MainFrame(wx.MainWindow):
         self.dialog_data = {}
         self.search_args = []
         if icon:
-            self.appicon = gui.QIcon(icon, wx.BITMAP_TYPE_ICO)
+            self.appicon = wx.Icon(icon, wx.BITMAP_TYPE_ICO)
             self.SetIcon(self.appicon)
-        dsp = wx.Display().GetClientArea()
-        high = dsp.height if dsp.height < 900 else 900
-        wide = dsp.width if dsp.width < 1020 else 1020
-        self.resize(wide, high)
 
         self._setup_menu()
         self.in_contextmenu = False
 
-        self.pnl = wx.Splitter(self)
+        self.pnl = wx.SplitterWindow(self)
         self.pnl.SetMinimumPaneSize(1)
 
-        self.tree = VisualTree(self)
+        self.tree = VisualTree(self.pnl)  # , size=(500,100))
         # self.tree.headerItem().setHidden(True)
 
-        self.html = html.HtmlWindow(self.pnl, -1)
-        if "gtk2" in wx.PlatformInfo:
-            self.html.SetStandardFonts()
+        self.html = wxhtml.WebView.New(self.pnl)  # , size=(800, high))
+        # if "gtk2" in wx.PlatformInfo:
+        #     self.html.SetStandardFonts()
 
         self.pnl.SplitVertically(self.tree, self.html)
         self.pnl.SetSashPosition(400, True)
@@ -122,28 +119,34 @@ class MainFrame(wx.MainWindow):
         self.sb = wx.StatusBar(self)
         self.SetStatusBar(self.sb)
 
-        # self.tree.resize(500, 100)
-        sizer0 = wx.BoxSizer(wx.VERTICAL)
-        sizer1 = wx.BoxSizer(wx.HORIZONTAL)
-        sizer1.Add(self.panel, 1, wx.EXPAND)
-        sizer0.Add(sizer1, 1, wx.EXPAND)
+        # self.tree.SetSize(500, 100)
+        # sizer0 = wx.BoxSizer(wx.VERTICAL)
+        # sizer1 = wx.BoxSizer(wx.HORIZONTAL)
+        # sizer1.Add(self.pnl, 1, wx.EXPAND)
+        # sizer0.Add(sizer1, 1, wx.EXPAND)
 
-        self.SetSizer(sizer0)
-        self.SetAutoLayout(True)
-        sizer0.Fit(self)
-        sizer0.SetSizeHints(self)
-        self.Layout()
-        self.Show(True)
+        # self.SetSizer(sizer0)
+        # self.SetAutoLayout(True)
+        # sizer0.Fit(self)
+        # sizer0.SetSizeHints(self)
+        # self.Layout()
         self.tree.SetFocus()
-        self.Bind(wx.EVT_CLOSE, self.exit)
+        # self.Bind(wx.EVT_CLOSE, self.editor.close)
 
     def go(self):
-        self.adv_menu.setChecked(True)
-        self.show()
+        """show the screen
+        """
+        self.adv_menu.Check(True)
+        self.Show(True)
         err = self.editor.getsoup(self.editor.xmlfn) or ''
         if not err:
             self.editor.refresh_preview()
         self.app.MainLoop()
+
+    def close(self):
+        """shut down the application
+        """
+        self.Close()
 
     def _setup_menu(self):
         """build application menu
@@ -169,11 +172,12 @@ class MainFrame(wx.MainWindow):
                 # act.setShortcut(hotkey)
                 # act.triggered.connect(callback)
                 menuid = wx.NewId()
-                caption = "\n".join((menuitem_text, hotkey))
+                caption = "\t".join((menuitem_text, hotkey)) if hotkey else menuitem_text
                 if menuitem_text.startswith('Advance selection'):
-                    self.adv_menu = menu.Append(menuid, caption, status_text, True)  # checkable=True)
+                    self.adv_menu = wx.MenuItem(menu, menuid, caption, status_text, wx.ITEM_CHECK)
+                    mnu = self.adv_menu
                 else:
-                    mnu = menu.Append(menu_id, caption, status_text)
+                    mnu = wx.MenuItem(menu, menuid, caption, status_text)
                     if menu_text == '&View':
                         self.contextmenu_items.append(('A', mnu))
                     elif menuitem_text == 'Add &DTD':
@@ -182,12 +186,14 @@ class MainFrame(wx.MainWindow):
                         self.css_menu = mnu
                         if not cssedit_available:
                             mnu.Enable(False)
-                    self.Connect(menuid, -1, wx.wxEVT_COMMAND_MENU_SELECTED, callback)
+                    self.Bind(wx.EVT_MENU, callback, mnu)
+                menu.Append(mnu)
                 if menu_text in ('&Edit', '&HTML'):
                     self.contextmenu_items.append(('M', menu))
             if menu_text == '&View':
                 self.contextmenu_items.append(('', ''))
-            menu_bar.append(menu, menu_text)
+            menu_bar.Append(menu, menu_text)
+        self.SetMenuBar(menu_bar)
 
     # def setfilenametooltip((self):
         # """bedoeld om de filename ook als tooltip te tonen, uit te voeren
@@ -233,10 +239,10 @@ class MainFrame(wx.MainWindow):
     def get_element_children(self, node):
         "return iterator over children in visual tree for this element"
         children = []
-        state, child = self.tree.GetFirstChild(parent)
+        child, state = self.tree.GetFirstChild(node)
         while child.IsOk():
             children.append(child)
-            state, child = self.tree.GetNextChild(parent, state)
+            child, state = self.tree.GetNextChild(node, state)
         return children
 
     def set_element_text(self, node, text):
@@ -251,7 +257,10 @@ class MainFrame(wx.MainWindow):
         """itemnaam en -data toevoegen aan de interne tree
         geeft referentie naar treeitem terug
         """
-        newnode = self.tree.AppendItem(node, naam)
+        if index == -1:
+            newnode = self.tree.AppendItem(node, naam)
+        else:
+            newnode = self.tree.InsertItem(node, index, naam)
         # data is ofwel leeg, ofwel een string, ofwel een dictionary
         self.tree.SetItemData(newnode, data)
         return newnode
@@ -274,8 +283,8 @@ class MainFrame(wx.MainWindow):
 
     def init_tree(self, message):
         "toolkit specifieke voortzetting van gelijknamige editor methode"
-        self.tree.set_selected_item(self.top)
-        # self.adv_menu.setChecked(True)
+        self.set_selected_item(self.top)
+        self.adv_menu.Check(True)
         self.show_statusbar_message(message)
 
     def show_statusbar_message(self, text):
@@ -286,16 +295,16 @@ class MainFrame(wx.MainWindow):
     def adjust_dtd_menu(self):
         "set text for dtd menu option"
         if self.editor.has_dtd:
-            self.dtd_menu.SetText('Remove &DTD')
+            self.dtd_menu.SetItemLabel('Remove &DTD')
             self.dtd_menu.SetHelp('Remove the document type declaration')
         else:
-            self.dtd_menu.SetText('Add &DTD')
+            self.dtd_menu.SetItemLabel('Add &DTD')
             self.dtd_menu.SetHelp('Add a document type description')
 
     def popup_menu(self, arg=None):
         'build/show context menu'
         # get type of node
-        itemtext = self.tree.get_element_text(self.tree.get_selected_item())
+        itemtext = self.get_element_text(self.get_selected_item())
         menu = wx.Menu()
         for itemtype, item in self.contextmenu_items:
             if itemtype == 'A':
@@ -339,7 +348,7 @@ class MainFrame(wx.MainWindow):
         keuze uitvoeren en teruggeven (i.v.m. eventueel gekozen Cancel)
         retourneert 1 = Yes, 0 = No, -1 = Cancel
         """
-        retval = dict(zip((wx.ID_YES, wx.ID_NO, wx.CANCEL), (1, 0, -1)))
+        retval = dict(zip((wx.YES, wx.NO, wx.CANCEL), (1, 0, -1)))
         hlp = wx.MessageBox(text, title, style=wx.YES_NO | wx.CANCEL)
         return retval[hlp]
 
@@ -396,19 +405,20 @@ class MainFrame(wx.MainWindow):
 
     def refresh_preview(self, soup):
         "toolkit specifieke voortzetting van gelijknamige editor methode"
-        self.data_file = os.path.join(PPATH, "tempfile.html")
+        self.data_file = os.path.join('/tmp', "ashe_tempfile.html")
         with open(self.data_file, "w") as f_out:
             f_out.write(str(soup).replace('%SOUP-ENCODING%', 'utf-8'))
-        self.html.LoadPage(self.data_file)
+        self.html.LoadURL('file://' + self.data_file)
         self.tree.SetFocus()
 
     def call_dialog(self, obj):
         "send dialog and transmit results"
         with obj:
             edt = obj.ShowModal()
-            if edt == wx.Dialog.Accepted:
-                dialog_data = obj.on_ok()
-                return True, dialog_data
+            if edt == wx.ID_SAVE:
+                ok, dialog_data = obj.on_ok()
+                if ok:
+                    return True, dialog_data
         return False, None
 
     def do_edit_element(self, tagdata, attrdict):
@@ -439,12 +449,12 @@ class MainFrame(wx.MainWindow):
     def do_delete_item(self, item):
         """remove element from tree
         """
-        prev = self.tree.GetPrevSibling(self.item)
+        prev = self.tree.GetPrevSibling(item)
         if not prev.IsOk():
-            prev = self.tree.GetItemParent(self.item)
+            prev = self.tree.GetItemParent(item)
             if self.tree.GetItemData(prev) == self.editor.root:
-                prev = self.tree.GetNextSibling(self.item)
-        self.tree.Delete(self.item)
+                prev = self.tree.GetNextSibling(item)
+        self.tree.Delete(item)
         return prev
 
     def get_search_args(self):
@@ -484,47 +494,27 @@ class MainFrame(wx.MainWindow):
     def ensure_item_visible(self, item):
         """make sure we can see the item
         """
-        self.tree.EnsureVisible(iiem)
-# tot hiertoe omgeschreven naar gebruik wx
+        self.tree.EnsureVisible(item)
+
     def get_dtd(self):
         """show dialog for dtd
         """
         return self.call_dialog(DtdDialog(self))
-        edt = DtdDialog(self).exec_()
-        if edt == wx.Dialog.Accepted:
-            return True, self.dialog_data
-        else:
-            return False, None
 
     def get_css_data(self):
         """show dialog for new style element
         """
         return self.call_dialog(CssDialog(self))
-        edt = CssDialog(self).exec_()
-        if edt == wx.Dialog.Accepted:
-            return True, self.dialog_data
-        else:
-            return False, None
 
     def get_link_data(self):
         """show dialog for new link element
         """
         return self.call_dialog(LinkDialog(self))
-        edt = LinkDialog(self).exec_()
-        if edt == wx.Dialog.Accepted:
-            return True, self.dialog_data
-        else:
-            return False, None
 
     def get_image_data(self):
         """show dialog for new image element
         """
         return self.call_dialog(ImageDialog(self))
-        edt = ImageDialog(self).exec_()
-        if edt == wx.Dialog.Accepted:
-            return True, self.dialog_data
-        else:
-            return False, None
 
     def get_video_data(self):
         """show dialog for new video element
@@ -548,12 +538,11 @@ class MainFrame(wx.MainWindow):
 
     def validate(self, htmlfile, fromdisk):
         "start validation"
-        # deze dialoog is gecodeerd in de dialogs module maar moet het valideren daarbinnen wel
-        # gebeuren?
-        dlg = ScrolledTextDialog(self, "Validation output", htmlfile=htmlfile, fromdisk=fromdisk)
-        dlg.show()
+        with ScrolledTextDialog(self, "Validation output",
+                                htmlfile=htmlfile, fromdisk=fromdisk) as dlg:
+            dlg.show()
 
     def show_code(self, title, caption, data):
         "show dialog for view source"
-        dlg = CodeViewDialog(self, title, caption, data)
-        dlg.show()
+        with CodeViewDialog(self, title, caption, data) as dlg:
+            dlg.show()

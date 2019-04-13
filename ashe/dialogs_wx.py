@@ -10,6 +10,7 @@ import wx
 import wx.grid as wxgrid
 # import wx.html as html
 # from wx.lib.dialogs import ScrolledMessageDialog
+import wx.stc as wxstc
 from ashe.constants import CMSTART, ELSTART
 try:
     import cssedit.editor.csseditor_qt as csed
@@ -38,7 +39,6 @@ class ElementDialog(wx.Dialog):
         hbox = wx.BoxSizer(wx.HORIZONTAL)
         lbl = wx.StaticText(self, label="element name:")
         self.tag_text = wx.TextCtrl(self, size=(150, -1))
-        self.tag_text.setMinimumWidth(250)
         self.comment_button = wx.CheckBox(self, label='&Comment(ed)')
         is_style_tag = self.is_stylesheet = has_style = False
         self.styledata = self.old_styledata = ''
@@ -50,7 +50,7 @@ class ElementDialog(wx.Dialog):
                 x = x[1].split(None, 1)
             if x[0] == ELSTART:
                 x = x[1].split(None, 1)
-            self.tag_text.setValue(x[0])
+            self.tag_text.SetValue(x[0])
             origtag = x[0]
             is_style_tag = (origtag == 'style')
         self.comment_button.SetValue(iscomment)
@@ -67,7 +67,7 @@ class ElementDialog(wx.Dialog):
         self.attr_table.CreateGrid(0, 2)
         self.attr_table.SetColLabelValue(0, 'attribute')
         self.attr_table.SetColLabelValue(1, 'value')
-        self.attr_table.SetColSize(1, tbl.Size[0] - 162)  # 178) # 160)   ## FIXME: werkt dit?
+        self.attr_table.SetColSize(1, self.attr_table.Size[0] - 162)  # 178) # 160)   ## FIXME: werkt dit?
         if attrs:
             for attr, value in attrs.items():
                 if attr == 'styledata':
@@ -79,7 +79,7 @@ class ElementDialog(wx.Dialog):
                     has_style = True
                     self.old_styledata = value
                 self.attr_table.AppendRows(1)
-                idx = tbl.GetNumberRows() - 1
+                idx = self.attr_table.GetNumberRows() - 1
                 self.attr_table.SetRowLabelValue(idx, '')
                 self.attr_table.SetCellValue(idx, 0, attr)
                 ## if attr == 'style':
@@ -117,11 +117,9 @@ class ElementDialog(wx.Dialog):
         vbox.Add(sbox, 1, wx.ALL | wx.EXPAND, 5)
 
         hbox = wx.BoxSizer(wx.HORIZONTAL)
-        self.ok_button = wx.Button(self, label='&Save')
-        self.ok_button.Bind(wx.EVT_BUTTON, self.accept)
+        self.ok_button = wx.Button(self, id=wx.ID_SAVE)
+        self.cancel_button = wx.Button(self, id=wx.ID_CANCEL)
         self.SetAffirmativeId(wx.ID_SAVE)
-        self.cancel_button = wx.Button(self, label='&Cancel')
-        self.cancel_button.Bind(wx.EVT_BUTTON, self.reject)
         hbox.Add(self.ok_button, 0, wx.EXPAND | wx.ALL, 2)
         hbox.Add(self.cancel_button, 0, wx.EXPAND | wx.ALL, 2)
         vbox.Add(hbox, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM |
@@ -201,7 +199,7 @@ class ElementDialog(wx.Dialog):
                 css.setWindowModality(core.Qt.ApplicationModal)
                 css.show()
         if mld:
-            qtw.QMessageBox.information(self, self._parent.editor.title, mld)
+            self._parent.meld(mld)
 
     def on_ok(self):
         "doorgeven in dialoog gewijzigde waarden aan hoofdscherm"
@@ -214,7 +212,7 @@ class ElementDialog(wx.Dialog):
                 ok = False
                 wx.MessageBox('Illegal character(s) in tag name',
                               'Add an item', wx.ICON_ERROR)
-                return
+                return False, ()
         commented = self.comment_button.checkState()
         attrs = {}
         for i in range(self.attr_table.GetNumberRows()):
@@ -224,7 +222,7 @@ class ElementDialog(wx.Dialog):
             except AttributeError:
                 wx.MessageBox('Press enter on this item first',
                               'Add an item', wx.ICON_ERROR)
-                return
+                return False, ()
             if name != 'style':
                 attrs[name] = value
         try:
@@ -238,7 +236,7 @@ class ElementDialog(wx.Dialog):
         else:
             if self.old_styledata:
                 attrs['style'] = self.old_styledata
-        return tag, attrs, commented
+        return True, (tag, attrs, commented)
 
 
 class TextDialog(wx.Dialog):
@@ -269,10 +267,7 @@ class TextDialog(wx.Dialog):
 
         hbox = wx.BoxSizer(wx.HORIZONTAL)
         self.ok_button = wx.Button(self, id=wx.ID_SAVE)
-        # self.ok_button.Bind(wx.EVT_BUTTON, self.accept)
-        # self.ok_button.setDefault(True)
         self.cancel_button = wx.Button(self, id=wx.ID_CANCEL)
-        # self.cancel_button.Bind(wx.EVT_BUTTON, self.reject)
         self.SetAffirmativeId(wx.ID_SAVE)
         hbox.Add(self.ok_button, 0, wx.EXPAND | wx.ALL, 2)
         hbox.Add(self.cancel_button, 0, wx.EXPAND | wx.ALL, 2)
@@ -288,93 +283,84 @@ class TextDialog(wx.Dialog):
 
     def on_ok(self):
         "doorgeven in dialoog gewijzigde waarden aan hoofdscherm"
-        commented = self.comment_button.checkState()
+        commented = self.comment_button.IsChecked()
         tag = self.data_text.GetValue()
-        return txt, commented
+        return True, (tag, commented)
 
 
 class SearchDialog(wx.Dialog):
     """Dialog to get search arguments
     """
     def __init__(self, parent, title=""):
-        return
-        super().__init__(parent)
-        self.setWindowTitle(title)
         self._parent = parent
-
-        self.cb_element = wx.StaticText('Element', self)
-        lbl_element = wx.StaticText("name:", self)
-        self.txt_element = wx.TextCtrl(self)
-        self.txt_element.textChanged.connect(self.set_search)
-
-        self.cb_attr = wx.StaticText('Attribute', self)
-        lbl_attr_name = wx.StaticText("name:", self)
-        self.txt_attr_name = wx.TextCtrl(self)
-        self.txt_attr_name.textChanged.connect(self.set_search)
-        lbl_attr_val = wx.StaticText("value:", self)
-        self.txt_attr_val = wx.TextCtrl(self)
-        self.txt_attr_val.textChanged.connect(self.set_search)
-
-        self.cb_text = wx.StaticText('Text', self)
-        lbl_text = wx.StaticText("value:", self)
-        self.txt_text = wx.TextCtrl(self)
-        self.txt_text.textChanged.connect(self.set_search)
-
-        self.lbl_search = wx.StaticText('', self)
-
-        self.btn_ok = wx.Button('&Ok', self)
-        self.btn_ok.Bind(wx.EVT_BUTTON, self.accept)
-        self.btn_ok.setDefault(True)
-        self.btn_cancel = wx.Button('&Cancel', self)
-        self.btn_cancel.Bind(wx.EVT_BUTTON, self.reject)
-
+        super().__init__(parent, title=title)
         sizer = wx.BoxSizer(wx.VERTICAL)
 
-        gsizer = qtw.QGridLayout()
-
-        gsizer.addWidget(self.cb_element, 0, 0)
+        gsizer = wx.GridBagSizer(4, 4)
+        self.cb_element = wx.StaticText(self, label='Element')
+        gsizer.Add(self.cb_element, (0, 0))
         vsizer = wx.BoxSizer(wx.VERTICAL)
         hsizer = wx.BoxSizer(wx.HORIZONTAL)
-        hsizer.addWidget(lbl_element)
-        hsizer.addWidget(self.txt_element)
-        vsizer.addLayout(hsizer)
-        gsizer.addLayout(vsizer, 0, 1)
+        lbl_element = wx.StaticText(self, label="name:")
+        hsizer.Add(lbl_element)
+        self.txt_element = wx.TextCtrl(self)
+        self.txt_element.textChanged.connect(self.set_search)
+        hsizer.Add(self.txt_element)
+        vsizer.Add(hsizer)
+        gsizer.Add(vsizer, (0, 1))
 
         vsizer = wx.BoxSizer(wx.VERTICAL)
-        vsizer.addSpacing(5)
-        vsizer.addWidget(self.cb_attr)
-        vsizer.addStretch()
-        gsizer.addLayout(vsizer, 1, 0)
+        # vsizer.addSpacing(5)
+        self.cb_attr = wx.StaticText(self, label='Attribute')
+        vsizer.Add(self.cb_attr)
+        # vsizer.addStretch()
+        gsizer.Add(vsizer, (1, 0))
         vsizer = wx.BoxSizer(wx.VERTICAL)
         hsizer = wx.BoxSizer(wx.HORIZONTAL)
-        hsizer.addWidget(lbl_attr_name)
-        hsizer.addWidget(self.txt_attr_name)
-        vsizer.addLayout(hsizer)
+        lbl_attr_name = wx.StaticText(self, label="name:")
+        hsizer.Add(lbl_attr_name)
+        self.txt_attr_name = wx.TextCtrl(self)
+        self.txt_attr_name.textChanged.connect(self.set_search)
+        hsizer.Add(self.txt_attr_name)
+        vsizer.Add(hsizer)
         hsizer = wx.BoxSizer(wx.HORIZONTAL)
-        hsizer.addWidget(lbl_attr_val)
-        hsizer.addWidget(self.txt_attr_val)
-        vsizer.addLayout(hsizer)
-        gsizer.addLayout(vsizer, 1, 1)
+        lbl_attr_val = wx.StaticText(self, label="value:")
+        hsizer.Add(lbl_attr_val)
+        self.txt_attr_val = wx.TextCtrl(self)
+        self.txt_attr_val.textChanged.connect(self.set_search)
+        hsizer.Add(self.txt_attr_val)
+        vsizer.Add(hsizer)
+        gsizer.Add(vsizer, (1, 1))
 
-        gsizer.addWidget(self.cb_text, 2, 0)
+        self.cb_text = wx.StaticText(self, label='Text')
+        gsizer.Add(self.cb_text, (2, 0))
         hsizer = wx.BoxSizer(wx.HORIZONTAL)
-        hsizer.addWidget(lbl_text)
-        hsizer.addWidget(self.txt_text)
-        gsizer.addLayout(hsizer, 2, 1)
-        sizer.addLayout(gsizer)
+        lbl_text = wx.StaticText(self, label="value:")
+        hsizer.Add(lbl_text)
+        self.txt_text = wx.TextCtrl(self)
+        self.txt_text.textChanged.connect(self.set_search)
+        hsizer.Add(self.txt_text)
+        gsizer.Add(hsizer, (2, 1))
+        sizer.Add(gsizer)
 
         hsizer = wx.BoxSizer(wx.HORIZONTAL)
-        hsizer.addWidget(self.lbl_search)
-        sizer.addLayout(hsizer)
+        self.lbl_search = wx.StaticText(self, label='')
+        hsizer.Add(self.lbl_search)
+        sizer.Add(hsizer)
 
-        hsizer = wx.BoxSizer(wx.HORIZONTAL)
-        hsizer.addStretch()
-        hsizer.addWidget(self.btn_ok)
-        hsizer.addWidget(self.btn_cancel)
-        hsizer.addStretch()
-        sizer.addLayout(hsizer)
-
-        self.setLayout(sizer)
+        hbox = wx.BoxSizer(wx.HORIZONTAL)
+        self.ok_button = wx.Button(self, id=wx.ID_SAVE)
+        self.SetAffirmativeId(wx.ID_SAVE)
+        self.cancel_button = wx.Button(self, id=wx.ID_CANCEL)
+        hbox.Add(self.ok_button, 0, wx.EXPAND | wx.ALL, 2)
+        hbox.Add(self.cancel_button, 0, wx.EXPAND | wx.ALL, 2)
+        vbox.Add(hbox, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM |
+                 wx.ALIGN_CENTER_HORIZONTAL | wx.ALIGN_CENTER_VERTICAL, 15)
+        self.SetSizer(vbox)
+        self.SetAutoLayout(True)
+        vbox.Fit(self)
+        vbox.SetSizeHints(self)
+        self.Layout()
 
         if self._parent.search_args:
             self.txt_element.setText(self._parent.search_args[0])
@@ -384,37 +370,11 @@ class SearchDialog(wx.Dialog):
 
     def set_search(self):
         """build text describing search action"""
-        return
-        out = ''
-        ele = self.txt_element.text()
-        attr_name = self.txt_attr_name.text()
-        attr_val = self.txt_attr_val.text()
-        text = self.txt_text.text()
-        attr = ''
-        if ele:
-            ele = '\n an element named `{}`'.format(ele)
-        if attr_name or attr_val:
-            attr = '\n an attribute'
-            if attr_name:
-                attr += ' named `{}`'.format(attr_name)
-            if attr_val:
-                attr += '\n that has value `{}`'.format(attr_val)
-            if ele:
-                attr = '\n with' + attr[1:]
-        if text:
-            out = 'search for text'
-            if ele:
-                out += '\n under' + ele[1:]
-            elif attr:
-                out += '\n under an element\n with'
-            if attr:
-                out += attr
-        elif ele:
-            out = 'search for' + ele
-            if attr:
-                out += attr
-        elif attr:
-            out = 'search for' + attr
+        out = self._parent.editor.buid_search_spec(self.txt_element.GetValue(),
+                                                   self.txt_attr_name.GetValue(),
+                                                   self.txt_attr_val.GetValue(),
+                                                   self.txt_text.GetValue(),
+                                                   '')
         self.lbl_search.setText(out)
 
     def on_ok(self):
@@ -424,12 +384,11 @@ class SearchDialog(wx.Dialog):
         attr_val = str(self.txt_attr_val.GetValue())
         text = str(self.txt_text.GetValue())
         if not any((ele, attr_name, attr_val, text)):
-            wx.MessageBox('Please enter search criteria or press cancel',
-                          self._parent.editor.title, self)
+            self.parent.meld('Please enter search criteria or press cancel')
             self.txt_element.setFocus()
-            return
+            return False, ()
 
-        return (ele, attr_name, attr_val, text)
+        return True, (ele, attr_name, attr_val, text)
 
 
 class DtdDialog(wx.Dialog):
@@ -465,17 +424,16 @@ class DtdDialog(wx.Dialog):
                 first = False
             else:
                 radio = wx.RadioButton(self, -1, x[0])
-            # if idx == 4:
-            #     radio.setChecked(True)
-            x.append(radio)
+            if idx == 4:
+                radio.SetValue(True)
             vbox2.Add(radio, 0, wx.ALL, 2)
-            # self.dtd_list.append((x[0], x[1], radio))
+            self.dtd_list.append((x[0], x[1], radio))
         hbox.Add(vbox2)
         sbox.Add(hbox, 1, wx.EXPAND | wx.ALL, 10)
         vbox.Add(sbox, 1, wx.EXPAND | wx.LEFT | wx.RIGHT, 15)
 
         hbox = wx.BoxSizer(wx.HORIZONTAL)
-        self.ok_button = wx.Button(self, id=wx.IS_SAVE)
+        self.ok_button = wx.Button(self, id=wx.ID_SAVE)
         self.SetAffirmativeId(wx.ID_SAVE)
         self.cancel_button = wx.Button(self, id=wx.ID_CANCEL)
         hbox.Add(self.ok_button, 0, wx.EXPAND | wx.ALL, 2)
@@ -488,110 +446,98 @@ class DtdDialog(wx.Dialog):
         vbox.SetSizeHints(self)
         self.Layout()
 
-    def accept(self):
+    def on_ok(self):
         """pass changed data to parent
         """
-        # for caption, dtd, radio in self.dtd_list:
-        #     if radio and radio.isChecked():
-        #         self._parent.dialog_data = dtd
-        #         break
-        # super().accept()
+        for caption, dtd, radio in self.dtd_list:
+            if radio and radio.GetValue():
+                return True, dtd
+        return False, None
 
 
 class CssDialog(wx.Dialog):
     """dialoog om een stylesheet toe te voegen
     """
     def __init__(self, parent):
-        return
         self._parent = parent
         self.styledata = ''
-        super().__init__(parent)
-        self.setWindowTitle('Add Stylesheet')
-        self.setWindowIcon(self._parent.appicon)
+        super().__init__(parent, title='Add Stylesheet')
         vbox = wx.BoxSizer(wx.VERTICAL)
 
-        sbox = qtw.QFrame()
-        sbox.setFrameStyle(qtw.QFrame.Box)
-        gbox = qtw.QGridLayout()
+        box = wx.StaticBox(self, -1)
+        sbox = wx.StaticBoxSizer(box, wx.VERTICAL)
+        gbox = wx.GridBagSizer(4, 4)
+        lbl = wx.StaticText(self, label="link to stylesheet:")
+        gbox.Add(lbl, (0, 0), (1, 1), wx.ALIGN_CENTER_VERTICAL)
+        self.link_text = wx.TextCtrl(self, size=(250, -1), value="http://")
+        gbox.Add(self.link_text, (0, 1))
 
-        gbox.addWidget(wx.StaticText("link to stylesheet:", self), 0, 0)
-        self.link_text = wx.TextCtrl("http://", self)
-        gbox.addWidget(self.link_text, 0, 1)
-
-        self.choose_button = wx.Button('&Browse', self)
+        self.choose_button = wx.Button(self, label='&Browse')
         self.choose_button.Bind(wx.EVT_BUTTON, self.kies)
-        box = wx.BoxSizer(wx.HORIZONTAL)
-        box.addStretch()
-        box.addWidget(self.choose_button)
-        box.addStretch()
-        gbox.addLayout(box, 1, 0, 1, 2)
+        gbox.Add(self.choose_button, (1, 0), (1, 2), wx.ALIGN_CENTER_HORIZONTAL)
 
-        gbox.addWidget(wx.StaticText("for media type(s):", self), 2, 0)
+        lbl = wx.StaticText(self, label="for media type(s):")
+        gbox.Add(lbl, (2, 0), (1, 1), wx.ALIGN_CENTER_VERTICAL)
         self.text_text = wx.TextCtrl(self)
-        gbox.addWidget(self.text_text, 2, 1)
+        gbox.Add(self.text_text, (2, 1))
 
-        sbox.setLayout(gbox)
-        vbox.addWidget(sbox)
+        sbox.Add(gbox, 0, wx.ALL, 10)
+        vbox.Add(sbox, 0, wx.LEFT | wx.RIGHT | wx.TOP, 15)
 
         hbox = wx.BoxSizer(wx.HORIZONTAL)
-        self.ok_button = wx.Button('&Save', self)
-        self.ok_button.Bind(wx.EVT_BUTTON, self.accept)
-        self.ok_button.setDefault(True)
-        self.inline_button = wx.Button('&Add inline', self)
+        self.ok_button = wx.Button(self, id=wx.ID_SAVE)
+        self.inline_button = wx.Button(self, label='&Add inline')
         self.inline_button.Bind(wx.EVT_BUTTON, self.on_inline)
-        self.cancel_button = wx.Button('&Cancel', self)
-        self.cancel_button.Bind(wx.EVT_BUTTON, self.reject)
-        hbox.addStretch()
-        hbox.addWidget(self.ok_button)
-        hbox.addWidget(self.inline_button)
-        hbox.addWidget(self.cancel_button)
-        hbox.addStretch()
-        vbox.addLayout(hbox)
+        self.cancel_button = wx.Button(self, id=wx.ID_CANCEL)
+        self.SetAffirmativeId(wx.ID_SAVE)
+        hbox.Add(self.ok_button, 0, wx.EXPAND | wx.ALL, 2)
+        hbox.Add(self.inline_button, 0, wx.EXPAND | wx.ALL, 2)
+        hbox.Add(self.cancel_button, 0, wx.EXPAND | wx.ALL, 2)
+        vbox.Add(hbox, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM |
+                 wx.ALIGN_CENTER_HORIZONTAL | wx.ALIGN_CENTER_VERTICAL, 15)
 
-        self.setLayout(vbox)
-
-        self.link_text.setFocus()
+        self.SetSizer(vbox)
+        self.SetAutoLayout(True)
+        vbox.Fit(self)
+        vbox.SetSizeHints(self)
+        self.Layout()
+        self.link_text.SetFocus()
 
     def kies(self):
         "methode om het te linken document te selecteren"
-        return
         loc = self._parent.editor.xmlfn or os.getcwd()
-        fnaam, _ = qtw.QFileDialog.getOpenFileName(self, "Choose a file", loc, CMASK)
-        if fnaam:
-            self.link_text.setText(fnaam)
+        with wx.FileDialog(self, message="Choose a file", defaultDir=loc,
+                           wildcard=CMASK, style=wx.FD_OPEN) as dlg:
+            if dlg.ShowModal() == wx.ID_OK:
+                self.link_text.SetValue(dlg.GetPath())
 
-    def accept(self):
+    def on_ok(self):
         """bij OK: het geselecteerde (absolute) pad omzetten in een relatief pad
         maar eerst kijken of dit geen inline stylesheet betreft """
-        return
         # TODO: wat als er zowel styledata als een linkadres is?
         if self.styledata:
-            self._parent.dialog_data = {"cssdata": self.styledata.decode()}
-            super().accept()
-            return
-        link = str(self.link_text.text())
+            return True, {"cssdata": self.styledata.decode()}
+        link = str(self.link_text.GetValue())
         if link in ('', 'http://'):
-            qtw.QMessageBox.information(self, self.parent().title, "bestandsnaam opgeven"
-                                        " of inline stylesheet definiëren s.v.p")
-            return
+            self._parent.meld("bestandsnaam opgeven of inline stylesheet definiëren s.v.p")
+            return False, {}
         try:
             link = self._parent.editor.convert_link(link, self._parent.editor.xmlfn)
         except ValueError as msg:
-            qtw.QMessageBox.information(self, self._parent.title, msg)
-            return
-        self._parent.dialog_data = {"rel": 'stylesheet',
-                                    "href": link,
-                                    "type": 'text/css'}
-        test = str(self.text_text.text())
+            self._parent.meld(msg)
+            return False, {}
+        dialog_data = {"rel": 'stylesheet', "href": link, "type": 'text/css'}
+        test = self.text_text.GetValue()
         if test:
-            self._parent.dialog_data["media"] = test
-        super().accept()
+            dialog_data["media"] = test
+        return True, dialog_data
 
-    def on_inline(self):
+    def on_inline(self, event=None):
         "voegt een 'style' tag in"
+        self._parent.meld('Sorry, not possible yet')
         return
         self._parent.dialog_data = {"type": 'text/css'}
-        test = str(self.text_text.text())
+        test = str(self.text_text.GetValue())
         if test:
             self._parent.dialog_data["media"] = test
         css = csed.MainWindow(self, self._parent.app)
@@ -610,9 +556,9 @@ class LinkDialog(wx.Dialog):
 
         box = wx.StaticBox(self, -1)
         sbox = wx.StaticBoxSizer(box, wx.VERTICAL)
-        gbox = qtw.QGridLayout()
+        gbox = wx.GridBagSizer(4, 4)
         lbl = wx.StaticText(self, label="descriptive title:")
-        gbox.addWidget(lbl, (0, 0), (1, 1), wx.ALIGN_CENTER_VERTICAL)
+        gbox.Add(lbl, (0, 0), (1, 1), wx.ALIGN_CENTER_VERTICAL)
         self.title_text = wx.TextCtrl(self, -1, size=(250, -1))
         gbox.Add(self.title_text, (0, 1))
 
@@ -638,7 +584,6 @@ class LinkDialog(wx.Dialog):
 
         hbox = wx.BoxSizer(wx.HORIZONTAL)
         self.ok_button = wx.Button(self, id=wx.ID_SAVE)
-        self.ok_button.Bind(wx.EVT_BUTTON, self.on_ok)
         self.cancel_button = wx.Button(self, id=wx.ID_CANCEL)
         self.SetAffirmativeId(wx.ID_SAVE)
         hbox.Add(self.ok_button, 0, wx.EXPAND | wx.ALL, 2)
@@ -653,7 +598,7 @@ class LinkDialog(wx.Dialog):
         self.Layout()
         self.title_text.SetFocus()
 
-    def kies(self):
+    def kies(self, evt):
         "methode om het te linken document te selecteren"
         loc = self._parent.editor.xmlfn or os.getcwd()
         with wx.FileDialog(self, message="Choose a file", defaultDir=loc,
@@ -661,7 +606,7 @@ class LinkDialog(wx.Dialog):
             if dlg.ShowModal() == wx.ID_OK:
                 self.link_text.SetValue(dlg.GetPath())
 
-    def set_text(self, chgtext):
+    def set_text(self, evt):
         'indien leeg title tekst gelijk maken aan link adres'
         if evt.EventObject == self.link_text:
             linktxt = self.link_text.GetValue()
@@ -671,27 +616,19 @@ class LinkDialog(wx.Dialog):
         elif self.text_text.GetValue() == "":
             self.linktxt = ""
 
-    def on_ok(self, evt=None):
+    def on_ok(self):
         "bij OK: het geselecteerde (absolute) pad omzetten in een relatief pad"
-        txt = str(self.text_text.text())
+        txt = str(self.text_text.GetValue())
         if not txt:
-            wx.MessageBox("link opgeven of cancel kiezen s.v.p", self.parent.title)
-            # hlp = qtw.QMessageBox.question(self, 'Add Link',
-            #                                "Link text is empty - are you sure?",
-            #                                qtw.QMessageBox.Yes | qtw.QMessageBox.No,
-            #                                defaultButton=qtw.QMessageBox.Yes)
-            # if hlp == qtw.QMessageBox.No:
-            #     return
-            return
+            self.parent.meld("link opgeven of cancel kiezen s.v.p")
+            return False, {}
         try:
-            link = self._parent.editor.convert_link(self.link_text.text(),
+            link = self._parent.editor.convert_link(self.link_text.GetValue(),
                                                     self._parent.editor.xmlfn)
         except ValueError as msg:
             self.parent.meld(msg)
-            return
-        self._parent.dialog_data = [txt, {"href": link,
-                                          "title": str(self.title_text.text())}]
-        super().accept()
+            return False, ()
+        return True, (txt, {"href": link, "title": self.title_text.GetValue()})
 
 
 class ImageDialog(wx.Dialog):
@@ -733,7 +670,7 @@ class ImageDialog(wx.Dialog):
 
         hbox = wx.BoxSizer(wx.HORIZONTAL)
         self.ok_button = wx.Button(self, id=wx.ID_SAVE)
-        self.ok_button.Bind(wx.EVT_BUTTON, self.on_ok)
+        # self.ok_button.Bind(wx.EVT_BUTTON, self.on_ok)
         self.cancel_button = wx.Button(self, id=wx.ID_CANCEL)
         self.SetAffirmativeId(wx.ID_SAVE)
         hbox.Add(self.ok_button, 0, wx.EXPAND | wx.ALL, 2)
@@ -748,14 +685,14 @@ class ImageDialog(wx.Dialog):
         self.Layout()
         self.title_text.SetFocus()
 
-    def kies(self):
+    def kies(self, evt):
         "methode om het te linken image te selecteren"
         with wx.FileDialog(self, message="Choose a file", defaultDir=os.getcwd(),
-                           wildcard=IMASK, style=wx.OPEN) as dlg:
+                           wildcard=IMASK, style=wx.FD_OPEN) as dlg:
             if dlg.ShowModal() == wx.ID_OK:
                 self.link_text.SetValue(dlg.GetPath())
 
-    def set_text(self, evt=None):
+    def set_text(self, evt):
         'indien leeg link tekst gelijk maken aan link adres'
         if evt.EventObject == self.link_text:
             linktxt = self.link_text.GetValue()
@@ -768,14 +705,13 @@ class ImageDialog(wx.Dialog):
     def on_ok(self):
         "bij OK: het geselecteerde (absolute) pad omzetten in een relatief pad"
         try:
-            link = self._parent.editor.convert_link(self.link_text.text(),
+            link = self._parent.editor.convert_link(self.link_text.GetValue(),
                                                     self._parent.editor.xmlfn)
         except ValueError as msg:
-            wx.MessageBox.information(self._parent.title, msg, self)
-            return
-        self._parent.dialog_data = {"src": link,
-                                    "alt": str(self.alt_text.text()),
-                                    "title": str(self.title_text.text())}
+            wx.MessageBox.information(msg, self._parent.title)
+            return False, {}
+        return True, {"src": link, "alt": str(self.alt_text.GetValue()),
+                      "title": str(self.title_text.GetValue())}
 
 
 class VideoDialog(wx.Dialog):
@@ -792,25 +728,27 @@ class VideoDialog(wx.Dialog):
         sbox = wx.StaticBoxSizer(box, wx.VERTICAL)
         gbox = wx.GridBagSizer(4, 4)
 
-        lbl = wx.StaticText(self, -1, "link to video:")
+        lbl = wx.StaticText(self, label="link to video:")
         gbox.Add(lbl, (0, 0), (1, 1), wx.ALIGN_CENTER_VERTICAL)
-        self.link_text = wx.TextCtrl(self, -1, size=(250, -1), value="http://")
-        self.link_text.Bind(wx.EVT_TEXT, self.set_text)
+        self.link_text = wx.TextCtrl(self, size=(250, -1), value="http://")
+        # self.link_text.Bind(wx.EVT_TEXT, self.set_text)
         self.linktxt = ""
         gbox.Add(self.link_text, (0, 1))
 
-        self.choose_button = wx.Button(self, -1, 'Search')
+        self.choose_button = wx.Button(self, label='Search')
         self.choose_button.Bind(wx.EVT_BUTTON, self.kies)
         gbox.Add(self.choose_button, (1, 0), (1, 2), wx.ALIGN_CENTER_HORIZONTAL)
 
-        lbl = wx.StaticText("height of video window:", self)
+        lbl = wx.StaticText(self, label="height of video window:")
+        gbox.Add(lbl, (2,0), (1, 1), wx.ALIGN_CENTER_VERTICAL)
         self.hig_text = wx.SpinCtrl(self)  # .pnl, -1, size = (40, -1))
         self.hig_text.SetMax(maxheight)
         self.hig_text.SetValue(initialheight)
         self.hig_text.Bind(wx.EVT_SPINCTRL, self.on_text)
         gbox.Add(self.hig_text, (2, 1))
 
-        lbl = wx.StaticText("width of video window:", self)
+        lbl = wx.StaticText(self, label="width of video window:")
+        gbox.Add(lbl, (3,0), (1, 1), wx.ALIGN_CENTER_VERTICAL)
         self.wid_text = wx.SpinCtrl(self)  # .pnl, -1, size = (40, -1))
         self.wid_text.SetMax(maxwidth)
         self.wid_text.SetValue(initialwidth)
@@ -822,7 +760,6 @@ class VideoDialog(wx.Dialog):
 
         hbox = wx.BoxSizer(wx.HORIZONTAL)
         self.ok_button = wx.Button(self, id=wx.ID_SAVE)
-        self.ok_button.Bind(wx.EVT_BUTTON, self.on_ok)
         self.cancel_button = wx.Button(self, id=wx.ID_CANCEL)
         self.SetAffirmativeId(wx.ID_SAVE)
         hbox.Add(self.ok_button, 0, wx.EXPAND | wx.ALL, 2)
@@ -835,9 +772,9 @@ class VideoDialog(wx.Dialog):
         vbox.Fit(self)
         vbox.SetSizeHints(self)
         self.Layout()
-        self.title_text.SetFocus()
+        self.link_text.SetFocus()
 
-    def kies(self):
+    def kies(self, evt):
         "methode om het te linken element te selecteren"
         loc = self._parent.editor.xmlfn or os.getcwd()
         mask = '*.mp4 *.avi *.mpeg'  # TODO: add other types
@@ -845,30 +782,30 @@ class VideoDialog(wx.Dialog):
             mask += ' ' + mask.upper()
         mask = "Video files ({});;{}".format(mask, IMASK)
         with wx.FileDialog(self, message="Choose a file", defaultDir=os.getcwd(),
-                           wildcard=IMASK, style=wx.OPEN) as dlg:
+                           wildcard=IMASK, style=wx.FD_OPEN) as dlg:
             if dlg.ShowModal() == wx.ID_OK:
                 self.link_text.SetValue(dlg.GetPath())
 
-    def on_text(self, number=None):
+    def on_text(self, evt):  # number=None):
         "controle bij invullen/aanpassen hoogte/breedte"
         try:
-            int(number)  # self.rows_text.value())
+            # int(number)  # self.rows_text.value())
+            number = int(evt.EventObject.GetValue())
         except ValueError:
-            wx.MessageBox.information(self._parent.title, 'Number must be numeric integer',
-                                      self)
+            self._parent.meld('Number must be numeric integer')
             return
 
     def on_ok(self):
         "bij OK: het geselecteerde (absolute) pad omzetten in een relatief pad"
         try:
-            link = self._parent.editor.convert_link(self.link_text.text(),
+            link = self._parent.editor.convert_link(self.link_text.GetValue(),
                                                     self._parent.editor.xmlfn)
         except ValueError as msg:
-            wx.MessageBox.information(self._parent.title, msg, self)
-            return
-        self._parent.dialog_data = {"src": link,
-                                    "height": str(self.hig_text.text()),
-                                    "width": str(self.wid_text.text())}
+            self._parent.meld(msg)
+            return False, {}
+        return True, {"src": link,
+                      "height": str(self.hig_text.GetValue()),
+                      "width": str(self.wid_text.GetValue())}
 
 
 class AudioDialog(wx.Dialog):
@@ -883,14 +820,14 @@ class AudioDialog(wx.Dialog):
         sbox = wx.StaticBoxSizer(box, wx.VERTICAL)
         gbox = wx.GridBagSizer(4, 4)
 
-        lbl = wx.StaticText("link to audio fragment:", self)
+        lbl = wx.StaticText(self, label="link to audio fragment:")
         gbox.Add(lbl, (0, 0), (1, 1), wx.ALIGN_CENTER_VERTICAL)
-        self.link_text = wx.TextCtrl(self, -1, size=(250, -1), value="http://")
-        self.link_text.Bind(wx.EVT_TEXT, self.set_text)
+        self.link_text = wx.TextCtrl(self, size=(250, -1), value="http://")
+        # self.link_text.Bind(wx.EVT_TEXT, self.set_text)
         self.linktxt = ""
         gbox.Add(self.link_text, (0, 1))
 
-        self.choose_button = wx.Button(self, -1, 'Search')
+        self.choose_button = wx.Button(self, label='Search')
         self.choose_button.Bind(wx.EVT_BUTTON, self.kies)
         gbox.Add(self.choose_button, (1, 0), (1, 2), wx.ALIGN_CENTER_HORIZONTAL)
 
@@ -899,7 +836,6 @@ class AudioDialog(wx.Dialog):
 
         hbox = wx.BoxSizer(wx.HORIZONTAL)
         self.ok_button = wx.Button(self, id=wx.ID_SAVE)
-        self.ok_button.Bind(wx.EVT_BUTTON, self.on_ok)
         self.cancel_button = wx.Button(self, id=wx.ID_CANCEL)
         self.SetAffirmativeId(wx.ID_SAVE)
         hbox.Add(self.ok_button, 0, wx.EXPAND | wx.ALL, 2)
@@ -912,29 +848,29 @@ class AudioDialog(wx.Dialog):
         vbox.Fit(self)
         vbox.SetSizeHints(self)
         self.Layout()
-        self.title_text.SetFocus()
+        self.link_text.SetFocus()
 
-    def kies(self):
+    def kies(self, evt):
         "methode om het te linken element te selecteren"
         loc = self._parent.editor.xmlfn or os.getcwd()
         mask = '*.mp3 *.wav *.ogg'  # TODO: add other types
         if os.name == "posix":
             mask += ' ' + mask.upper()
         mask = "Audio files ({});;{}".format(mask, IMASK)
-        fnaam, _ = qtw.QFileDialog.getOpenFileName(self, "Choose a file", loc, mask)
-        if fnaam:
-            self.link_text.setText(fnaam)
+        with wx.FileDialog(self, message="Choose a file", defaultDir=os.getcwd(),
+                           wildcard=IMASK, style=wx.FD_OPEN) as dlg:
+            if dlg.ShowModal() == wx.ID_OK:
+                self.link_text.SetValue(dlg.GetPath())
 
     def on_ok(self):
         "bij OK: het geselecteerde (absolute) pad omzetten in een relatief pad"
         try:
-            link = self._parent.editor.convert_link(self.link_text.text(),
+            link = self._parent.editor.convert_link(self.link_text.GetValue(),
                                                     self._parent.editor.xmlfn)
         except ValueError as msg:
-            qtw.QMessageBox.information(self, self._parent.title, msg)
-            return
-        self._parent.dialog_data = {"src": link}
-        super().accept()
+            self._parent.meld(msg)
+            return False, {}
+        return True, {"src": link}
 
 
 class ListDialog(wx.Dialog):
@@ -949,28 +885,30 @@ class ListDialog(wx.Dialog):
                          style=wx.DEFAULT_DIALOG_STYLE | wx.RESIZE_BORDER)
         vbox = wx.BoxSizer(wx.VERTICAL)
 
-        box = wx.StaticBox(self, -1)
+        box = wx.StaticBox(self)
         sbox = wx.StaticBoxSizer(box, wx.VERTICAL)
 
         tbox = wx.FlexGridSizer(2, 2, 2, 2)
-        lbl = wx.StaticText(self, -1, "choose type of list:")
+        lbl = wx.StaticText(self, label="choose type of list:")
 
-        self.type_select = wx.ComboBox(self, -1, style=wx.CB_DROPDOWN,
+        self.type_select = wx.ComboBox(self, style=wx.CB_DROPDOWN,
                                        choices=["unordered", "ordered", "definition"])
         self.type_select.SetStringSelection("unordered")
         self.type_select.Bind(wx.EVT_COMBOBOX, self.on_type)
         tbox.Add(lbl, 0, wx.ALIGN_CENTER_VERTICAL)
         tbox.Add(self.type_select)
 
-        lbl = wx.StaticText(self, -1, "initial number of items:")
+        lbl = wx.StaticText(self, label="initial number of items:")
         hbox = wx.BoxSizer(wx.HORIZONTAL)
         self.rows_text = wx.SpinCtrl(self)
         self.rows_text.Bind(wx.EVT_SPINCTRL, self.on_rows)
+        self.rows_text.Bind(wx.EVT_TEXT, self.on_rows)
+        self.rows_text.SetValue(initialrows)
         tbox.Add(lbl, 0, wx.ALIGN_CENTER_VERTICAL)
         tbox.Add(self.rows_text)  # hbox)
         sbox.Add(tbox, 0, wx.ALL, 5)
 
-        self.list_table = wxgrid.Grid(self, -1, size=(340, 120))
+        self.list_table = wxgrid.Grid(self, size=(340, 120))
         self.list_table.CreateGrid(0, 1)
         self.list_table.SetColLabelValue(0, 'list item')
         self.list_table.SetColSize(0, 240)
@@ -1013,8 +951,7 @@ class ListDialog(wx.Dialog):
         try:
             cur_rows = int(self.rows_text.GetValue())
         except ValueError:
-            wx.MessageBox.information('Number must be numeric integer', self._parent.title,
-                                      self)
+            self._parent.meld('Number must be numeric integer')
             return
         num_rows = self.list_table.GetNumberRows()
         if num_rows > cur_rows:
@@ -1029,22 +966,22 @@ class ListDialog(wx.Dialog):
         """bij OK: de opgebouwde list via self.dialog_data doorgeven
         aan het mainwindow
         """
-        list_type = str(self.type_select.currentText()[0]) + "l"
+        list_type = str(self.type_select.GetStringSelection()[0]) + "l"
         list_data = []
-        for row in range(self.list_table.rowCount()):
-            try:
-                list_item = [str(self.list_table.item(row, 0).text())]
-            except AttributeError:
-                self._parent.meld('Graag nog even het laatste item bevestigen (...)')
-                return
+        for row in range(self.list_table.GetNumberRows()):
+            # try:
+            list_item = [self.list_table.GetCellValue(row, 0)]
+            # except AttributeError:
+            #     self._parent.meld('Graag nog even het laatste item bevestigen (...)')
+            #     return False, ()
             if list_type == "dl":
-                try:
-                    list_item.append(str(self.list_table.item(row, 1).text()))
-                except AttributeError:
-                    self._parent.meld('Graag nog even het laatste item bevestigen (...)')
-                    return
+                # try:
+                list_item.append(self.list_table.GetCellValue(row, 1))
+                # except AttributeError:
+                #     self._parent.meld('Graag nog even het laatste item bevestigen (...)')
+                #     return False, ()
             list_data.append(list_item)
-        self._parent.dialog_data = list_type, list_data
+        return True, (list_type, list_data)
 
 
 class TableDialog(wx.Dialog):
@@ -1052,44 +989,46 @@ class TableDialog(wx.Dialog):
 
     def __init__(self, parent):
         self._parent = parent
-        self.headings = ['']
+        self.headings = []
         initialcols, initialrows = 1, 1
-        super().__init__(parent, title='Add a table'
+        super().__init__(parent, title='Add a table',
                          style=wx.DEFAULT_DIALOG_STYLE | wx.RESIZE_BORDER)
         vbox = wx.BoxSizer(wx.VERTICAL)
 
-        box = wx.StaticBox(self.pnl, -1)
+        box = wx.StaticBox(self)
         sbox = wx.StaticBoxSizer(box, wx.VERTICAL)
         tbox = wx.FlexGridSizer(3, 2, 2, 2)
 
-        lbl = wx.StaticText(self.pnl, -1, "summary (description):")
+        lbl = wx.StaticText(self, label="summary (description):")
         tbox.Add(lbl)
-        self.title_text = wx.TextCtrl(self.pnl, -1, size=(250, -1))
-        tbox.Add(self.title_text)
+        self.title_text = wx.TextCtrl(self, size=(250, -1))
+        tbox.Add(self.title_text, wx.ALIGN_CENTER_VERTICAL)
 
         # self.rows_text.setValue(initialrows)
-        lbl = wx.StaticText(self.pnl, -1, "initial number of rows:")
-        self.rows_text = wx.SpinCtrl(self.pnl, -1)
+        lbl = wx.StaticText(self, label="initial number of rows:")
+        self.rows_text = wx.SpinCtrl(self)
         self.rows_text.Bind(wx.EVT_SPINCTRL, self.on_rows)
         self.rows_text.Bind(wx.EVT_TEXT, self.on_rows)
+        self.rows_text.SetValue(initialrows)
         tbox.Add(lbl)
-        tbox.Add(self.rows_text)
+        tbox.Add(self.rows_text, wx.ALIGN_CENTER_VERTICAL)
 
         # self.cols_text.setValue(initialcols)
-        lbl = wx.StaticText(self.pnl, -1, "initial number of columns:")
-        self.cols_text = wx.SpinCtrl(self.pnl)
+        lbl = wx.StaticText(self, label="initial number of columns:")
+        self.cols_text = wx.SpinCtrl(self)
         self.cols_text.Bind(wx.EVT_SPINCTRL, self.on_cols)
         self.cols_text.Bind(wx.EVT_TEXT, self.on_cols)
+        self.cols_text.SetValue(initialcols)
         tbox.Add(lbl)
-        tbox.Add(self.cols_text)
+        tbox.Add(self.cols_text, wx.ALIGN_CENTER_VERTICAL)
         sbox.Add(tbox, 0, wx.ALL, 5)
 
-        self.show_titles = wx.CheckBox('Show Titles')
-        self.show_titles.setChecked(True)
-        self.show_titles.stateChanged.connect(self.on_check)
+        self.show_titles = wx.CheckBox(self, label='Show Titles')
+        self.show_titles.SetValue(True)
+        self.show_titles.Bind(wx.EVT_CHECKBOX, self.on_check)
         hbox = wx.BoxSizer(wx.HORIZONTAL)
-        hbox.addWidget(self.show_titles)
-        gbox.addLayout(hbox, 3, 1)
+        hbox.Add(self.show_titles)
+        sbox.Add(hbox, 0, wx.ALL, 5)
 
         # self.table_table.setRowCount(initialrows)     # de eerste rij is voor de kolomtitels
         # self.table_table.setColumnCount(initialcols)  # de eerste rij is voor de rijtitels
@@ -1098,7 +1037,7 @@ class TableDialog(wx.Dialog):
         # self.table_table.verticalHeader().setVisible(False)
         # self.hdr.setSectionsClickable(True)
         # self.hdr.sectionBind(wx.EVT_BUTTON, self.on_title)
-        self.table_table = wxgrid.Grid(self.pnl, -1, size=(340, 120))
+        self.table_table = wxgrid.Grid(self, -1, size=(340, 120))
         self.table_table.CreateGrid(0, 0)
         self.table_table.Bind(wxgrid.EVT_GRID_LABEL_LEFT_CLICK, self.on_title)
         self.table_table.Bind(wxgrid.EVT_GRID_LABEL_LEFT_DCLICK, self.on_title)
@@ -1127,7 +1066,7 @@ class TableDialog(wx.Dialog):
         try:
             cur_rows = int(self.rows_text.GetValue())
         except ValueError:
-            wx.MessageBox('Number must be numeric integer', self.parent.title)
+            self.parent.meld('Number must be numeric integer')
             return
         num_rows = self.table_table.GetNumberRows()
         if num_rows > cur_rows:
@@ -1143,7 +1082,7 @@ class TableDialog(wx.Dialog):
         try:
             cur_cols = int(self.cols_text.GetValue())
         except ValueError:
-            wx.MessageBox('Number must be numeric integer', self.parent.title)
+            self.parent.meld('Number must be numeric integer')
             return
         num_cols = self.table_table.GetNumberCols()
         if num_cols > cur_cols:
@@ -1169,7 +1108,7 @@ class TableDialog(wx.Dialog):
         if col < 0:
             return
         with wx.TextEntryDialog(self, 'Enter a title for this column:',
-                                self.parent.title) as dlg:
+                                self._parent.editor.title) as dlg:
             if dlg.ShowModal() == wx.ID_OK:
                 self.table_table.SetColLabelValue(col, dlg.GetValue())
 
@@ -1177,22 +1116,22 @@ class TableDialog(wx.Dialog):
         """bij OK: de opgebouwde tabel via self.dialog_data doorgeven
         aan het mainwindow
         """
-        rows = self.table_table.rowCount()
-        cols = self.table_table.columnCount()
-        summary = str(self.title_text.text())
+        rows = self.table_table.GetNumberRows()
+        cols = self.table_table.GetNumberCols()
+        summary = str(self.title_text.GetValue())
+        for col in range(cols):
+            self.headings.append(self.table_table.GetColLabelValue(col))
         items = []
         for row in range(rows):
             rowitems = []
             for col in range(cols):
-                try:
-                    rowitems.append(str(self.table_table.item(row, col).text()))
-                except AttributeError:
-                    self._parent.meld('Graag nog even het laatste item bevestigen (...)')
-                    return
+                # try:
+                rowitems.append(self.table_table.GetCellValue(row, col))
+                # except AttributeError:
+                #     self._parent.meld('Graag nog even het laatste item bevestigen (...)')
+                #     return False, ()
             items.append(rowitems)
-        self._parent.dialog_data = (summary, self.show_titles.isChecked(),
-                                    self.headings, items)
-        super().accept()
+        return True, (summary, self.show_titles.GetValue(), self.headings, items)
 
 
 class ScrolledTextDialog(wx.Dialog):
@@ -1204,43 +1143,44 @@ class ScrolledTextDialog(wx.Dialog):
                  size=(600, 400)):
         # self._parent = parent
         self.htmlfile = htmlfile
-        super().__init__(parent, title=title)
-        self.resize(size[0], size[1])
+        super().__init__(parent, title=title, size=size)
         vbox = wx.BoxSizer(wx.VERTICAL)
         hbox = wx.BoxSizer(wx.HORIZONTAL)
         self.message = wx.StaticText(self)
         if fromdisk:
-            self.message.setText("\n".join((
+            self.message.SetLabel("\n".join((
                 "Validation results are for the file on disk",
                 "some errors/warnings may already have been corrected by "
                 "BeautifulSoup",
                 "(you'll know when they don't show up inthe tree or text view",
                 " ozr when you save the file in memory back to disk)")))
-        hbox.addWidget(self.message)
-        vbox.addLayout(hbox)
+        hbox.Add(self.message)
+        vbox.Add(hbox)
         hbox = wx.BoxSizer(wx.HORIZONTAL)
         text = wx.TextCtrl(self)
         text.setReadOnly(True)
-        hbox.addWidget(text)
-        vbox.addLayout(hbox)
+        hbox.Add(text)
+        vbox.Add(hbox)
         hbox = wx.BoxSizer(wx.HORIZONTAL)
-        ok_button = wx.Button('&Done', self)
+        ok_button = wx.Button(self, label='&Done')
         ok_button.Bind(wx.EVT_BUTTON, self.close)
-        ok_button.setDefault(True)
+        self.SetAffirmativeId(ok_button.GetId())
         if htmlfile:
-            show_button = wx.Button('&View submitted source', self)
+            show_button = wx.Button(self, label='&View submitted source')
             show_button.Bind(wx.EVT_BUTTON, self.show_source)
-        hbox.addStretch()
-        hbox.addWidget(ok_button)
+        hbox.Add(ok_button)
         if htmlfile:
-            hbox.addWidget(show_button)
-        hbox.addStretch()
-        vbox.addLayout(hbox)
-        self.setLayout(vbox)
+            hbox.Add(show_button)
+        vbox.Add(hbox)
+        self.SetSizer(vbox)
+        self.SetAutoLayout(True)
+        vbox.Fit(self)
+        vbox.SetSizeHints(self)
+        self.Layout()
         if htmlfile:
             data = parent.editor.do_validate(htmlfile)
         if data:
-            text.setPlainText(data)
+            text.SetValue(data)
 
     def show_source(self):
         "start viewing html source"
@@ -1259,58 +1199,57 @@ class CodeViewDialog(wx.Dialog):
     def __init__(self, parent, title='', caption='', data='', size=(600, 400)):
         "create a window with a scintilla text widget and an ok button"
         self._parent = parent
-        super().__init__(parent)
-        self.setWindowTitle(title)
-        # self.setWindowIcon(self._parent.appicon)
-        self.resize(size[0], size[1])
+        super().__init__(parent, title=title, size=size)
         vbox = wx.BoxSizer(wx.VERTICAL)
         hbox = wx.BoxSizer(wx.HORIZONTAL)
-        hbox.addWidget(wx.StaticText(caption, self))
-        vbox.addLayout(hbox)
+        hbox.Add(wx.StaticText(self, label=caption))
+        vbox.Add(hbox)
         hbox = wx.BoxSizer(wx.HORIZONTAL)
-        self.text = sci.QsciScintilla(self)
-        self.setup_text()
-        self.text.setText(data)
-        self.text.setReadOnly(True)
-        hbox.addWidget(self.text)
-        vbox.addLayout(hbox)
+        self.text = wxstc.StyledTextCtrl(self)
+        # self.setup_text()
+        self.text.SetText(data)
+        self.text.SetReadOnly(True)
+        hbox.Add(self.text)
+        vbox.Add(hbox)
         hbox = wx.BoxSizer(wx.HORIZONTAL)
-        ok_button = wx.Button('&Done', self)
-        ok_button.Bind(wx.EVT_BUTTON, self.close)
-        ok_button.setDefault(True)
-        hbox.addStretch()
-        hbox.addWidget(ok_button)
-        hbox.addStretch()
-        vbox.addLayout(hbox)
-        self.setLayout(vbox)
+        ok_button = wx.Button(self, label='&Done')
+        self.SetAffirmativeId(ok_button.GetId())
+        hbox.Add(ok_button)
+        vbox.Add(hbox)
+
+        self.SetSizer(vbox)
+        self.SetAutoLayout(True)
+        vbox.Fit(self)
+        vbox.SetSizeHints(self)
+        self.Layout()
 
     def setup_text(self):
         "define the scintilla widget's properties"
-        # Set the default font
-        font = gui.QFont()
-        font.setFamily('Courier')
-        font.setFixedPitch(True)
-        font.setPointSize(10)
-        self.text.setFont(font)
-        self.text.setMarginsFont(font)
+        # # Set the default font
+        # font = gui.QFont()
+        # font.setFamily('Courier')
+        # font.setFixedPitch(True)
+        # font.setPointSize(10)
+        # self.text.setFont(font)
+        # self.text.setMarginsFont(font)
 
-        # Margin 0 is used for line numbers
-        fontmetrics = gui.QFontMetrics(font)
-        self.text.setMarginsFont(font)
-        self.text.setMarginWidth(0, fontmetrics.width("00000"))
-        self.text.setMarginLineNumbers(0, True)
-        self.text.setMarginsBackgroundColor(gui.QColor("#cccccc"))
+        # # Margin 0 is used for line numbers
+        # fontmetrics = gui.QFontMetrics(font)
+        # self.text.setMarginsFont(font)
+        # self.text.setMarginWidth(0, fontmetrics.width("00000"))
+        # self.text.setMarginLineNumbers(0, True)
+        # self.text.setMarginsBackgroundColor(gui.QColor("#cccccc"))
 
-        # Enable brace matching, auto-indent, code-folding
-        self.text.setBraceMatching(sci.QsciScintilla.SloppyBraceMatch)
-        self.text.setAutoIndent(True)
-        self.text.setFolding(sci.QsciScintilla.PlainFoldStyle)
+        # # Enable brace matching, auto-indent, code-folding
+        # self.text.setBraceMatching(sci.QsciScintilla.SloppyBraceMatch)
+        # self.text.setAutoIndent(True)
+        # self.text.setFolding(sci.QsciScintilla.PlainFoldStyle)
 
-        # Current line visible with special background color
-        self.text.setCaretLineVisible(True)
-        self.text.setCaretLineBackgroundColor(gui.QColor("#ffe4e4"))
+        # # Current line visible with special background color
+        # self.text.setCaretLineVisible(True)
+        # self.text.setCaretLineBackgroundColor(gui.QColor("#ffe4e4"))
 
-        # Set HTML lexer
-        lexer = sci.QsciLexerHTML()
-        lexer.setDefaultFont(font)
-        self.text.setLexer(lexer)
+        # # Set HTML lexer
+        # lexer = sci.QsciLexerHTML()
+        # lexer.setDefaultFont(font)
+        # self.text.setLexer(lexer)
