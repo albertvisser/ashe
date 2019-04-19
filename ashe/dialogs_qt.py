@@ -17,14 +17,6 @@ try:
 except ImportError:
     cssedit_available = False
 
-IMASK = "All files (*.*)"
-if os.name == "nt":
-    HMASK = "HTML files (*.htm *.html);;" + IMASK
-    CMASK = "CSS files (*.css);;" + IMASK
-elif os.name == "posix":
-    HMASK = "HTML files (*.htm *.HTM *.html *.HTML);;" + IMASK
-    CMASK = "CSS files (*.css *.CSS);;" + IMASK
-
 
 class ElementDialog(qtw.QDialog):
     """dialoog om (de attributen van) een element op te voeren of te wijzigen
@@ -530,9 +522,21 @@ class CssDialog(qtw.QDialog):
     def kies(self):
         "methode om het te linken document te selecteren"
         loc = self._parent.editor.xmlfn or os.getcwd()
-        fnaam, _ = qtw.QFileDialog.getOpenFileName(self, "Choose a file", loc, CMASK)
+        fnaam, _ = qtw.QFileDialog.getOpenFileName(self, "Choose a file", loc,
+                                                   self._parent.build_mask('css'))
         if fnaam:
             self.link_text.setText(fnaam)
+
+    def on_inline(self):
+        "voegt een 'style' tag in"
+        self._parent.dialog_data = {"type": 'text/css'}
+        test = str(self.text_text.text())
+        if test:
+            self._parent.dialog_data["media"] = test
+        css = csed.MainWindow(self, self._parent.app)
+        css.open(text="")
+        css.setWindowModality(core.Qt.ApplicationModal)
+        css.show()
 
     def accept(self):
         """bij OK: het geselecteerde (absolute) pad omzetten in een relatief pad
@@ -559,17 +563,6 @@ class CssDialog(qtw.QDialog):
         if test:
             self._parent.dialog_data["media"] = test
         super().accept()
-
-    def on_inline(self):
-        "voegt een 'style' tag in"
-        self._parent.dialog_data = {"type": 'text/css'}
-        test = str(self.text_text.text())
-        if test:
-            self._parent.dialog_data["media"] = test
-        css = csed.MainWindow(self, self._parent.app)
-        css.open(text="")
-        css.setWindowModality(core.Qt.ApplicationModal)
-        css.show()
 
 
 class LinkDialog(qtw.QDialog):
@@ -631,7 +624,8 @@ class LinkDialog(qtw.QDialog):
     def kies(self):
         "methode om het te linken document te selecteren"
         loc = self._parent.editor.xmlfn or os.getcwd()
-        fnaam, _ = qtw.QFileDialog.getOpenFileName(self, "Choose a file", loc, HMASK)
+        fnaam, _ = qtw.QFileDialog.getOpenFileName(self, "Choose a file", loc,
+                                                   self._parent.build_mask('html'))
         if fnaam:
             self.link_text.setText(fnaam)
 
@@ -727,11 +721,8 @@ class ImageDialog(qtw.QDialog):
     def kies(self):
         "methode om het te linken image te selecteren"
         loc = self._parent.editor.xmlfn or os.getcwd()
-        mask = '*.png *.jpg *.gif *.jpeg *.ico *.xpm *.svg'
-        if os.name == "posix":
-            mask += ' ' + mask.upper()
-        mask = "Image files ({});;{}".format(mask, IMASK)
-        fnaam, _ = qtw.QFileDialog.getOpenFileName(self, "Choose a file", loc, mask)
+        fnaam, _ = qtw.QFileDialog.getOpenFileName(self, "Choose a file", loc,
+                                                   self._parent.build_mask('image'))
         if fnaam:
             self.link_text.setText(fnaam)
 
@@ -836,11 +827,8 @@ class VideoDialog(qtw.QDialog):
     def kies(self):
         "methode om het te linken element te selecteren"
         loc = self._parent.editor.xmlfn or os.getcwd()
-        mask = '*.mp4 *.avi *.mpeg'  # TODO: add other types
-        if os.name == "posix":
-            mask += ' ' + mask.upper()
-        mask = "Video files ({});;{}".format(mask, IMASK)
-        fnaam, _ = qtw.QFileDialog.getOpenFileName(self, "Choose a file", loc, mask)
+        fnaam, _ = qtw.QFileDialog.getOpenFileName(self, "Choose a file", loc,
+                                                   self._parent.build_mask('video'))
         if fnaam:
             self.link_text.setText(fnaam)
 
@@ -918,11 +906,8 @@ class AudioDialog(qtw.QDialog):
     def kies(self):
         "methode om het te linken element te selecteren"
         loc = self._parent.editor.xmlfn or os.getcwd()
-        mask = '*.mp3 *.wav *.ogg'  # TODO: add other types
-        if os.name == "posix":
-            mask += ' ' + mask.upper()
-        mask = "Audio files ({});;{}".format(mask, IMASK)
-        fnaam, _ = qtw.QFileDialog.getOpenFileName(self, "Choose a file", loc, mask)
+        fnaam, _ = qtw.QFileDialog.getOpenFileName(self, "Choose a file", loc,
+                                                   self._parent.build_mask('audio'))
         if fnaam:
             self.link_text.setText(fnaam)
 

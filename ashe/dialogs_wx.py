@@ -18,14 +18,6 @@ try:
 except ImportError:
     cssedit_available = False
 
-IMASK = "All files (*.*)|*.*"
-if os.name == "nt":
-    HMASK = "HTML files (*.htm,*.html)|*.htm;*.html|" + IMASK
-    CMASK = "CSS files (*.css)|*.css|" + IMASK
-elif os.name == "posix":
-    HMASK = "HTML files (*.htm,*.HTM,*.html,*.HTML)|*.htm;*.HTM;*.html;*.HTML|" + IMASK
-    CMASK = "CSS files (*.css,*.CSS)|*.css;*.CSS|" + IMASK
-
 
 class ElementDialog(wx.Dialog):
     """dialoog om (de attributen van) een element op te voeren of te wijzigen
@@ -363,10 +355,10 @@ class SearchDialog(wx.Dialog):
         self.Layout()
 
         if self._parent.search_args:
-            self.txt_element.setText(self._parent.search_args[0])
-            self.txt_attr_name.setText(self._parent.search_args[1])
-            self.txt_attr_val.setText(self._parent.search_args[2])
-            self.txt_text.setText(self._parent.search_args[3])
+            self.txt_element.SetValue(self._parent.search_args[0])
+            self.txt_attr_name.SetValue(self._parent.search_args[1])
+            self.txt_attr_val.SetValue(self._parent.search_args[2])
+            self.txt_text.SetValue(self._parent.search_args[3])
 
     def set_search(self):
         """build text describing search action"""
@@ -503,13 +495,26 @@ class CssDialog(wx.Dialog):
         self.Layout()
         self.link_text.SetFocus()
 
-    def kies(self):
+    def kies(self, evt):
         "methode om het te linken document te selecteren"
         loc = self._parent.editor.xmlfn or os.getcwd()
         with wx.FileDialog(self, message="Choose a file", defaultDir=loc,
-                           wildcard=CMASK, style=wx.FD_OPEN) as dlg:
+                           wildcard=self._parent.build_mask('css'), style=wx.FD_OPEN) as dlg:
             if dlg.ShowModal() == wx.ID_OK:
                 self.link_text.SetValue(dlg.GetPath())
+
+    def on_inline(self, event=None):
+        "voegt een 'style' tag in"
+        self._parent.meld('Sorry, not possible yet')
+        return
+        self._parent.dialog_data = {"type": 'text/css'}
+        test = str(self.text_text.GetValue())
+        if test:
+            self._parent.dialog_data["media"] = test
+        css = csed.MainWindow(self, self._parent.app)
+        css.open(text="")
+        css.setWindowModality(core.Qt.ApplicationModal)
+        css.show()
 
     def on_ok(self):
         """bij OK: het geselecteerde (absolute) pad omzetten in een relatief pad
@@ -531,19 +536,6 @@ class CssDialog(wx.Dialog):
         if test:
             dialog_data["media"] = test
         return True, dialog_data
-
-    def on_inline(self, event=None):
-        "voegt een 'style' tag in"
-        self._parent.meld('Sorry, not possible yet')
-        return
-        self._parent.dialog_data = {"type": 'text/css'}
-        test = str(self.text_text.GetValue())
-        if test:
-            self._parent.dialog_data["media"] = test
-        css = csed.MainWindow(self, self._parent.app)
-        css.open(text="")
-        css.setWindowModality(core.Qt.ApplicationModal)
-        css.show()
 
 
 class LinkDialog(wx.Dialog):
@@ -602,7 +594,7 @@ class LinkDialog(wx.Dialog):
         "methode om het te linken document te selecteren"
         loc = self._parent.editor.xmlfn or os.getcwd()
         with wx.FileDialog(self, message="Choose a file", defaultDir=loc,
-                           wildcard=HMASK, style=wx.FD_OPEN) as dlg:
+                           wildcard=self._parent.build_mask('html'), style=wx.FD_OPEN) as dlg:
             if dlg.ShowModal() == wx.ID_OK:
                 self.link_text.SetValue(dlg.GetPath())
 
@@ -687,8 +679,13 @@ class ImageDialog(wx.Dialog):
 
     def kies(self, evt):
         "methode om het te linken image te selecteren"
-        with wx.FileDialog(self, message="Choose a file", defaultDir=os.getcwd(),
-                           wildcard=IMASK, style=wx.FD_OPEN) as dlg:
+        loc = self._parent.editor.xmlfn or os.getcwd()
+        # mask = '*.gif *.jpg *.png'
+        # if os.name == "posix":
+        #     mask += ' ' + mask.upper()
+        # mask = "Image files ({});;{}".format(mask, IMASK)
+        with wx.FileDialog(self, message="Choose a file", defaultDir=loc,
+                           wildcard=self._parent.build_mask('image'), style=wx.FD_OPEN) as dlg:
             if dlg.ShowModal() == wx.ID_OK:
                 self.link_text.SetValue(dlg.GetPath())
 
@@ -777,12 +774,12 @@ class VideoDialog(wx.Dialog):
     def kies(self, evt):
         "methode om het te linken element te selecteren"
         loc = self._parent.editor.xmlfn or os.getcwd()
-        mask = '*.mp4 *.avi *.mpeg'  # TODO: add other types
-        if os.name == "posix":
-            mask += ' ' + mask.upper()
-        mask = "Video files ({});;{}".format(mask, IMASK)
-        with wx.FileDialog(self, message="Choose a file", defaultDir=os.getcwd(),
-                           wildcard=IMASK, style=wx.FD_OPEN) as dlg:
+        # mask = '*.mp4 *.avi *.mpeg'  # TODO: add other types
+        # if os.name == "posix":
+        #     mask += ' ' + mask.upper()
+        # mask = "Video files ({});;{}".format(mask, IMASK)
+        with wx.FileDialog(self, message="Choose a file", defaultDir=loc,
+                           wildcard=self._parent.build_mask('video'), style=wx.FD_OPEN) as dlg:
             if dlg.ShowModal() == wx.ID_OK:
                 self.link_text.SetValue(dlg.GetPath())
 
@@ -853,12 +850,12 @@ class AudioDialog(wx.Dialog):
     def kies(self, evt):
         "methode om het te linken element te selecteren"
         loc = self._parent.editor.xmlfn or os.getcwd()
-        mask = '*.mp3 *.wav *.ogg'  # TODO: add other types
-        if os.name == "posix":
-            mask += ' ' + mask.upper()
-        mask = "Audio files ({});;{}".format(mask, IMASK)
-        with wx.FileDialog(self, message="Choose a file", defaultDir=os.getcwd(),
-                           wildcard=IMASK, style=wx.FD_OPEN) as dlg:
+        # mask = '*.mp3 *.wav *.ogg'  # TODO: add other types
+        # if os.name == "posix":
+        #     mask += ' ' + mask.upper()
+        # mask = "Audio files ({});;{}".format(mask, IMASK)
+        with wx.FileDialog(self, message="Choose a file", defaultDir=loc,
+                           wildcard=self._parent.build_mask('audio'), style=wx.FD_OPEN) as dlg:
             if dlg.ShowModal() == wx.ID_OK:
                 self.link_text.SetValue(dlg.GetPath())
 
@@ -1139,8 +1136,7 @@ class ScrolledTextDialog(wx.Dialog):
 
     aanroepen met show() om openhouden tijdens aanpassen mogelijk te maken
     """
-    def __init__(self, parent, title='', data='', htmlfile='', fromdisk=False,
-                 size=(600, 400)):
+    def __init__(self, parent, title='', data='', htmlfile='', fromdisk=False, size=(600, 400)):
         # self._parent = parent
         self.htmlfile = htmlfile
         super().__init__(parent, title=title, size=size)
@@ -1157,13 +1153,12 @@ class ScrolledTextDialog(wx.Dialog):
         hbox.Add(self.message)
         vbox.Add(hbox)
         hbox = wx.BoxSizer(wx.HORIZONTAL)
-        text = wx.TextCtrl(self)
-        text.setReadOnly(True)
+        text = wx.TextCtrl(self, style=wx.TE_MULTILINE | wx.TE_READONLY, size=size)
         hbox.Add(text)
         vbox.Add(hbox)
         hbox = wx.BoxSizer(wx.HORIZONTAL)
         ok_button = wx.Button(self, label='&Done')
-        ok_button.Bind(wx.EVT_BUTTON, self.close)
+        # ok_button.Bind(wx.EVT_BUTTON, self.Destroy)
         self.SetAffirmativeId(ok_button.GetId())
         if htmlfile:
             show_button = wx.Button(self, label='&View submitted source')
@@ -1182,13 +1177,13 @@ class ScrolledTextDialog(wx.Dialog):
         if data:
             text.SetValue(data)
 
-    def show_source(self):
+    def show_source(self, event):
         "start viewing html source"
         with open(self.htmlfile) as f_in:
             data = ''.join([x for x in f_in])
         if data:
             dlg = CodeViewDialog(self, "Submitted source", data=data)
-            dlg.show()
+            dlg.ShowModal()
 
 
 class CodeViewDialog(wx.Dialog):
@@ -1205,7 +1200,7 @@ class CodeViewDialog(wx.Dialog):
         hbox.Add(wx.StaticText(self, label=caption))
         vbox.Add(hbox)
         hbox = wx.BoxSizer(wx.HORIZONTAL)
-        self.text = wxstc.StyledTextCtrl(self)
+        self.text = wxstc.StyledTextCtrl(self, size=size)
         # self.setup_text()
         self.text.SetText(data)
         self.text.SetReadOnly(True)

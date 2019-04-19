@@ -8,10 +8,10 @@ import PyQt5.QtCore as core
 ## import PyQt5.QtWebKit as webkit
 import PyQt5.QtWebKitWidgets as webkit
 
-from ashe.dialogs_qt import cssedit_available, HMASK, ElementDialog, \
-    TextDialog, DtdDialog, CssDialog, LinkDialog, ImageDialog, VideoDialog, \
-    AudioDialog, ListDialog, TableDialog, ScrolledTextDialog, CodeViewDialog, \
-    SearchDialog
+from ashe.constants import masks
+from ashe.dialogs_qt import cssedit_available, ElementDialog, TextDialog, DtdDialog, \
+    CssDialog, LinkDialog, ImageDialog, VideoDialog, AudioDialog, \
+    ListDialog, TableDialog, ScrolledTextDialog, CodeViewDialog, SearchDialog, HMASK
 
 
 
@@ -310,19 +310,32 @@ class MainFrame(qtw.QMainWindow):
                                        defaultButton=qtw.QMessageBox.Yes)
         return retval[hlp]
 
-    def ask_for_open_filename(self):
-        """open een dkialoog om te vragen welk file geladen moet worden
+    @staticmethod
+    def build_mask(ftype):
+        """build mask for FileDialog
         """
-        filename, _ = qtw.QFileDialog.getOpenFileName(self, "Choose a file",
-                                                      self.editor.xmlfn or os.getcwd(), HMASK)
+        text, filetypes = masks['all']
+        all_mask = "{} ({})".format(text, filetypes[0])
+        text, filetypes = masks[ftype]
+        filetypes_text = " ".join(filetypes)
+        if os.name == 'posix':
+            filetypes_text = ' '.join((filetypes_text, filetypes_text.upper()))
+        return "{0} ({1})".format(text, filetypes_text) + ';;' + all_mask
+
+    def ask_for_open_filename(self):
+        """open een dialoog om te vragen welk file geladen moet worden
+        """
+        filename = qtw.QFileDialog.getOpenFileName(self, "Choose a file",
+                                                   self.editor.xmlfn or os.getcwd(),
+                                                   self.build_mask('html')[0]
         return filename
 
     def ask_for_save_filename(self):
         """open een dialoog om te vragen onder welke naam de html moet worden opgeslagen
         """
         filename = qtw.QFileDialog.getSaveFileName(self, "Save file as ...",
-                                                   self.editor.xmlfn or os.getcwd(), HMASK)
-        print(filename)
+                                                   self.editor.xmlfn or os.getcwd(),
+                                                   self.build_mask('html'))[0]
         return filename
 
     def set_item_expanded(self, item, state):
@@ -382,39 +395,19 @@ class MainFrame(qtw.QMainWindow):
         """show dialog for existing element"""
         obj = ElementDialog(self, title='Edit an element', tag=tagdata, attrs=attrdict)
         return self.call_dialog(obj)
-        edt = ElementDialog(self, title='Edit an element', tag=tagdata, attrs=attrdict).exec_()
-        if edt == qtw.QDialog.Accepted:
-            return True, self.dialog_data
-        else:
-            return False, None
 
     def do_add_element(self, where):
         """show dialog for new element"""
         obj = ElementDialog(self, title="New element (insert {0})".format(where))
         return self.call_dialog(obj)
-        edt = ElementDialog(self, title="New element (insert {0})".format(where)).exec_()
-        if edt == qtw.QDialog.Accepted:
-            return True, self.dialog_data
-        else:
-            return False, None
 
     def do_edit_textvalue(self, textdata):
         """show dialog for existing text"""
         return self.call_dialog(TextDialog(self, title='Edit Text', text=textdata))
-        edt = TextDialog(self, title='Edit Text', text=textdata).exec_()
-        if edt == qtw.QDialog.Accepted:
-            return True, self.dialog_data
-        else:
-            return False, None
 
     def do_add_textvalue(self):
         """show dialog for new text"""
         return self.call_dialog(TextDialog(self, title="New Text"))
-        edt = TextDialog(self, title="New Text").exec_()
-        if edt == qtw.QDialog.Accepted:
-            return True, self.dialog_data
-        else:
-            return False, None
 
     def ask_for_condition(self):
         "zet een IE conditie om het element heen"

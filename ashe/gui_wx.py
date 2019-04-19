@@ -6,9 +6,11 @@ import wx
 import wx.grid as wxgrid
 import wx.html2 as wxhtml #  webkit
 
+from ashe.constants import masks
 from ashe.dialogs_wx import cssedit_available, HMASK, ElementDialog, TextDialog, \
     DtdDialog, CssDialog, LinkDialog, ImageDialog, VideoDialog, AudioDialog, \
     ListDialog, TableDialog, ScrolledTextDialog, CodeViewDialog, SearchDialog
+
 
 class VisualTree(wx.TreeCtrl):
     """tree representation of HTML
@@ -45,9 +47,11 @@ class VisualTree(wx.TreeCtrl):
 
     def on_rightdown(self, evt=None):
         "context menu bij rechtsklikken"
+        print('in on_rightdown: getting position')
         item = self.HitTest(evt.GetPosition())[0]
+        print('in on_rightdown:', item, self._parent.top)
         if item and item != self._parent.top:
-            self._parent.popup_menu(item)
+            self._parent.contextmenu(item)
         evt.Skip()
 
     ## def mouseReleaseEvent(self, event):
@@ -153,7 +157,9 @@ class MainFrame(wx.Frame):
         """
         menu_bar = wx.MenuBar()
         self.contextmenu_items = []
+        self.popup_menu = wx.Menu()
         for menu_text, data in self.editor.get_menulist():
+            print(menu_text)
             menu = wx.Menu()
             for item in data:
                 if len(item) == 1:
@@ -180,6 +186,7 @@ class MainFrame(wx.Frame):
                     mnu = wx.MenuItem(menu, menuid, caption, status_text)
                     if menu_text == '&View':
                         self.contextmenu_items.append(('A', mnu))
+                        # self.popup_menu.Append(mnu)
                     elif menuitem_text == 'Add &DTD':
                         self.dtd_menu = mnu
                     elif menuitem_text == 'Add &Stylesheet':
@@ -189,11 +196,24 @@ class MainFrame(wx.Frame):
                     self.Bind(wx.EVT_MENU, callback, mnu)
                 menu.Append(mnu)
                 if menu_text in ('&Edit', '&HTML'):
-                    self.contextmenu_items.append(('M', menu))
+                    item = ('M', (menu, menu_text))
+                    if item not in self.contextmenu_items:
+                        self.contextmenu_items.append(item)
+                        # self.popup_menu.AppendSubMenu(menu, menu_text)
             if menu_text == '&View':
                 self.contextmenu_items.append(('', ''))
+                # self.popup_menu.AppendSeparator()
             menu_bar.Append(menu, menu_text)
         self.SetMenuBar(menu_bar)
+        # for itemtype, item in self.contextmenu_items:
+        #     if itemtype == 'A':
+        #         if item == self.css_menu:
+        #             if not cssedit_available:
+        #                 item.enable(False)
+        #     elif itemtype == 'M':
+        #         subm, text = item
+        #     else:
+        print('end of menu_setup')
 
     # def setfilenametooltip((self):
         # """bedoeld om de filename ook als tooltip te tonen, uit te voeren
@@ -301,21 +321,22 @@ class MainFrame(wx.Frame):
             self.dtd_menu.SetItemLabel('Add &DTD')
             self.dtd_menu.SetHelp('Add a document type description')
 
-    def popup_menu(self, arg=None):
+    def contextmenu(self, arg=None):
         'build/show context menu'
         # get type of node
         itemtext = self.get_element_text(self.get_selected_item())
-        menu = wx.Menu()
-        for itemtype, item in self.contextmenu_items:
-            if itemtype == 'A':
-                menu.Append(item)
-                if item == self.css_menu:
-                    if not cssedit_available:
-                        item.enable(False)
-            elif itemtype == 'M':
-                menu.Append(item)
-            else:
-                menu.AppendSeparator()
+        # menu = wx.Menu()
+        # for itemtype, item in self.contextmenu_items:
+        #     if itemtype == 'A':
+        #         menu.Append(item)
+        #         if item == self.css_menu:
+        #             if not cssedit_available:
+        #                 item.enable(False)
+        #     elif itemtype == 'M':
+        #         subm, text = item
+        #         menu.AppendSubMenu(subm, text)
+        #     else:
+        #         menu.AppendSeparator()
         # y = self.tree.visualItemRect(arg).bottom()
         # x = self.tree.visualItemRect(arg).left()
         # popup_location = core.QPoint(int(x) + 200, y)
@@ -323,14 +344,17 @@ class MainFrame(wx.Frame):
         # menu.exec_(self.tree.mapToGlobal(popup_location))
         # self.in_contextmenu = False
         # del menu
-        self.PopupMenu(menu)
-        menu.Destroy()
+        # self.PopupMenu(menu)
+        # menu.Destroy()
+        self.PopupMenu(self.popup_menu)
 
     def keyReleaseEvent(self, event):
         "reimplemented event handler"
         skip = self.on_keyup(event)
-        if not skip:
-            super().keyReleaseEvent(event)
+        if skip:
+            event.Skip()
+        # if not skip:
+        #     super().keyReleaseEvent(event)
 
     def on_keyup(self, ev=None):
         "determine if key event needs to be skipped"
@@ -352,12 +376,26 @@ class MainFrame(wx.Frame):
         hlp = wx.MessageBox(text, title, style=wx.YES_NO | wx.CANCEL)
         return retval[hlp]
 
+    @staticmethod
+    def build_mask(ftype):
+        """build mask for FileDialog
+        """
+        text, filetypes = masks['all']
+        all_mask = "{0} ({1})|{1}".format(text, filetypes[0])
+        text, filetypes = masks[ftype]
+        filetypes_text = ",".join(filetypes)
+        if os.name == 'posix':
+            filetypes_text = ','.join((filetypes_text, filetypes_text.upper()))
+        extensions_text = filetypes_text.replace(',', ';')
+        return "{} ({})|{}".format(text, filetypes_text, extensions_text) + '|' + all_mask
+
     def ask_for_open_filename(self):
         """open een dialoog om te vragen welk file geladen moet worden
         """
         filename = ''
         loc = self.editor.xmlfn or os.getcwd()
-        with wx.FileDialog(self, message="Choose a file", defaultDir=loc, wildcard=HMASK,
+        mask = self.build_mask('html')
+        with wx.FileDialog(self, message="Choose a file", defaultDir=loc, wildcard=mask,
                            style=wx.FD_OPEN) as dlg:
             if dlg.ShowModal() == wx.ID_OK:
                 filename = dlg.GetPath()
@@ -367,13 +405,14 @@ class MainFrame(wx.Frame):
         """open een dialoog om te vragen onder welke naam de html moet worden opgeslagen
         """
         filename = ''
-        if self.xmlfn:
-            dname, fname = os.path.split(self.xmlfn)
+        if self.editor.xmlfn:
+            dname, fname = os.path.split(self.editor.xmlfn)
         else:
             dname = os.getcwd()
             fname = ""
+        mask = self.build_mask('html')
         with wx.FileDialog(self, message="Save file as ...", defaultDir=dname,
-                           defaultFile=fname, wildcard=HMASK, style=wx.FD_SAVE) as dlg:
+                           defaultFile=fname, wildcard=mask, style=wx.FD_SAVE) as dlg:
             if dlg.ShowModal() == wx.ID_OK:
                 filename = dlg.GetPath()
         return filename
@@ -540,9 +579,9 @@ class MainFrame(wx.Frame):
         "start validation"
         with ScrolledTextDialog(self, "Validation output",
                                 htmlfile=htmlfile, fromdisk=fromdisk) as dlg:
-            dlg.show()
+            dlg.ShowModal()
 
     def show_code(self, title, caption, data):
         "show dialog for view source"
         with CodeViewDialog(self, title, caption, data) as dlg:
-            dlg.show()
+            dlg.ShowModal()
