@@ -4,88 +4,20 @@ nieuwe aanpak: de GUI routines worden van hieruit aangeroepen zodat alle busines
 blijft
 """
 import os
-import sys
+# import sys
 import shutil
 import pathlib
 import subprocess
 import bs4 as bs  # BeautifulSoup as bs
+try:
+    import cssedit.editor.csseditor_qt as csed
+    cssedit_available = True
+except ImportError:
+    cssedit_available = False
 
 from ashe.gui import gui
-from ashe.constants import ICO, TITEL, CMSTART, ELSTART, DTDSTART, IFSTART, BL
+from ashe.shared import ICO, TITEL, CMSTART, ELSTART, DTDSTART, IFSTART, BL
 CMELSTART = ' '.join((CMSTART, ELSTART))
-
-
-def comment_out(node, commented):
-    "subitem(s) (ook) op commentaar zetten"
-    for subnode in self.gui.get_element_children(node):
-        txt = self.gui.get_element_text(subnode)
-        if commented:
-            if not txt.startswith(CMSTART):
-                new_text = " ".join((CMSTART, txt))
-        else:
-            if txt.startswith(CMSTART):
-                new_text = txt.split(None, 1)[1]
-        self.gui.set_element_text(subnode, new_text)
-        comment_out(subnode, commented)
-
-
-def is_stylesheet_node(node):
-    """determine if node is for stylesheet definition
-    """
-    test = self.gui.get_element_text(node)
-    if test == ' '.join((ELSTART, 'link')):
-        attrdict = self.gui.get_element_data(node)
-        if attrdict.get('rel', '') == 'stylesheet':
-            return True
-    elif test == ' '.join((ELSTART, 'style')):
-        return True
-    return False
-
-
-def in_body(node):
-    """determine if we're in the <body> part
-    """
-    def is_node_ok(node):
-        """check node and parents until body or head tag reached
-        """
-        test = self.gui.get_element_text(node)
-        parent = self.gui.get_element_parent(node)
-        if test == ' '.join((ELSTART, 'body')):
-            return True
-        elif test == ' '.join((ELSTART, 'head')):
-            return False
-        elif parent is None:  # only for <html> tag - do we need this?
-            return False
-        return is_node_ok(parent)
-    return is_node_ok(node)
-
-
-def flatten_tree(node, top=True):
-    """return the tree's structure as a flat list
-    probably nicer as a generator function
-    """
-    name = self.gui.get_element_text(node)
-    count = 0
-    if name.startswith(ELSTART):
-        count = 2
-    elif name.startswith(CMELSTART):
-        count = 3
-    if count:
-        splits = name.split(None, count)
-        name = ' '.join(splits[:count])
-    elem_list = [(node, name, self.gui.get_element_data(node))]
-
-    subel_list = []
-    for subitem in self.gui.get_element_children(node):
-        text = self.gui.get_element_text(subitem)
-        if text.startswith(ELSTART) or text.startswith(CMELSTART):
-            subel_list = flatten_tree(subitem, top=False)
-            elem_list.extend(subel_list)
-        else:
-            elem_list.append((subitem, text, {}))
-    if top:
-        elem_list = elem_list[1:]
-    return elem_list
 
 
 def getelname(tag, attrs=None, comment=False):
@@ -212,6 +144,123 @@ def find_next(data, search_args, reverse=False, pos=None):
     return None
 
 
+class CssManager:
+    """shared interface from Edit Element Dialog with css editor
+    """
+    def __init__(self, parent):
+        self._parent = parent
+        self.styledata = ''
+
+    def setup_flags(self, styledata, is_stylesheet):
+        "set up shared state"
+        self.old_styledata = styledata
+        self.is_stylesheet = is_stylesheet
+
+    # def setup_flags(self, tag, attrs):
+    #     """initialize shared state
+    #     """
+    #     self.old_styledata = ''
+    #     self.is_stylesheet = has_style = iscomment = False
+    #     if tag:
+    #         x = tag.split(None, 1)
+    #         if x[0] == CMSTART:
+    #             iscomment = True
+    #             x = x[1].split(None, 1)
+    #         if x[0] == ELSTART:
+    #             x = x[1].split(None, 1)
+    #         origtag = x[0]
+    #     else:
+    #         origtag = tag
+    #     if attrs:
+    #         for attr, value in attrs.items():
+    #             if attr == 'styledata':
+    #                 self.old_styledata = value
+    #                 continue
+    #             elif origtag == 'link' and attr == 'rel' and value == 'stylesheet':
+    #                 self.is_stylesheet = True
+    #             elif attr == 'style':
+    #                 has_style = True
+    #                 self.old_styledata = value
+    #     if origtag == 'style':  # is_style_tag:
+    #         text = '&Edit styles'
+    #     elif self.is_stylesheet:
+    #         text = '&Edit linked stylesheet'
+    #     elif has_style:
+    #         text = '&Edit inline style'
+    #     else:
+    #         text = '&Add inline style'
+    #     return origtag, iscomment, has_style, text
+
+    def call_editor(self, tag, fname, app=None):
+        """call external css editor from the edit element dialog
+        """
+        if not self.is_stylesheet:
+            css = csed.MainWindow(self, app=app)     # calling the editor
+            # with this class as parent should make sure we get the css back as an attribute
+            if tag == 'style':
+                css.open(text=self.old_styledata)
+            else:
+                css.open(tag=tag, text=self.old_styledata)
+            css.show_from_external()  # sets self.styledata right before closing
+            return
+        print("started cssedit main window")
+        mld = ''
+        if not fname:
+            mld = 'Please enter a link address first'
+        elif fname.startswith('/'):
+            mld = "Cannot determine file system location of stylesheet file"
+        else:
+            if fname.startswith('http'):
+                h_fname = os.path.join('/tmp', 'ashe_{}'.format(os.path.basename(fname)))
+                subprocess.run(['wget', fname, '-O', h_fname])
+                fname = h_fname
+            else:
+                h_fname = fname
+                xmlfn_path = pathlib.Path(self._parent.xmlfn)
+                while h_fname.startswith('../'):
+                    h_fname = h_fname[3:]
+                    xmlfn_path = xmlfn_path.parent
+                fname = str(xmlfn_path / h_fname)
+            print('constructed filename:', fname)
+            self.styledata = self.old_styledata
+            try:
+                css = csed.MainWindow(app=self._parent.app)
+                css.open(filename=fname)
+            except Exception as e:
+                mld = str(e)
+            else:
+                css.show_from_external()
+        if mld:
+            self._parent.gui.meld(mld)
+
+    def check_if_modified(self, tag, attrs):
+        """compare with original state saved in setup_flags
+        """
+        try:
+            self.styledata = self.styledata.decode()
+        except AttributeError:
+            pass
+        if self.styledata != self.old_styledata:
+            self.old_styledata = self.styledata
+        if tag == 'style':
+            attrs['styledata'] = self.old_styledata
+        else:
+            if self.old_styledata:
+                attrs['style'] = self.old_styledata
+        return self.styledata, attrs
+
+    def call_from_inline(self, win, text):
+        """edit from CSS Dialog
+        """
+        win.dialog_data = {"type": 'text/css'}
+        if text:
+            win.dialog_data["media"] = text
+        css = csed.MainWindow(self, self._parent.app)
+        css.open(text="")
+        css.show_from_external()
+        return win.dialog_data
+
+
 class Editor(object):
     "Gui-independent start of application"
     dtdlist = (('HTML 4.1 Strict', 'HTML PUBLIC "-//W3C//DTD HTML 4.01//EN'
@@ -238,14 +287,29 @@ class Editor(object):
         self.constants = {'ELSTART': ELSTART}
         self.tree_dirty = False
         self.xmlfn = fname
+        self.cssedit_available = cssedit_available
         self.gui = gui.MainFrame(editor=self, icon=ICO)
+        self.cssm = CssManager(self) if cssedit_available else None
+        err = self.getsoup(self.xmlfn) or ''
+        if err:
+            self.gui.meld(str(err))
+        else:
+            self.refresh_preview()
         self.gui.go()
 
     def mark_dirty(self, state):
         """set "modified" indicator
         """
         self.tree_dirty = state
-        self.gui.mark_dirty(state)
+        title = self.gui.get_screen_title()
+        test = ' - ' + self.title
+        test2 = '*' + test
+        if state:
+            if test2 not in title:
+                title = title.replace(test, test2)
+        else:
+            title = title.replace(test2, test)
+        self.gui.set_screen_title(title)
 
     def getsoup(self, fname="", preserve=False):  # voor consistentie misschien file2soup
         """build initial html or read from file and initialize tree
@@ -517,6 +581,62 @@ class Editor(object):
                            ('&Check syntax', '', '', 'Validate HTML with Tidy', self.validate))),
                 ("Help", (('&About', '', '', 'Info about this application', self.about), )))
 
+    def is_stylesheet_node(self, node):
+        """determine if node is for stylesheet definition
+        """
+        test = self.gui.get_element_text(node)
+        if test == ' '.join((ELSTART, 'link')):
+            attrdict = self.gui.get_element_data(node)
+            if attrdict.get('rel', '') == 'stylesheet':
+                return True
+        elif test == ' '.join((ELSTART, 'style')):
+            return True
+        return False
+
+    def in_body(self, node):
+        """determine if we're in the <body> part
+        """
+        def is_node_ok(node):
+            """check node and parents until body or head tag reached
+            """
+            test = self.gui.get_element_text(node)
+            parent = self.gui.get_element_parent(node)
+            if test == ' '.join((ELSTART, 'body')):
+                return True
+            elif test == ' '.join((ELSTART, 'head')):
+                return False
+            elif parent is None:  # only for <html> tag - do we need this?
+                return False
+            return is_node_ok(parent)
+        return is_node_ok(node)
+
+    def flatten_tree(self, node, top=True):
+        """return the tree's structure as a flat list
+        probably nicer as a generator function
+        """
+        name = self.gui.get_element_text(node)
+        count = 0
+        if name.startswith(ELSTART):
+            count = 2
+        elif name.startswith(CMELSTART):
+            count = 3
+        if count:
+            splits = name.split(None, count)
+            name = ' '.join(splits[:count])
+        elem_list = [(node, name, self.gui.get_element_data(node))]
+
+        subel_list = []
+        for subitem in self.gui.get_element_children(node):
+            text = self.gui.get_element_text(subitem)
+            if text.startswith(ELSTART) or text.startswith(CMELSTART):
+                subel_list = self.flatten_tree(subitem, top=False)
+                elem_list.extend(subel_list)
+            else:
+                elem_list.append((subitem, text, {}))
+        if top:
+            elem_list = elem_list[1:]
+        return elem_list
+
     def newxml(self, event=None):
         """kijken of er wijzigingen opgeslagen moeten worden
         daarna nieuwe html aanmaken"""
@@ -559,14 +679,14 @@ class Editor(object):
         bestand opslaan en naam in titel en root element zetten"""
         fname = self.gui.ask_for_save_filename()
         if fname:
-            self.xmlfn = str(fname[0])
+            self.xmlfn = fname
             self.data2soup()
             try:
                 self.soup2file(saveas=True)
             except IOError as err:
                 self.gui.meld(str(err))
                 return
-            gui.tree.set_element_text(self.gui.top, self.xmlfn)
+            self.gui.set_element_text(self.gui.top, self.xmlfn)
             self.gui.show_statusbar_message("saved as {}".format(self.xmlfn))
 
     def reopenxml(self, event=None):
@@ -639,7 +759,7 @@ class Editor(object):
                 # nou nog echt doen (of gebeurt dat in de dialoog? dacht het niet)
             return
         under_comment = self.gui.get_element_text(
-                self.gui.get_element_parent(self.item)).startswith(CMELSTART)
+            self.gui.get_element_parent(self.item)).startswith(CMELSTART)
         modified = False
         if data.startswith(ELSTART) or data.startswith(CMELSTART):
             oldtag = get_tag_from_elname(data)
@@ -666,11 +786,11 @@ class Editor(object):
                     self.gui.set_element_text(self.item, getelname(tag, attrs, commented))
                 self.gui.set_element_data(self.item, attrs)
                 if commented != was_commented:
-                    comment_out(self.item, commented)
+                    self.comment_out(self.item, commented)
         else:
             txt = CMSTART + " " if data.startswith(CMSTART) else ""
             data = self.gui.get_element_data(self.item)
-            test = self.gui.get_element_text(gui.get_element_parent(self.item))
+            test = self.gui.get_element_text(self.gui.get_element_parent(self.item))
             if test in (' '.join((ELSTART, 'style')), ' '.join((CMELSTART, 'style'))):
                 self.gui.meld("Please edit style through parent tag")
                 return
@@ -696,7 +816,8 @@ class Editor(object):
         commented = tag.startswith(CMSTART)
         if commented:
             _, tag = tag.split(None, 1)  # CMSTART eraf halen
-        under_comment = self.gui.get_element_text(gui.get_element_parent(self.item)).startswith(CMELSTART)
+        under_comment = self.gui.get_element_text(
+            self.gui.get_element_parent(self.item)).startswith(CMELSTART)
         commented = not commented  # het (un)commenten uitvoeren
         if under_comment:
             commented = True
@@ -704,11 +825,24 @@ class Editor(object):
             _, tag = tag.split(None, 1)  # ELSTART eraf halen
             self.gui.set_element_text(self.item, getelname(tag, attrs, commented))
             self.gui.set_element_data(self.item, attrs)
-            comment_out(self.item, commented)
+            self.comment_out(self.item, commented)
         else:
             self.gui.set_element_text(self.item, commented)
             self.gui.set_element_data(self.item, tag)
         self.refresh_preview()
+
+    def comment_out(self, node, commented):
+        "subitem(s) (ook) op commentaar zetten"
+        for subnode in self.gui.get_element_children(node):
+            txt = self.gui.get_element_text(subnode)
+            if commented:
+                if not txt.startswith(CMSTART):
+                    new_text = " ".join((CMSTART, txt))
+            else:
+                if txt.startswith(CMSTART):
+                    new_text = txt.split(None, 1)[1]
+            self.gui.set_element_text(subnode, new_text)
+            self.comment_out(subnode, commented)
 
     def make_conditional(self, event=None):
         "zet een IE conditie om het element heen"
@@ -719,8 +853,8 @@ class Editor(object):
             self.gui.meld("This is already a conditional")
             return
         # ask for the condition
-        ok, cond = self.gui.ask_for_condition()
-        if ok:
+        cond = self.gui.ask_for_condition()
+        if cond:
             # remember and remove the current element (use "cut"?)
             parent, pos = self.gui.get_element_parentpos(self.item)
             self.cut()
@@ -768,7 +902,7 @@ class Editor(object):
             txt = 'cut' if cut else 'copy' if retain else 'delete'
             self.gui.meld("Can't %s the root" % txt)
             return
-        text = str(self.item.text(0))
+        text = self.gui.get_element_text(self.item)
         if ifcheck and text.startswith(IFSTART):
             self.gui.meld("Can't do thisJ on a conditional (use menu option to delete)")
             return
@@ -977,14 +1111,14 @@ class Editor(object):
         if not reverse or not self.search_args:
             ok, self.search_args = self.gui.get_search_args()
         if reverse or ok:
-            found = find_next(flatten_tree(self.gui.top), self.search_args, reverse)
+            found = find_next(self.flatten_tree(self.gui.top), self.search_args, reverse)
             if found:
                 self.gui.set_selected_item(found[1])
                 self._search_pos = found
             else:
                 self.gui.meld('Niks (meer) gevonden')
 
-    @classmethod
+    @staticmethod
     def build_search_spec(ele, attr_name, attr_val, text, attr):
         "build text describing search action"
         if ele:
@@ -1024,7 +1158,8 @@ class Editor(object):
 
     def _search_next(self, reverse=False):
         "find (default is forward)"
-        found = find_next(flatten_tree(self.gui.top), self.search_args, reverse, self._search_pos)
+        found = find_next(self.flatten_tree(self.gui.top), self.search_args, reverse,
+                          self._search_pos)
         if found:
             self.gui.set_selected_item(found[1])
             self._search_pos = found

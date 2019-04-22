@@ -8,11 +8,10 @@ import PyQt5.QtCore as core
 ## import PyQt5.QtWebKit as webkit
 import PyQt5.QtWebKitWidgets as webkit
 
-from ashe.constants import masks
-from ashe.dialogs_qt import cssedit_available, ElementDialog, TextDialog, DtdDialog, \
-    CssDialog, LinkDialog, ImageDialog, VideoDialog, AudioDialog, \
-    ListDialog, TableDialog, ScrolledTextDialog, CodeViewDialog, SearchDialog, HMASK
-
+from ashe.shared import masks
+from ashe.dialogs_qt import ElementDialog, TextDialog, DtdDialog, CssDialog, \
+    LinkDialog, ImageDialog, VideoDialog, AudioDialog, ListDialog, TableDialog, \
+    ScrolledTextDialog, CodeViewDialog, SearchDialog
 
 
 class VisualTree(qtw.QTreeWidget):
@@ -33,7 +32,7 @@ class VisualTree(qtw.QTreeWidget):
         if item and item != self._parent.top:
             if str(item.text(0)).startswith(self._parent.editor.constants['ELSTART']) and \
                     item.childCount() == 0:
-                self._parent.edit()
+                self._parent.editor.edit()
                 return
         super().mouseDoubleClickEvent(event)
 
@@ -64,7 +63,7 @@ class VisualTree(qtw.QTreeWidget):
         dropitem = dragitem.parent()
         self.setCurrentItem(dragitem)
         dropitem.setExpanded(True)
-        self._parent.refresh_preview()
+        self._parent.editor.refresh_preview()
 
 
 class MainFrame(qtw.QMainWindow):
@@ -81,6 +80,7 @@ class MainFrame(qtw.QMainWindow):
 
         self.dialog_data = {}
         self.search_args = []
+        self.setWindowTitle(self.editor.title)
         self.appicon = gui.QIcon(icon)
         self.setWindowIcon(self.appicon)
         self.resize(1020, 900)
@@ -102,13 +102,12 @@ class MainFrame(qtw.QMainWindow):
 
         self.tree.resize(500, 100)
         self.tree.setFocus()
-
-    def go(self):
         self.adv_menu.setChecked(True)
         self.show()
-        err = self.editor.getsoup(self.editor.xmlfn) or ''
-        if not err:
-            self.editor.refresh_preview()
+
+    def go(self):
+        """show the screen
+        """
         sys.exit(self.app.exec_())
 
     def _setup_menu(self):
@@ -143,7 +142,7 @@ class MainFrame(qtw.QMainWindow):
                     self.dtd_menu = act
                 elif menuitem_text == 'Add &Stylesheet':
                     self.css_menu = act
-                    if not cssedit_available:
+                    if not self.editor.cssedit_available:
                         act.setDisabled(True)
                 if menu_text in ('&Edit', '&HTML'):
                     self.contextmenu_items.append(('M', menu))
@@ -156,16 +155,12 @@ class MainFrame(qtw.QMainWindow):
         # aan het eind van new, open, save, saveas en reload"""
         # zie ticket 406 voor een overweging om dit helemaal achterwege te laten
 
-    def mark_dirty(self, state):
-        "update visual signs that the source was changed"
-        title = str(self.windowTitle())
-        test = ' - ' + self.editor.title
-        test2 = '*' + test
-        if state:
-            if test2 not in title:
-                title = title.replace(test, test2)
-        else:
-            title = title.replace(test2, test)
+    def get_screen_title(self):
+        "retrieve the screen's title"
+        return self.windowTitle()
+
+    def set_screen_title(self, title):
+        "change the screen's title"
         self.setWindowTitle(title)
 
     @staticmethod
@@ -267,7 +262,7 @@ class MainFrame(qtw.QMainWindow):
             if itemtype == 'A':
                 act = menu.addAction(item)
                 if item == self.css_menu:
-                    if not cssedit_available:
+                    if not self.editor.cssedit_available:
                         act.setDisabled(True)
             elif itemtype == 'M':
                 menu.addMenu(item)
@@ -327,7 +322,7 @@ class MainFrame(qtw.QMainWindow):
         """
         filename = qtw.QFileDialog.getOpenFileName(self, "Choose a file",
                                                    self.editor.xmlfn or os.getcwd(),
-                                                   self.build_mask('html')[0]
+                                                   self.build_mask('html'))[0]
         return filename
 
     def ask_for_save_filename(self):
@@ -434,11 +429,6 @@ class MainFrame(qtw.QMainWindow):
     def get_search_args(self):
         """show search options dialog"""
         return self.call_dialog(SearchDialog(self, title='Search options'))
-        edt = SearchDialog(self, title='Search options').exec_()
-        if edt == qtw.QDialog.Accepted:
-            return True, self.search_args
-        else:
-            return False, None
 
     def meld(self, text):
         """notify about some information"""

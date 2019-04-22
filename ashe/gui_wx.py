@@ -1,21 +1,21 @@
 """wxPython specifieke routines voor mijn op een treeview gebaseerde HTML-editor
 """
 import os
-import sys
+# import sys
 import wx
-import wx.grid as wxgrid
-import wx.html2 as wxhtml #  webkit
+# import wx.grid as wxgrid
+import wx.html2 as wxhtml  # webkit
 
-from ashe.constants import masks
-from ashe.dialogs_wx import cssedit_available, HMASK, ElementDialog, TextDialog, \
-    DtdDialog, CssDialog, LinkDialog, ImageDialog, VideoDialog, AudioDialog, \
-    ListDialog, TableDialog, ScrolledTextDialog, CodeViewDialog, SearchDialog
+from ashe.shared import ELSTART, masks
+from ashe.dialogs_wx import ElementDialog, TextDialog, DtdDialog, CssDialog, \
+    LinkDialog, ImageDialog, VideoDialog, AudioDialog, ListDialog, TableDialog, \
+    ScrolledTextDialog, CodeViewDialog, SearchDialog
 
 
 class VisualTree(wx.TreeCtrl):
     """tree representation of HTML
     """
-    def __init__(self, parent):  #  , size):
+    def __init__(self, parent):  # , size):
         self._parent = parent.Parent
         super().__init__(parent)  # , size=size)
         self.Bind(wx.EVT_LEFT_DCLICK, self.on_leftdclick)
@@ -136,15 +136,12 @@ class MainFrame(wx.Frame):
         # self.Layout()
         self.tree.SetFocus()
         # self.Bind(wx.EVT_CLOSE, self.editor.close)
+        self.adv_menu.Check(True)
+        self.Show(True)
 
     def go(self):
         """show the screen
         """
-        self.adv_menu.Check(True)
-        self.Show(True)
-        err = self.editor.getsoup(self.editor.xmlfn) or ''
-        if not err:
-            self.editor.refresh_preview()
         self.app.MainLoop()
 
     def close(self):
@@ -159,7 +156,6 @@ class MainFrame(wx.Frame):
         self.contextmenu_items = []
         self.popup_menu = wx.Menu()
         for menu_text, data in self.editor.get_menulist():
-            print(menu_text)
             menu = wx.Menu()
             for item in data:
                 if len(item) == 1:
@@ -191,7 +187,7 @@ class MainFrame(wx.Frame):
                         self.dtd_menu = mnu
                     elif menuitem_text == 'Add &Stylesheet':
                         self.css_menu = mnu
-                        if not cssedit_available:
+                        if not self.editor.cssedit_available:
                             mnu.Enable(False)
                     self.Bind(wx.EVT_MENU, callback, mnu)
                 menu.Append(mnu)
@@ -208,28 +204,23 @@ class MainFrame(wx.Frame):
         # for itemtype, item in self.contextmenu_items:
         #     if itemtype == 'A':
         #         if item == self.css_menu:
-        #             if not cssedit_available:
+        #             if not self.editor.cssedit_available:
         #                 item.enable(False)
         #     elif itemtype == 'M':
         #         subm, text = item
         #     else:
-        print('end of menu_setup')
 
     # def setfilenametooltip((self):
         # """bedoeld om de filename ook als tooltip te tonen, uit te voeren
         # aan het eind van new, open, save, saveas en reload"""
         # zie ticket 406 voor een overweging om dit helemaal achterwege te laten
 
-    def mark_dirty(self, state):
-        "update visual signs that the source was changed"
-        title = str(self.GetTitle())
-        test = ' - ' + self.editor.title
-        test2 = '*' + test
-        if state:
-            if test2 not in title:
-                title = title.replace(test, test2)
-        else:
-            title = title.replace(test2, test)
+    def get_screen_title(self):
+        "retrieve the screen's title"
+        return self.GetTitle()
+
+    def set_screen_title(self, title):
+        "change the screen's title"
         self.SetTitle(title)
 
     def get_element_text(self, node):
@@ -242,14 +233,14 @@ class MainFrame(wx.Frame):
 
     def get_element_parentpos(self, item):
         "return parent and position under parent in visual tree for this element"
-        parent = self.tree.item.GetItemParent()
+        parent = self.tree.GetItemParent(item)
         pos = 0
-        state, child = self.tree.GetFirstChild(parent)
+        child, state = self.tree.GetFirstChild(parent)
         while child.IsOk():
             if child == item:
                 break
             pos += 1
-            state, child = self.tree.GetNextChild(parent, state)
+            child, state = self.tree.GetNextChild(parent, state)
         return parent, pos
 
     def get_element_data(self, node):
@@ -289,7 +280,7 @@ class MainFrame(wx.Frame):
         """titel en root item in tree instellen"""
         self.SetTitle(titel)
         self.tree.DeleteAllItems()
-        self.top = self.tree.AddRoot(titel)
+        self.top = self.tree.AddRoot(fname)
 
     def get_selected_item(self):
         """geef het in de tree geselecteerde item terug
@@ -324,13 +315,13 @@ class MainFrame(wx.Frame):
     def contextmenu(self, arg=None):
         'build/show context menu'
         # get type of node
-        itemtext = self.get_element_text(self.get_selected_item())
+        itemtext = self.get_element_text(self.get_selected_item())  # not used
         # menu = wx.Menu()
         # for itemtype, item in self.contextmenu_items:
         #     if itemtype == 'A':
         #         menu.Append(item)
         #         if item == self.css_menu:
-        #             if not cssedit_available:
+        #             if not self.editor.cssedit_available:
         #                 item.enable(False)
         #     elif itemtype == 'M':
         #         subm, text = item
@@ -348,24 +339,9 @@ class MainFrame(wx.Frame):
         # menu.Destroy()
         self.PopupMenu(self.popup_menu)
 
-    def keyReleaseEvent(self, event):
-        "reimplemented event handler"
-        skip = self.on_keyup(event)
-        if skip:
-            event.Skip()
-        # if not skip:
-        #     super().keyReleaseEvent(event)
-
-    def on_keyup(self, ev=None):
-        "determine if key event needs to be skipped"
-        ky = ev.key()
-        item = self.tree.currentItem()
-        skip = False
-        if item and item != self.top:
-            if ky == core.Qt.Key_Menu:
-                self.popup_menu(item)
-                skip = True
-        return skip
+    # TODO: hier moet nog iets komen om erin te voorzien dat de menu knop (rechter Windows key)
+    # gebruikt wordt, maar die heb ik niet op mijn huidige toetesenbord
+    # in de qt versie is dat een keyrelease event
 
     def ask_how_to_continue(self, title, text):
         """vraag of de wijzigingen moet worden opgeslagen
@@ -389,41 +365,43 @@ class MainFrame(wx.Frame):
         extensions_text = filetypes_text.replace(',', ';')
         return "{} ({})|{}".format(text, filetypes_text, extensions_text) + '|' + all_mask
 
-    def ask_for_open_filename(self):
-        """open een dialoog om te vragen welk file geladen moet worden
-        """
-        filename = ''
-        loc = self.editor.xmlfn or os.getcwd()
-        mask = self.build_mask('html')
-        with wx.FileDialog(self, message="Choose a file", defaultDir=loc, wildcard=mask,
-                           style=wx.FD_OPEN) as dlg:
-            if dlg.ShowModal() == wx.ID_OK:
-                filename = dlg.GetPath()
-        return filename
+    def ask_for_filename(self, message, style):
+        """open een dialoog om te vragen met welk file iets gedaan moet worden
 
-    def ask_for_save_filename(self):
-        """open een dialoog om te vragen onder welke naam de html moet worden opgeslagen
+        note: wx maakt opgegeven paden niet automatisch absoluut in de filedialoog (Qt wel)
         """
         filename = ''
         if self.editor.xmlfn:
-            dname, fname = os.path.split(self.editor.xmlfn)
+            dname, fname = os.path.split(os.path.abspath(self.editor.xmlfn))
         else:
             dname = os.getcwd()
             fname = ""
         mask = self.build_mask('html')
-        with wx.FileDialog(self, message="Save file as ...", defaultDir=dname,
-                           defaultFile=fname, wildcard=mask, style=wx.FD_SAVE) as dlg:
+        with wx.FileDialog(self, message=message, defaultDir=dname, defaultFile=fname,
+                           wildcard=mask, style=style) as dlg:
             if dlg.ShowModal() == wx.ID_OK:
                 filename = dlg.GetPath()
         return filename
+
+    def ask_for_open_filename(self):
+        """open een dialoog om te vragen welk file geladen moet worden
+        """
+        return self.ask_for_filename("Choose a file", wx.FD_OPEN)
+
+    def ask_for_save_filename(self):
+        """open een dialoog om te vragen onder welke naam de html moet worden opgeslagen
+        """
+        return self.ask_for_filename("Save file as ...", wx.FD_SAVE)
 
     def set_item_expanded(self, item, state):
         """show item's children
         """
         if self.tree.IsExpanded(item):
-            self.tree.Collapse(item)
+            # self.tree.Collapse(item)
+            self.tree.CollapseAllChildren(item)
         else:
-            self.tree.ExpandItem(item)
+            # self.tree.Expand(item)
+            self.tree.ExpandAllChildren(item)
 
     def expand(self):
         "toolkit specifieke voortzetting van gelijknamige editor methode"
@@ -480,7 +458,7 @@ class MainFrame(wx.Frame):
 
     def ask_for_condition(self):
         "zet een IE conditie om het element heen"
-        with wx.textEntryDialog(self, 'Enter the condition', self.title) as dlg:
+        with wx.TextEntryDialog(self, 'Enter the condition', self.editor.title) as dlg:
             if dlg.ShowModal() == wx.ID_OK:
                 return dlg.GetValue()
         return ''
@@ -519,13 +497,13 @@ class MainFrame(wx.Frame):
         """
         retval = dict(zip((wx.ID_YES, wx.ID_NO, wx.CANCEL), (1, 0, -1)))
         self.in_dialog = True
-        hlp = wx.MessageBox(text, title, style=wx.YES_NO | wx.CANCEL)
+        hlp = wx.MessageBox(prompt, self._parent.title, style=wx.YES_NO | wx.CANCEL)
         return retval[hlp]
 
     def ask_for_text(self, prompt):
         """vraagt om tekst en retourneert het antwoord"""
         self.in_dialog = True
-        with wx.textEntryDialog(self, prompt, self.title) as dlg:
+        with wx.TextEntryDialog(self, prompt, self.title) as dlg:
             if dlg.ShowModal() == wx.ID_OK:
                 return dlg.GetValue(), True
         return '', False
