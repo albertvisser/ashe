@@ -311,6 +311,7 @@ class SearchDialog(qtw.QDialog):
                                                     self.txt_attr_val.text(),
                                                     self.txt_text.text(), '')
         self.lbl_search.setText(out)
+        self.search_specs = out
 
     def accept(self):
         """confirm dialog and pass changed data to parent"""
@@ -324,7 +325,9 @@ class SearchDialog(qtw.QDialog):
             self.txt_element.setFocus()
             return
 
-        self._parent.search_args = (ele, attr_name, attr_val, text)
+        # self._parent.search_args = (ele, attr_name, attr_val, text)
+        # self._parent.search_specs = self.search_specs
+        self._parent.dralog_data = ((ele, attr_name, attr_val, text), self.search_specs)
         super().accept()
 
 

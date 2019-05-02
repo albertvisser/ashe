@@ -76,74 +76,6 @@ def escape(text):
     return text
 
 
-def find_next(data, search_args, reverse=False, pos=None):
-    """searches the flattened tree from start or the given pos
-    to find the next item that fulfills the search criteria
-    """
-    outfile = '/tmp/search_stuff'
-    wanted_ele, wanted_attr, wanted_value, wanted_text = search_args
-    with open(outfile, 'a') as _o:
-        print(search_args, file=_o)
-    if pos is None:
-        pos = (0, None)
-        if reverse:
-            pos = (len(data), None)
-        with open(outfile, 'a') as _o:
-            print(data, file=_o)
-    if reverse:
-        data.reverse()
-    if pos[0]:
-        start = len(data) - pos[0] - 1 if reverse else pos[0]
-        data = data[start + 1:]
-
-    itemfound = None
-    for newpos, data_item in enumerate(data):
-        ele_ok = attr_name_ok = attr_value_ok = attr_ok = text_ok = False
-        item, element_name, attr_data = data_item
-
-        if element_name.startswith(ELSTART):
-            text_ok = True
-            ## if not wanted_ele or wanted_ele in element_name.replace(ELSTART, ''):
-            if wanted_ele and wanted_ele in element_name.replace(ELSTART, ''):
-                ele_ok = True
-            for name, value in attr_data.items():
-                if not wanted_attr or wanted_attr in name:
-                    attr_name_ok = True
-                if not wanted_value or wanted_value in value:
-                    attr_value_ok = True
-                if attr_name_ok and attr_value_ok:
-                    attr_ok = True
-                    break
-            with open(outfile, 'a') as _o:
-                print(item.text(0), 'is het niet', file=_o)
-        else:
-            ele_ok = attr_ok = True
-            ## if not wanted_text or wanted_text in element_name:
-            if wanted_text and wanted_text in element_name:
-                text_ok = True
-
-        with open(outfile, 'a') as _o:
-            print(item.text(0), ele_ok, text_ok, attr_ok, file=_o)
-        ok = ele_ok and text_ok and attr_ok
-        if ok:
-            itemfound = item
-            break
-
-    if itemfound:
-        factor = 1
-        if reverse:
-            newpos *= - 1
-            factor = -1
-        if pos[0]:
-            pos = newpos + pos[0] + factor
-        else:
-            pos = newpos + pos[0]
-        with open(outfile, 'a') as _o:
-            print('return values when found', pos, itemfound, file=_o)
-        return pos, itemfound
-    return None
-
-
 class CssManager:
     """shared interface from Edit Element Dialog with css editor
     """
@@ -288,6 +220,7 @@ class Editor(object):
         self.tree_dirty = False
         self.xmlfn = fname
         self.cssedit_available = cssedit_available
+        self.search_args = []
         self.gui = gui.MainFrame(editor=self, icon=ICO)
         self.cssm = CssManager(self) if cssedit_available else None
         err = self.getsoup(self.xmlfn) or ''
@@ -1067,8 +1000,6 @@ class Editor(object):
             under_comment = self.gui.get_element_text(item).startswith(CMSTART)
             text = getshortname(txt, commented or under_comment)
             if below:
-                # TODO: als dit vóór en/of achter een ander tekstitem komt, dan een <br>
-                # tussenvoegen
                 new_item = self.gui.addtreeitem(self.item, text, txt, -1)
             else:
                 parent, pos = self.gui.get_element_parentpos(self.item)
@@ -1104,19 +1035,108 @@ class Editor(object):
         "insert text below instead of before"
         self._add_text(below=True)
 
+    def find_next(self, data, search_args, reverse=False, pos=None):
+        """searches the flattened tree from start or the given pos
+        to find the next item that fulfills the search criteria
+        """
+        outfile = '/tmp/search_stuff'
+        wanted_ele, wanted_attr, wanted_value, wanted_text = search_args
+        with open(outfile, 'a') as _o:
+            print(search_args, file=_o)
+        if pos is None:
+            pos = (0, None)
+            if reverse:
+                pos = (len(data), None)
+            # with open(outfile, 'a') as _o:
+            #     print(data, file=_o)
+        if reverse:
+            data.reverse()
+        if pos[0]:
+            start = len(data) - pos[0] - 1 if reverse else pos[0]
+            data = data[start + 1:]
+
+        itemfound = None
+        ele_ok = attr_name_ok = attr_value_ok = attr_ok = text_ok = False
+        for newpos, data_item in enumerate(data):
+            item, element_name, attr_data = data_item
+            with open(outfile, 'a') as _o:
+                print(data_item, file=_o)
+
+            itemtext = self.gui.get_element_text(item)
+            if element_name.startswith(ELSTART):
+                ele_ok = attr_name_ok = attr_value_ok = attr_ok = text_ok = False
+                ## if not wanted_ele or wanted_ele in element_name.replace(ELSTART, ''):
+                if wanted_ele and wanted_ele in element_name.replace(ELSTART, ''):
+                    with open(outfile, 'a') as _o:
+                        print('found ele', file=_o)
+                    ele_ok = True
+                if not attr_data:
+                    with open(outfile, 'a') as _o:
+                        print('attrs not needed', file=_o)
+                    attr_ok = True
+                for name, value in attr_data.items():
+                    if not wanted_attr or wanted_attr in name:
+                        with open(outfile, 'a') as _o:
+                            print('found attr name or attr name not needed', file=_o)
+                        attr_name_ok = True
+                    if not wanted_value or wanted_value in value:
+                        with open(outfile, 'a') as _o:
+                            print('found attr value or attr value not needed', file=_o)
+                        attr_value_ok = True
+                    if attr_name_ok and attr_value_ok:
+                        attr_ok = True
+                        break
+                if not wanted_text:
+                    with open(outfile, 'a') as _o:
+                        print('text value not needed', file=_o)
+                    text_ok = True
+                # with open(outfile, 'a') as _o:
+                #     print(itemtext, 'is het niet', file=_o)
+            else:
+                text_ok = False
+                ele_ok = attr_ok = True
+                ## if not wanted_text or wanted_text in element_name:
+                if wanted_text and wanted_text in element_name:
+                    with open(outfile, 'a') as _o:
+                        print('found text value', file=_o)
+                    text_ok = True
+
+            with open(outfile, 'a') as _o:
+                print(itemtext, ele_ok, attr_ok, text_ok, file=_o)
+            ok = ele_ok and attr_ok and text_ok
+            if ok:
+                itemfound = item
+                break
+
+        if itemfound:
+            factor = 1
+            if reverse:
+                newpos *= - 1
+                factor = -1
+            if pos[0]:
+                pos = newpos + pos[0] + factor
+            else:
+                pos = newpos + pos[0]
+            with open(outfile, 'a') as _o:
+                print('return values when found', pos, itemfound, file=_o)
+            return pos, itemfound
+        return None
+
     def _search(self, reverse=False):
         "start search after asking for options"
         self._search_pos = None
         ok = False
         if not reverse or not self.search_args:
-            ok, self.search_args = self.gui.get_search_args()
+            ok, dialog_data = self.gui.get_search_args()
+            if ok:
+                self.search_args, self.search_specs = dialog_data
         if reverse or ok:
-            found = find_next(self.flatten_tree(self.gui.top), self.search_args, reverse)
+            found = self.find_next(self.flatten_tree(self.gui.top), self.search_args, reverse)
             if found:
                 self.gui.set_selected_item(found[1])
                 self._search_pos = found
             else:
-                self.gui.meld('Niks (meer) gevonden')
+                self.gui.meld(self.search_specs + '\n\nNo (more) results')
 
     @staticmethod
     def build_search_spec(ele, attr_name, attr_val, text, attr):
@@ -1146,6 +1166,9 @@ class Editor(object):
                 out += attr
         elif attr:
             out = 'search for' + attr
+        outfile = '/tmp/search_stuff'
+        with open(outfile, 'w') as _o:
+            print(out, file=_o)
         return out
 
     def search(self, event=None):
@@ -1158,13 +1181,15 @@ class Editor(object):
 
     def _search_next(self, reverse=False):
         "find (default is forward)"
-        found = find_next(self.flatten_tree(self.gui.top), self.search_args, reverse,
-                          self._search_pos)
+        if not self.search_args:
+            return
+        found = self.find_next(self.flatten_tree(self.gui.top), self.search_args, reverse,
+                               self._search_pos)
         if found:
             self.gui.set_selected_item(found[1])
             self._search_pos = found
         else:
-            self.gui.meld('Niks (meer) gevonden')
+            self.gui.meld(self.search_specs + '\n\nNo (more) results')
 
     def search_next(self, event=None):
         "find forward"

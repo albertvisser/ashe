@@ -209,68 +209,71 @@ class SearchDialog(wx.Dialog):
 
         gsizer = wx.GridBagSizer(4, 4)
         self.cb_element = wx.StaticText(self, label='Element')
-        gsizer.Add(self.cb_element, (0, 0))
+        gsizer.Add(self.cb_element, (0, 0), flag=wx.ALIGN_CENTER_VERTICAL)
         vsizer = wx.BoxSizer(wx.VERTICAL)
         hsizer = wx.BoxSizer(wx.HORIZONTAL)
-        lbl_element = wx.StaticText(self, label="name:")
-        hsizer.Add(lbl_element)
-        self.txt_element = wx.TextCtrl(self)
-        self.txt_element.textChanged.connect(self.set_search)
+        lbl_element = wx.StaticText(self, label="name: ")
+        hsizer.Add(lbl_element, flag=wx.ALIGN_CENTER_VERTICAL)
+        self.txt_element = wx.TextCtrl(self, size=(120, -1))
+        self.txt_element.Bind(wx.EVT_TEXT, self.set_search)
         hsizer.Add(self.txt_element)
         vsizer.Add(hsizer)
         gsizer.Add(vsizer, (0, 1))
 
-        vsizer = wx.BoxSizer(wx.VERTICAL)
-        # vsizer.addSpacing(5)
-        self.cb_attr = wx.StaticText(self, label='Attribute')
-        vsizer.Add(self.cb_attr)
-        # vsizer.addStretch()
-        gsizer.Add(vsizer, (1, 0))
+        self.cb_attr = wx.StaticText(self, label='Attribute ')
+        gsizer.Add(self.cb_attr, (1, 0), flag=wx.ALIGN_CENTER_VERTICAL)
         vsizer = wx.BoxSizer(wx.VERTICAL)
         hsizer = wx.BoxSizer(wx.HORIZONTAL)
-        lbl_attr_name = wx.StaticText(self, label="name:")
-        hsizer.Add(lbl_attr_name)
-        self.txt_attr_name = wx.TextCtrl(self)
-        self.txt_attr_name.textChanged.connect(self.set_search)
+        lbl_attr_name = wx.StaticText(self, label="name: ")
+        hsizer.Add(lbl_attr_name, flag=wx.ALIGN_CENTER_VERTICAL)
+        self.txt_attr_name = wx.TextCtrl(self, size=(120, -1))
+        self.txt_attr_name.Bind(wx.EVT_TEXT, self.set_search)
         hsizer.Add(self.txt_attr_name)
-        vsizer.Add(hsizer)
-        hsizer = wx.BoxSizer(wx.HORIZONTAL)
-        lbl_attr_val = wx.StaticText(self, label="value:")
-        hsizer.Add(lbl_attr_val)
-        self.txt_attr_val = wx.TextCtrl(self)
-        self.txt_attr_val.textChanged.connect(self.set_search)
-        hsizer.Add(self.txt_attr_val)
         vsizer.Add(hsizer)
         gsizer.Add(vsizer, (1, 1))
 
-        self.cb_text = wx.StaticText(self, label='Text')
-        gsizer.Add(self.cb_text, (2, 0))
         hsizer = wx.BoxSizer(wx.HORIZONTAL)
-        lbl_text = wx.StaticText(self, label="value:")
-        hsizer.Add(lbl_text)
-        self.txt_text = wx.TextCtrl(self)
-        self.txt_text.textChanged.connect(self.set_search)
+        lbl_attr_val = wx.StaticText(self, label="value: ")
+        vsizer = wx.BoxSizer(wx.VERTICAL)
+        hsizer.Add(lbl_attr_val, flag=wx.ALIGN_CENTER_VERTICAL)
+        self.txt_attr_val = wx.TextCtrl(self, size=(120, -1))
+        self.txt_attr_val.Bind(wx.EVT_TEXT, self.set_search)
+        hsizer.Add(self.txt_attr_val)
+        vsizer.Add(hsizer)
+        gsizer.Add(vsizer, (2, 1))
+
+        self.cb_text = wx.StaticText(self, label='Text')
+        gsizer.Add(self.cb_text, (3, 0), flag=wx.ALIGN_CENTER_VERTICAL)
+        vsizer = wx.BoxSizer(wx.VERTICAL)
+        hsizer = wx.BoxSizer(wx.HORIZONTAL)
+        lbl_text = wx.StaticText(self, label="value: ")
+        hsizer.Add(lbl_text, flag=wx.ALIGN_CENTER_VERTICAL)
+        self.txt_text = wx.TextCtrl(self, size=(120, -1))
+        self.txt_text.Bind(wx.EVT_TEXT, self.set_search)
         hsizer.Add(self.txt_text)
-        gsizer.Add(hsizer, (2, 1))
-        sizer.Add(gsizer)
+        vsizer.Add(hsizer)
+        gsizer.Add(vsizer, (3, 1))
+
+        sizer.Add(gsizer, 1, wx.ALIGN_CENTER_HORIZONTAL | wx.TOP | wx.LEFT | wx.RIGHT, 8)
 
         hsizer = wx.BoxSizer(wx.HORIZONTAL)
         self.lbl_search = wx.StaticText(self, label='')
         hsizer.Add(self.lbl_search)
-        sizer.Add(hsizer)
+        sizer.Add(hsizer, 0, wx.LEFT | wx.RIGHT, 8)
 
         hsizer = wx.BoxSizer(wx.HORIZONTAL)
-        self.ok_button = wx.Button(self, id=wx.ID_SAVE)
-        self.SetAffirmativeId(wx.ID_SAVE)
+        self.ok_button = wx.Button(self, id=wx.ID_OK)
+        self.SetAffirmativeId(wx.ID_OK)
+        # self.SetAffirmativeId(self.ok_button.GetId())
         self.cancel_button = wx.Button(self, id=wx.ID_CANCEL)
         hsizer.Add(self.ok_button, 0, wx.EXPAND | wx.ALL, 2)
         hsizer.Add(self.cancel_button, 0, wx.EXPAND | wx.ALL, 2)
-        vsizer.Add(hsizer, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM |
-                   wx.ALIGN_CENTER_HORIZONTAL | wx.ALIGN_CENTER_VERTICAL, 15)
-        self.SetSizer(vsizer)
+        sizer.Add(hsizer, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM |
+                  wx.ALIGN_CENTER_HORIZONTAL | wx.ALIGN_CENTER_VERTICAL, 15)
+        self.SetSizer(sizer)
         self.SetAutoLayout(True)
-        vsizer.Fit(self)
-        vsizer.SetSizeHints(self)
+        sizer.Fit(self)
+        # sizer.SetSizeHints(self)
         self.Layout()
 
         if self._parent.search_args:
@@ -279,14 +282,16 @@ class SearchDialog(wx.Dialog):
             self.txt_attr_val.SetValue(self._parent.search_args[2])
             self.txt_text.SetValue(self._parent.search_args[3])
 
-    def set_search(self):
+    def set_search(self, event):
         """build text describing search action"""
-        out = self._parent.editor.buid_search_spec(self.txt_element.GetValue(),
-                                                   self.txt_attr_name.GetValue(),
-                                                   self.txt_attr_val.GetValue(),
-                                                   self.txt_text.GetValue(),
-                                                   '')
-        self.lbl_search.setText(out)
+        out = self._parent.editor.build_search_spec(self.txt_element.GetValue(),
+                                                    self.txt_attr_name.GetValue(),
+                                                    self.txt_attr_val.GetValue(),
+                                                    self.txt_text.GetValue(),
+                                                    '')
+        self.lbl_search.SetLabel(out)
+        self.search_specs = out
+        self.Fit()
 
     def on_ok(self):
         """confirm dialog and pass changed data to parent"""
@@ -299,7 +304,7 @@ class SearchDialog(wx.Dialog):
             self.txt_element.setFocus()
             return False, ()
 
-        return True, (ele, attr_name, attr_val, text)
+        return True, ((ele, attr_name, attr_val, text), self.search_specs)
 
 
 class DtdDialog(wx.Dialog):
