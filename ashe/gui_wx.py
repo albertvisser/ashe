@@ -427,7 +427,7 @@ class MainFrame(wx.Frame):
         # with open(self.data_file, "w") as f_out:
         #     f_out.write(str(soup).replace('%SOUP-ENCODING%', 'utf-8'))
         # self.html.LoadURL('file://' + self.data_file)
-        self.html.SetPage(html=str(soup).replace('%SOUP-ENCODING%', 'utf-8'))
+        self.html.SetPage(str(soup).replace('%SOUP-ENCODING%', 'utf-8'), '')
         self.tree.SetFocus()
 
     @staticmethod
@@ -435,7 +435,7 @@ class MainFrame(wx.Frame):
         "send dialog and transmit results"
         with obj:
             edt = obj.ShowModal()
-            if edt == wx.ID_SAVE:
+            if edt in (wx.ID_SAVE, wx.ID_OK):
                 ok, dialog_data = obj.on_ok()
                 if ok:
                     return True, dialog_data
