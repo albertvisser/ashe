@@ -153,7 +153,6 @@ class CssManager:
                     h_fname = h_fname[3:]
                     xmlfn_path = xmlfn_path.parent
                 fname = str(xmlfn_path / h_fname)
-            print('constructed filename:', fname)
             self.styledata = self.old_styledata
             try:
                 css = csed.MainWindow(app=self._parent.app)
@@ -320,7 +319,6 @@ class Editor(object):
                             newnode = newnode.find_all('body')[0]
                         except IndexError:
                             pass
-                        ## print(newnode.name)
                         add_to_tree(item, newnode, commented=True)
                 else:
                     newitem = self.gui.addtreeitem(item, getshortname(str(subnode), commented),
@@ -701,9 +699,6 @@ class Editor(object):
                 attrdict['styledata'] = self.gui.get_element_attrs(style_item)
             was_commented = data.startswith(CMSTART)
             ok, dialog_data = self.gui.do_edit_element(data, attrdict)
-            print(ok, dialog_data)
-            if ok:
-                modified = True
                 tag, attrs, commented = dialog_data
                 if under_comment:
                     commented = True
@@ -728,7 +723,6 @@ class Editor(object):
                 self.gui.meld("Please edit style through parent tag")
                 return
             ok, dialog_data = self.gui.do_edit_textvalue(txt + data)
-            print(ok, dialog_data)
             if ok:
                 modified = True
                 txt, commented = dialog_data
@@ -1039,16 +1033,11 @@ class Editor(object):
         """searches the flattened tree from start or the given pos
         to find the next item that fulfills the search criteria
         """
-        outfile = '/tmp/search_stuff'
         wanted_ele, wanted_attr, wanted_value, wanted_text = search_args
-        with open(outfile, 'a') as _o:
-            print(search_args, file=_o)
         if pos is None:
             pos = (0, None)
             if reverse:
                 pos = (len(data), None)
-            # with open(outfile, 'a') as _o:
-            #     print(data, file=_o)
         if reverse:
             data.reverse()
         if pos[0]:
@@ -1059,50 +1048,31 @@ class Editor(object):
         ele_ok = attr_name_ok = attr_value_ok = attr_ok = text_ok = False
         for newpos, data_item in enumerate(data):
             item, element_name, attr_data = data_item
-            with open(outfile, 'a') as _o:
-                print(data_item, file=_o)
-
             itemtext = self.gui.get_element_text(item)
+
             if element_name.startswith(ELSTART):
                 ele_ok = attr_name_ok = attr_value_ok = attr_ok = text_ok = False
-                ## if not wanted_ele or wanted_ele in element_name.replace(ELSTART, ''):
-                if wanted_ele and wanted_ele in element_name.replace(ELSTART, ''):
-                    with open(outfile, 'a') as _o:
-                        print('found ele', file=_o)
+                if not wanted_ele or wanted_ele in element_name.replace(ELSTART, ''):
                     ele_ok = True
-                if not attr_data:
-                    with open(outfile, 'a') as _o:
-                        print('attrs not needed', file=_o)
+                if not attr_data and not wanted_attr and not wanted_value:
                     attr_ok = True
                 for name, value in attr_data.items():
                     if not wanted_attr or wanted_attr in name:
-                        with open(outfile, 'a') as _o:
-                            print('found attr name or attr name not needed', file=_o)
                         attr_name_ok = True
                     if not wanted_value or wanted_value in value:
-                        with open(outfile, 'a') as _o:
-                            print('found attr value or attr value not needed', file=_o)
                         attr_value_ok = True
                     if attr_name_ok and attr_value_ok:
                         attr_ok = True
                         break
                 if not wanted_text:
-                    with open(outfile, 'a') as _o:
-                        print('text value not needed', file=_o)
                     text_ok = True
-                # with open(outfile, 'a') as _o:
-                #     print(itemtext, 'is het niet', file=_o)
             else:
                 text_ok = False
                 ele_ok = attr_ok = True
                 ## if not wanted_text or wanted_text in element_name:
                 if wanted_text and wanted_text in element_name:
-                    with open(outfile, 'a') as _o:
-                        print('found text value', file=_o)
                     text_ok = True
 
-            with open(outfile, 'a') as _o:
-                print(itemtext, ele_ok, attr_ok, text_ok, file=_o)
             ok = ele_ok and attr_ok and text_ok
             if ok:
                 itemfound = item
@@ -1117,8 +1087,6 @@ class Editor(object):
                 pos = newpos + pos[0] + factor
             else:
                 pos = newpos + pos[0]
-            with open(outfile, 'a') as _o:
-                print('return values when found', pos, itemfound, file=_o)
             return pos, itemfound
         return None
 
@@ -1166,9 +1134,6 @@ class Editor(object):
                 out += attr
         elif attr:
             out = 'search for' + attr
-        outfile = '/tmp/search_stuff'
-        with open(outfile, 'w') as _o:
-            print(out, file=_o)
         return out
 
     def search(self, event=None):
@@ -1390,7 +1355,6 @@ class Editor(object):
         """get validated html
         """
         output = '/tmp/ashe_check'
-        print(output, htmlfile)
         subprocess.run(['tidy', '-e', '-f', output, htmlfile])
         data = ""
         with open(output) as f_in:

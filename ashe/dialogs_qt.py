@@ -136,7 +136,6 @@ class ElementDialog(qtw.QDialog):
             row = self.attr_table.row(item)
             if col == 0:
                 fname = self.attr_table.item(row, 1).text()
-        print('got filename:', fname)
         # FIXME: dit werkt(e) niet voor een inline style
         self._parent.editor.cssm.call_editor(tag, fname, self._parent.app)
 
