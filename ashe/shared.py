@@ -54,3 +54,14 @@ def analyze_element(tag, attrs):
     else:
         text = 'Add &inline style'
     return tag, iscomment, text, old_styledata, has_style, is_stylesheet
+
+
+def get_dtd_menu_texts(has_dtd):
+    """determine text to update dtd menu with
+    """
+    textdict = {'label': '{} &DTD', 'help': '{} the Document Type Declaration'}
+    replacements = {True: 'Remove', False: 'Add'}
+    return [textdict[key].format(replacements[has_dtd]) for key in ('label', 'help')]
+# how to use in gui.<xx>.py:
+#    def adjust_dtd_nemu(self):
+#        label, helpstr = shared.get_dtd_menu_texts(self.dtdmenu.has_dtd)
