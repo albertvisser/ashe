@@ -699,6 +699,7 @@ class Editor(object):
                 attrdict['styledata'] = self.gui.get_element_attrs(style_item)
             was_commented = data.startswith(CMSTART)
             ok, dialog_data = self.gui.do_edit_element(data, attrdict)
+            if ok:
                 tag, attrs, commented = dialog_data
                 if under_comment:
                     commented = True
