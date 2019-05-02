@@ -343,7 +343,8 @@ class MainFrame(wx.Frame):
     # gebruikt wordt, maar die heb ik niet op mijn huidige toetesenbord
     # in de qt versie is dat een keyrelease event
 
-    def ask_how_to_continue(self, title, text):
+    @staticmethod
+    def ask_how_to_continue(title, text):
         """vraag of de wijzigingen moet worden opgeslagen
         keuze uitvoeren en teruggeven (i.v.m. eventueel gekozen Cancel)
         retourneert 1 = Yes, 0 = No, -1 = Cancel
@@ -422,13 +423,15 @@ class MainFrame(wx.Frame):
 
     def refresh_preview(self, soup):
         "toolkit specifieke voortzetting van gelijknamige editor methode"
-        self.data_file = os.path.join('/tmp', "ashe_tempfile.html")
-        with open(self.data_file, "w") as f_out:
-            f_out.write(str(soup).replace('%SOUP-ENCODING%', 'utf-8'))
-        self.html.LoadURL('file://' + self.data_file)
+        # self.data_file = os.path.join('/tmp', "ashe_tempfile.html")
+        # with open(self.data_file, "w") as f_out:
+        #     f_out.write(str(soup).replace('%SOUP-ENCODING%', 'utf-8'))
+        # self.html.LoadURL('file://' + self.data_file)
+        self.html.SetPage(html=str(soup).replace('%SOUP-ENCODING%', 'utf-8'))
         self.tree.SetFocus()
 
-    def call_dialog(self, obj):
+    @staticmethod
+    def call_dialog(obj):
         "send dialog and transmit results"
         with obj:
             edt = obj.ShowModal()
