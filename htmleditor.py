@@ -1,18 +1,16 @@
 #! /usr/bin/env python3
 """Albert's simple HTML editor: tree-based with live preview
-adapted for use of wxPhoenix so please DO NOT COMMIT
+new and improved version
 """
 import sys
-## from ashe_ppg import MainGui
-## from ashe_tk import MainGui - NB werkt niet op deze manier
-from ashe.ashe_wx import ashe_gui
-## from ashe.ashe_qt4 import ashe_gui
-## from ashe.ashe_qt import ashe_gui
+import os
+from ashe.base import Editor
 
 
 def main(args):
     "main function"
-    ashe_gui(args)
+    Editor(args)
 
 if __name__ == '__main__':
-    main(sys.argv)
+    arg = sys.argv[1] if len(sys.argv) > 1 else ''
+    main(arg)
