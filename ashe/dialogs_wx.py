@@ -261,15 +261,21 @@ class SearchDialog(wx.Dialog):
         hsizer.Add(self.lbl_search)
         sizer.Add(hsizer, 0, wx.LEFT | wx.RIGHT, 8)
 
-        hsizer = wx.BoxSizer(wx.HORIZONTAL)
-        self.ok_button = wx.Button(self, id=wx.ID_OK)
-        self.SetAffirmativeId(wx.ID_OK)
-        # self.SetAffirmativeId(self.ok_button.GetId())
-        self.cancel_button = wx.Button(self, id=wx.ID_CANCEL)
-        hsizer.Add(self.ok_button, 0, wx.EXPAND | wx.ALL, 2)
-        hsizer.Add(self.cancel_button, 0, wx.EXPAND | wx.ALL, 2)
-        sizer.Add(hsizer, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM |
-                  wx.ALIGN_CENTER_HORIZONTAL | wx.ALIGN_CENTER_VERTICAL, 15)
+        # hsizer = wx.BoxSizer(wx.HORIZONTAL)
+        # self.ok_button = wx.Button(self, id=wx.ID_OK)
+        # # self.SetAffirmativeId(wx.ID_OK)
+        # # self.SetAffirmativeId(self.ok_button.GetId())
+        # self.cancel_button = wx.Button(self, id=wx.ID_CANCEL)
+        # hsizer.Add(self.ok_button, 0, wx.EXPAND | wx.ALL, 2)
+        # hsizer.Add(self.cancel_button, 0, wx.EXPAND | wx.ALL, 2)
+        # sizer.Add(hsizer, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM |
+        #           wx.ALIGN_CENTER_HORIZONTAL | wx.ALIGN_CENTER_VERTICAL, 15)
+        # buttons = self.CreateButtonSizer(wx.APPLY | wx.CLOSE)
+        # self.SetAffirmativeId(wx.ID_APPLY)
+        # self.SetEscapeId(wx.ID_CLOSE)
+        buttons = self.CreateButtonSizer(wx.OK | wx.CANCEL)
+        sizer.Add(buttons)
+
         self.SetSizer(sizer)
         self.SetAutoLayout(True)
         sizer.Fit(self)
@@ -300,10 +306,9 @@ class SearchDialog(wx.Dialog):
         attr_val = str(self.txt_attr_val.GetValue())
         text = str(self.txt_text.GetValue())
         if not any((ele, attr_name, attr_val, text)):
-            self.parent.meld('Please enter search criteria or press cancel')
-            self.txt_element.setFocus()
+            self._parent.meld('Please enter search criteria or press cancel')
+            self.resend = True
             return False, ()
-
         return True, ((ele, attr_name, attr_val, text), self.search_specs)
 
 
@@ -348,8 +353,9 @@ class DtdDialog(wx.Dialog):
         vbox.Add(sbox, 1, wx.EXPAND | wx.LEFT | wx.RIGHT, 15)
 
         hbox = wx.BoxSizer(wx.HORIZONTAL)
-        self.ok_button = wx.Button(self, id=wx.ID_SAVE)
-        self.SetAffirmativeId(wx.ID_SAVE)
+        self.ok_button = wx.Button(self, id=wx.ID_OK)
+        # self.ok_button = wx.Button(self, id=wx.ID_SAVE)
+        # self.SetAffirmativeId(wx.ID_SAVE)
         self.cancel_button = wx.Button(self, id=wx.ID_CANCEL)
         hbox.Add(self.ok_button, 0, wx.EXPAND | wx.ALL, 2)
         hbox.Add(self.cancel_button, 0, wx.EXPAND | wx.ALL, 2)

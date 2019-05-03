@@ -433,12 +433,20 @@ class MainFrame(wx.Frame):
     @staticmethod
     def call_dialog(obj):
         "send dialog and transmit results"
+        obj.resend = False
         with obj:
-            edt = obj.ShowModal()
-            if edt in (wx.ID_SAVE, wx.ID_OK):
-                ok, dialog_data = obj.on_ok()
-                if ok:
-                    return True, dialog_data
+            send = True
+            while send:
+                edt = obj.ShowModal()
+                if edt in (wx.ID_SAVE, wx.ID_OK, wx.ID_APPLY):
+                    ok, dialog_data = obj.on_ok()
+                    if ok:
+                        send = False
+                        return True, dialog_data
+                if obj.resend:  # can be set in obj.on_ok()
+                    obj.resend = False
+                else:
+                    send = False
         return False, None
 
     def do_edit_element(self, tagdata, attrdict):
