@@ -308,10 +308,15 @@ class Editor(object):
                     if test.lower().startswith('[if'):
                         cond, data = test.split(']>', 1)
                         cond = cond[3:].strip()
-                        data, _ = data.rsplit('<![', 1)
-                        newitem = self.gui.addtreeitem(item, ' '.join((IFSTART, cond)), '')
-                        newnode = bs.BeautifulSoup(data, 'lxml').contents[0].contents[0]
-                        add_to_tree(newitem, newnode)
+                        try:
+                            data, _ = data.rsplit('<![', 1)
+                        except ValueError:
+                            print('IE conditional genegeerd:', test)
+                        else:
+                            newitem = self.gui.addtreeitem(item, ' '.join((IFSTART, cond)), '')
+                            # newnode = bs.BeautifulSoup(data, 'lxml').contents[0].contents[0]
+                            newnode = bs.BeautifulSoup(data, 'lxml').contents[0]
+                            add_to_tree(newitem, newnode)
                     else:
                         newnode = bs.BeautifulSoup(test, 'lxml')
                         try:
@@ -379,7 +384,7 @@ class Editor(object):
                     # onderliggende elementen langslopen
                     for subel in self.gui.get_element_children(elm):
                         subtext = self.gui.get_element_text(subel)
-                        data = self.gui.get_element_attrs(subel)
+                        data = self.gui.get_element_data(subel)
                         if subtext.startswith(ELSTART):
                             # element in tekst omzetten en deze aan text toevoegen
                             onthou = self.soup
