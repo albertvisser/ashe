@@ -508,11 +508,8 @@ class MainFrame(qtw.QMainWindow):
 
     def validate(self, htmlfile, fromdisk):
         "start validation"
-        with ScrolledTextDialog(self, "Validation output",
-                                htmlfile=htmlfile, fromdisk=fromdisk) as dlg:
-            dlg.show()
+        ScrolledTextDialog(self, "Validation output", htmlfile=htmlfile, fromdisk=fromdisk).show()
 
     def show_code(self, title, caption, data):
         "show dialog for view source"
-        with CodeViewDialog(self, title, caption, data) as dlg:
-            dlg.show()
+        CodeViewDialog(self, title, caption, data).show()
