@@ -8,7 +8,7 @@ the contents.
 The editor also contains some HTML-specific functions like adding a dtd, link,
 image, video or audio element, list or table,
 and presents a simple preview alongside the tree.
-In the HTML menu there are also options for validating the html,
+In the HTML menu there are options for adding specific constructs, validating the html,
 and viewing the code in pretty-printed format.
 
 
@@ -27,7 +27,4 @@ Requirements
 
 - Python
 - BeautifulSoup
-- PyQt4 for the current GUI version
-- wxPython for the previous GUI version (doesn't work with Python 3)
-- Tkinter and Gene Cash's Tree module for an older GUI version
-- PocketPyGUI for a PocketPC version
+- PyQt(5, including QtWebKit) or wxPython (4, including wxhtml2)
