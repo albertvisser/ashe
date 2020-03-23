@@ -166,7 +166,10 @@ class TextDialog(wx.Dialog):
         else:
             if text.startswith(CMSTART):
                 self.comment_button.SetValue(True)
-                dummy, text = text.split(None, 1)
+                try:
+                    dummy, text = text.split(None, 1)
+                except ValueError:
+                    text = ""
         hbox.Add(self.comment_button, 0, wx.EXPAND | wx.ALL, 1)
         vbox.Add(hbox, 0, wx.EXPAND | wx.LEFT | wx.RIGHT | wx.TOP, 20)
 

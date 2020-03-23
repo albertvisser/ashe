@@ -184,7 +184,10 @@ class TextDialog(qtw.QDialog):
         else:
             if text.startswith(CMSTART):
                 self.comment_button.toggle()
-                dummy, text = text.split(None, 1)
+                try:
+                    dummy, text = text.split(None, 1)
+                except ValueError:
+                    text = ""
         hbox.addWidget(self.comment_button)
         vbox.addLayout(hbox)
 
