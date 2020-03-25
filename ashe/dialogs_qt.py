@@ -329,7 +329,7 @@ class SearchDialog(qtw.QDialog):
 
         # self._parent.search_args = (ele, attr_name, attr_val, text)
         # self._parent.search_specs = self.search_specs
-        self._parent.dralog_data = ((ele, attr_name, attr_val, text), self.search_specs)
+        self._parent.dialog_data = ((ele, attr_name, attr_val, text), self.search_specs)
         super().accept()
 
 
