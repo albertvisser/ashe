@@ -144,7 +144,7 @@ class MainFrame(qtw.QMainWindow):
                     self.css_menu = act
                     if not self.editor.cssedit_available:
                         act.setDisabled(True)
-                if menu_text in ('&Edit', '&HTML'):
+                if menu_text in ('&Edit', '&Search', '&HTML'):
                     self.contextmenu_items.append(('M', menu))
             if menu_text == '&View':
                 self.contextmenu_items.append(('', ''))

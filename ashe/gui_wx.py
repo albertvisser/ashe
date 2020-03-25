@@ -2,6 +2,7 @@
 """
 import os
 # import sys
+import copy
 import wx
 # import wx.grid as wxgrid
 import wx.html2 as wxhtml  # webkit
@@ -153,8 +154,7 @@ class MainFrame(wx.Frame):
         """build application menu
         """
         menu_bar = wx.MenuBar()
-        self.contextmenu_items = []
-        self.popup_menu = wx.Menu()
+        self.contextmenu_items = []  #TODO alleen de teksten hierin zetten, niet de menuid's
         for menu_text, data in self.editor.get_menulist():
             menu = wx.Menu()
             for item in data:
@@ -191,7 +191,7 @@ class MainFrame(wx.Frame):
                             mnu.Enable(False)
                     self.Bind(wx.EVT_MENU, callback, mnu)
                 menu.Append(mnu)
-                if menu_text in ('&Edit', '&HTML'):
+                if menu_text in ('&Edit', '&Search', '&HTML'):
                     item = ('M', (menu, menu_text))
                     if item not in self.contextmenu_items:
                         self.contextmenu_items.append(item)
@@ -201,14 +201,19 @@ class MainFrame(wx.Frame):
                 # self.popup_menu.AppendSeparator()
             menu_bar.Append(menu, menu_text)
         self.SetMenuBar(menu_bar)
-        # for itemtype, item in self.contextmenu_items:
-        #     if itemtype == 'A':
-        #         if item == self.css_menu:
-        #             if not self.editor.cssedit_available:
-        #                 item.enable(False)
-        #     elif itemtype == 'M':
-        #         subm, text = item
-        #     else:
+        # dit lijkt code voor het popup menu de werkt, maar dan werkt het gewone menu niet?
+        self.popup_menu = wx.Menu()
+        for itemtype, item in self.contextmenu_items:
+            if itemtype == 'A':
+                self.popup_menu.Append(item)
+                if item == self.css_menu:
+                    if not self.editor.cssedit_available:
+                        item.enable(False)
+            elif itemtype == 'M':
+                subm, text = item
+                self.popup_menu.AppendSubMenu(subm, text)
+            else:
+                self.popup_menu.AppendSeparator()
 
     # def setfilenametooltip((self):
         # """bedoeld om de filename ook als tooltip te tonen, uit te voeren
@@ -290,6 +295,7 @@ class MainFrame(wx.Frame):
     def set_selected_item(self, item):
         """stel het in de tree geselecteerde item in
         """
+        print('in gui.set_selected_item, item is', item)
         self.tree.SelectItem(item)
 
     def init_tree(self, message):
@@ -315,9 +321,9 @@ class MainFrame(wx.Frame):
     def contextmenu(self, arg=None):
         'build/show context menu'
         # get type of node
-        itemtext = self.get_element_text(self.get_selected_item())  # not used
+        print('in contextmenU: itemtext is ', self.get_element_text(self.get_selected_item()))
         # menu = wx.Menu()
-        # for itemtype, item in self.contextmenu_items:
+        # for itemtype, item in self.contextmenu_items[:]:
         #     if itemtype == 'A':
         #         menu.Append(item)
         #         if item == self.css_menu:
@@ -337,6 +343,7 @@ class MainFrame(wx.Frame):
         # del menu
         # self.PopupMenu(menu)
         # menu.Destroy()
+        # onderstaande reageert meestal goed als de code in setup menu gebruikt wordt
         self.PopupMenu(self.popup_menu)
 
     # TODO: hier moet nog iets komen om erin te voorzien dat de menu knop (rechter Windows key)
