@@ -21,14 +21,13 @@ class VisualTree(wx.TreeCtrl):
         super().__init__(parent)  # , size=size)
         self.Bind(wx.EVT_LEFT_DCLICK, self.on_leftdclick)
         self.Bind(wx.EVT_RIGHT_DOWN, self.on_rightdown)
-        ## self.Bind(wx.EVT_CONTEXT_MENU, self.onContextMenu)
-        # self.Bind(wx.EVT_CHAR, self.on_char)
-        # self.Bind(wx.EVT_KEY_UP, self.on_key)
-        ## self.setAcceptDrops(True)
-        ## self.setDragEnabled(True)
-        ## self.setSelectionMode(self.SingleSelection)
-        ## self.setDragDropMode(self.InternalMove)
-        ## self.setDropIndicatorShown(True)
+        # self.Bind(wx.EVT_CONTEXT_MENU, self.onContextMenu)
+        ## drag-n-drop - nog niet geactiveerd
+        # self.setAcceptDrops(True)
+        # self.setDragEnabled(True)
+        # self.setSelectionMode(self.SingleSelection)
+        # self.setDragDropMode(self.InternalMove)
+        # self.setDropIndicatorShown(True)
 
     def on_leftdclick(self, evt=None):
         "start edit bij dubbelklikken tenzij op filenaam"
@@ -55,27 +54,27 @@ class VisualTree(wx.TreeCtrl):
             self._parent.contextmenu(item)
         evt.Skip()
 
-    ## def mouseReleaseEvent(self, event):
-        ## "reimplemented event handler"
+    def mouseReleaseEvent(self, event):
+        "reimplemented event handler"
         ## if event.button() == core.Qt.RightButton:
             ## xc, yc = event.x(), event.y()
             ## item = self.itemAt(xc, yc)
             ## if item and item != self._parent.top:
                 ## return
-        ## super().mouseReleaseEvent(event)
+        super().mouseReleaseEvent(event)
 
-    ## def dropEvent(self, event):
-        ## """wordt aangeroepen als een versleept item (dragitem) losgelaten wordt over
-        ## een ander (dropitem)
-        ## Het komt er altijd *onder* te hangen als laatste item
-        ## deze methode breidt de Treewidget methode uit met wat visuele zaken
-        ## """
+    def dropEvent(self, event):
+        """wordt aangeroepen als een versleept item (dragitem) losgelaten wordt over
+        een ander (dropitem)
+        Het komt er altijd *onder* te hangen als laatste item
+        deze methode breidt de Treewidget methode uit met wat visuele zaken
+        """
         ## item = self.itemAt(event.pos())
         ## if not item or not item.text(0).startswith(self._parent.editor.constants['ELSTART']):
             ## self._parent.meld('Can only drop on element')
             ## return
         ## dragitem = self.selectedItems()[0]
-        ## super().dropEvent(event)
+        super().dropEvent(event)
         ## self._parent.tree_dirty = True
         ## dropitem = dragitem.parent()
         ## self.setCurrentItem(dragitem)
@@ -154,9 +153,13 @@ class MainFrame(wx.Frame):
         """build application menu
         """
         menu_bar = wx.MenuBar()
-        self.contextmenu_items = []  #TODO alleen de teksten hierin zetten, niet de menuid's
+        self.contextmenu_items = []
         for menu_text, data in self.editor.get_menulist():
             menu = wx.Menu()
+            if menu_text in ('&Edit', '&Search', '&HTML'):
+                self.contextmenu_items.append(('M', menu_text))
+            elif menu_text == '&View':
+                self.contextmenu_items.append(('', ''))
             for item in data:
                 if len(item) == 1:
                     menu.AppendSeparator()
@@ -168,11 +171,6 @@ class MainFrame(wx.Frame):
                     hotkey = "+".join(("Ctrl", hotkey))
                 if 'S' in modifiers:
                     hotkey = "+".join(("Shift", hotkey))
-                # act = wx.Action(menuitem_text, self)
-                # menu.addAction(act)
-                # act.setStatusTip(status_text)
-                # act.setShortcut(hotkey)
-                # act.triggered.connect(callback)
                 menuid = wx.NewId()
                 caption = "\t".join((menuitem_text, hotkey)) if hotkey else menuitem_text
                 if menuitem_text.startswith('Advance selection'):
@@ -180,40 +178,20 @@ class MainFrame(wx.Frame):
                     mnu = self.adv_menu
                 else:
                     mnu = wx.MenuItem(menu, menuid, caption, status_text)
-                    if menu_text == '&View':
-                        self.contextmenu_items.append(('A', mnu))
-                        # self.popup_menu.Append(mnu)
-                    elif menuitem_text == 'Add &DTD':
+                    if menuitem_text == 'Add &DTD':
                         self.dtd_menu = mnu
                     elif menuitem_text == 'Add &Stylesheet':
                         self.css_menu = mnu
+                        self.css_menu_text = menuitem_text
                         if not self.editor.cssedit_available:
                             mnu.Enable(False)
+                    else:
+                        self.contextmenu_items.append(('A', (menuitem_text, callback, status_text)))
                     self.Bind(wx.EVT_MENU, callback, mnu)
                 menu.Append(mnu)
-                if menu_text in ('&Edit', '&Search', '&HTML'):
-                    item = ('M', (menu, menu_text))
-                    if item not in self.contextmenu_items:
-                        self.contextmenu_items.append(item)
-                        # self.popup_menu.AppendSubMenu(menu, menu_text)
-            if menu_text == '&View':
-                self.contextmenu_items.append(('', ''))
-                # self.popup_menu.AppendSeparator()
             menu_bar.Append(menu, menu_text)
         self.SetMenuBar(menu_bar)
-        # dit lijkt code voor het popup menu de werkt, maar dan werkt het gewone menu niet?
-        self.popup_menu = wx.Menu()
-        for itemtype, item in self.contextmenu_items:
-            if itemtype == 'A':
-                self.popup_menu.Append(item)
-                if item == self.css_menu:
-                    if not self.editor.cssedit_available:
-                        item.enable(False)
-            elif itemtype == 'M':
-                subm, text = item
-                self.popup_menu.AppendSubMenu(subm, text)
-            else:
-                self.popup_menu.AppendSeparator()
+
 
     # def setfilenametooltip((self):
         # """bedoeld om de filename ook als tooltip te tonen, uit te voeren
@@ -295,7 +273,7 @@ class MainFrame(wx.Frame):
     def set_selected_item(self, item):
         """stel het in de tree geselecteerde item in
         """
-        print('in gui.set_selected_item, item is', item)
+        print('in gui.set_selected_item, item is', item, self.get_element_text(item))
         self.tree.SelectItem(item)
 
     def init_tree(self, message):
@@ -320,35 +298,28 @@ class MainFrame(wx.Frame):
 
     def contextmenu(self, arg=None):
         'build/show context menu'
-        # get type of node
         print('in contextmenU: itemtext is ', self.get_element_text(self.get_selected_item()))
-        # menu = wx.Menu()
-        # for itemtype, item in self.contextmenu_items[:]:
-        #     if itemtype == 'A':
-        #         menu.Append(item)
-        #         if item == self.css_menu:
-        #             if not self.editor.cssedit_available:
-        #                 item.enable(False)
-        #     elif itemtype == 'M':
-        #         subm, text = item
-        #         menu.AppendSubMenu(subm, text)
-        #     else:
-        #         menu.AppendSeparator()
-        # y = self.tree.visualItemRect(arg).bottom()
-        # x = self.tree.visualItemRect(arg).left()
-        # popup_location = core.QPoint(int(x) + 200, y)
-        # self.in_contextmenu = True
-        # menu.exec_(self.tree.mapToGlobal(popup_location))
-        # self.in_contextmenu = False
-        # del menu
-        # self.PopupMenu(menu)
-        # menu.Destroy()
-        # onderstaande reageert meestal goed als de code in setup menu gebruikt wordt
-        self.PopupMenu(self.popup_menu)
+        popup_menu = menu = wx.Menu()
+        for itemtype, item in self.contextmenu_items:
+            if itemtype == 'A':
+                menuitem = wx.MenuItem(menu, wx.NewId(), item[0], item[2])
+                self.Bind(wx.EVT_MENU, item[1], menuitem)
+                menu.Append(menuitem)
+                if item[0] == self.css_menu_text:
+                    if not self.editor.cssedit_available:
+                        menuitem.enable(False)
+            elif itemtype == 'M':
+                menu = wx.Menu()
+                popup_menu.AppendSubMenu(menu, item)
+            else:
+                popup_menu.AppendSeparator()
+        self.PopupMenu(popup_menu)
+        popup_menu.Destroy()
 
     # TODO: hier moet nog iets komen om erin te voorzien dat de menu knop (rechter Windows key)
     # gebruikt wordt, maar die heb ik niet op mijn huidige toetesenbord
     # in de qt versie is dat een keyrelease event
+    # of is dat EVT_CONTEXTMENU die ik al wel in de tree klasse heb voorzien?
 
     @staticmethod
     def ask_how_to_continue(title, text):
