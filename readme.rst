@@ -1,7 +1,7 @@
 Albert's Simple HTML Editor (ASHE)
 ==================================
 
-This HTML editor is based on the premiss that editing a HTML document is better done
+This HTML editor is based on the premisse that editing a HTML document is better done
 via the tree structure than via the text, on account of not having the tags cloud
 the contents.
 
@@ -21,10 +21,11 @@ You can provide a file name to indicate the file you'll be working with.
 For ease of work, I've configured my file manager to be able to call the editor
 on the file selected.
 
+Also included is a simple HTML previewer that can be started by calling ``viewhtml.py`` in the top directory
 
 Requirements
 ............
 
 - Python
-- BeautifulSoup
+- BeautifulSoup (and lxml)
 - PyQt(5, including QtWebKit) or wxPython (4, including wxhtml2)
