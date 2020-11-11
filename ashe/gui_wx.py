@@ -5,6 +5,7 @@ import os
 import copy
 import wx
 # import wx.grid as wxgrid
+import wx.lib.mixins.treemixin as treemix
 import wx.html2 as wxhtml  # webkit
 
 from ashe.shared import ELSTART, masks
@@ -13,7 +14,7 @@ from ashe.dialogs_wx import ElementDialog, TextDialog, DtdDialog, CssDialog, \
     ScrolledTextDialog, CodeViewDialog, SearchDialog
 
 
-class VisualTree(wx.TreeCtrl):
+class VisualTree(treemix.DragAndDrop, wx.TreeCtrl):
     """tree representation of HTML
     """
     def __init__(self, parent):  # , size):
@@ -54,32 +55,85 @@ class VisualTree(wx.TreeCtrl):
             self._parent.contextmenu(item)
         evt.Skip()
 
-    def mouseReleaseEvent(self, event):
-        "reimplemented event handler"
-        ## if event.button() == core.Qt.RightButton:
-            ## xc, yc = event.x(), event.y()
-            ## item = self.itemAt(xc, yc)
-            ## if item and item != self._parent.top:
-                ## return
-        super().mouseReleaseEvent(event)
+    def OnDrop(self, dropitem, dragitem):
+        """reimplemented from treemix.DragAndDrop
 
-    def dropEvent(self, event):
-        """wordt aangeroepen als een versleept item (dragitem) losgelaten wordt over
+        wordt aangeroepen als een versleept item (dragitem) losgelaten wordt over
         een ander (dropitem)
         Het komt er altijd *onder* te hangen als laatste item
-        deze methode breidt de Treewidget methode uit met wat visuele zaken
         """
-        ## item = self.itemAt(event.pos())
-        ## if not item or not item.text(0).startswith(self._parent.editor.constants['ELSTART']):
-            ## self._parent.meld('Can only drop on element')
-            ## return
-        ## dragitem = self.selectedItems()[0]
-        super().dropEvent(event)
-        ## self._parent.tree_dirty = True
-        ## dropitem = dragitem.parent()
-        ## self.setCurrentItem(dragitem)
-        ## dropitem.setExpanded(True)
-        ## self._parent.refresh_preview()
+        def getsubtree(elm, result):  # uit copy functie
+            "subitem(s) toevoegen aan copy buffer"
+            text = self.GetItemText(elm)
+            data = self.GetItemData(elm)
+            atrlist = []
+            if text.startswith(ELSTART):
+                children = []
+                child, state = self.GetFirstChild(elm)
+                while child.IsOk():
+                    getsubtree(child, atrlist)
+                    child, state = self.GetNextChild(elm, state)
+            result.append((text, data, atrlist))
+            return result
+        def zetzeronder(node, eltree, pos=-1): # uit paste functie
+            "paste copy buffer into tree"
+            if len(eltree) ==3:
+                text, data, subtree = eltree
+            else:
+                text, data, subtree = eltree, '', []
+            if pos == -1:
+                newnode = self.AppendItem(node, text)
+            else:
+                newnode = self.InsertItem(node, pos, text)
+            # data is ofwel leeg, ofwel een string, ofwel een dictionary
+            self.SetItemData(newnode, data)
+            for item in subtree:
+                zetzeronder(newnode, item)
+            return newnode
+        if dropitem == self.GetRootItem():
+            return
+        if dropitem is None:
+            dropitem = self._parent.editor.root
+        dragtree = []
+        dragtree = getsubtree(dragitem, dragtree)[0]
+        print(dragtree)
+        prev_item = self.GetPrevSibling(dragitem)
+        if not prev_item.IsOk():
+            prev_item = self.GetItemParent(dragitem)
+            if self.GetItemData(prev_item) == self._parent.editor.root:
+                prev_item = self.GetNextSibling(drag_item)
+        self.Delete(dragitem)
+        zetzeronder(dropitem, dragtree)  # shared.putsubtree(self, dropitem, *dragtree)
+        self.Expand(dropitem)
+        self._parent.editor.mark_dirty(True)
+        self._parent.editor.refresh_preview()
+
+    # def mouseReleaseEvent(self, event):
+    #     "reimplemented event handler"
+    #     ## if event.button() == core.Qt.RightButton:
+    #         ## xc, yc = event.x(), event.y()
+    #         ## item = self.itemAt(xc, yc)
+    #         ## if item and item != self._parent.top:
+    #             ## return
+    #     super().mouseReleaseEvent(event)
+
+    # def dropEvent(self, event):
+    #     """wordt aangeroepen als een versleept item (dragitem) losgelaten wordt over
+    #     een ander (dropitem)
+    #     Het komt er altijd *onder* te hangen als laatste item
+    #     deze methode breidt de Treewidget methode uit met wat visuele zaken
+    #     """
+    #     ## item = self.itemAt(event.pos())
+    #     ## if not item or not item.text(0).startswith(self._parent.editor.constants['ELSTART']):
+    #         ## self._parent.meld('Can only drop on element')
+    #         ## return
+    #     ## dragitem = self.selectedItems()[0]
+    #     super().dropEvent(event)
+    #     ## self._parent.tree_dirty = True
+    #     ## dropitem = dragitem.parent()
+    #     ## self.setCurrentItem(dragitem)
+    #     ## dropitem.setExpanded(True)
+    #     ## self._parent.refresh_preview()
 
 
 class MainFrame(wx.Frame):
