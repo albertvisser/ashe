@@ -98,13 +98,13 @@ class ElementDialog(wx.Dialog):
         self.Layout()
         self.tag_text.SetFocus()
 
-    def on_add(self):
+    def on_add(self, event):
         "attribuut toevoegen"
         self.attr_table.AppendRows(1)
         idx = self.attr_table.GetNumberRows() - 1
         self.attr_table.SetRowLabelValue(idx, '')
 
-    def on_del(self):
+    def on_del(self, event):
         "attribuut verwijderen"
         rows = self.attr_table.GetSelectedRows()
         if rows:
@@ -115,13 +115,16 @@ class ElementDialog(wx.Dialog):
             wx.MessageBox("Select a row by clicking on the row heading", 'Selection is empty',
                           wx.ICON_INFORMATION)
 
-    def on_style(self):
+    def on_style(self, event):
         "adjust style attributes"
         tag = self.tag_text.GetValue()
         for row in range(self.attr_table.GetNumberRows()):
             if self.attr_table.GetCellValue(row, 0) == 'href':
                 fname = self.attr_table.GetCellValue(row, 1)
-        self._parent.editor.cssm.call_csseditor(tag, fname)
+                break
+        else:
+            fname = ''
+        self._parent.editor.cssm.call_editor(tag, fname)
 
     def on_ok(self):
         "doorgeven in dialoog gewijzigde waarden aan hoofdscherm"
