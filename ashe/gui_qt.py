@@ -59,10 +59,10 @@ class VisualTree(qtw.QTreeWidget):
             return
         dragitem = self.selectedItems()[0]
         super().dropEvent(event)
-        self._parent.tree_dirty = True
         dropitem = dragitem.parent()
         self.setCurrentItem(dragitem)
         dropitem.setExpanded(True)
+        self._parent.editor.mark_dirty(True)
         self._parent.editor.refresh_preview()
 
 
