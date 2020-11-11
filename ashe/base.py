@@ -437,7 +437,7 @@ class Editor(object):
             if retval > 0:
                 self.savexml()
             return retval
-        return None
+        return 0
 
     def get_menulist(self):
         """menu definition
@@ -705,6 +705,7 @@ class Editor(object):
             was_commented = data.startswith(CMSTART)
             ok, dialog_data = self.gui.do_edit_element(data, attrdict)
             if ok:
+                modified = True
                 tag, attrs, commented = dialog_data
                 if under_comment:
                     commented = True
