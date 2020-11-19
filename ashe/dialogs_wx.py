@@ -132,7 +132,7 @@ class ElementDialog(wx.Dialog):
             self.styledata, attrs = self._parent.editor.cssm.call_editor(self, tag)
         print('ín on_style, styledata is', self.styledata)
         if self.styledata is not None:
-           self.refresh()
+            self.refresh()
 
     def refresh(self):
         "ververs het style / styledata element i.v.m. terugkeer uit css editor"
@@ -164,7 +164,7 @@ class ElementDialog(wx.Dialog):
     def on_cancel(self, event):
         "controle bij afbreken: css kan gewijzigd zijn"
         if self.styledata != self.old_styledata:
-            wx.MessageBox('Bijbehorende style data is gewijzigd', 'Let op', wx.ICON_WARN)
+            wx.MessageBox('Bijbehorende style data is gewijzigd', 'Let op', wx.ICON_WARNING)
             self.refresh()
         else:
             self.EndModal(wx.ID_CANCEL)

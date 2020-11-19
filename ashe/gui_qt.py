@@ -258,7 +258,7 @@ class MainFrame(qtw.QMainWindow):
         menu = qtw.QMenu()
         for itemtype, item in self.contextmenu_items:
             if itemtype == 'A':
-                act = menu.addAction(item)
+                menu.addAction(item)
             elif itemtype == 'M':
                 menu.addMenu(item)
             else:

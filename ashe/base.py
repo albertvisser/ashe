@@ -13,6 +13,7 @@ import bs4 as bs  # BeautifulSoup as bs
 from ashe.gui import gui
 from ashe.shared import ICO, TITEL, CMSTART, ELSTART, DTDSTART, IFSTART, BL
 CMELSTART = ' '.join((CMSTART, ELSTART))
+csed = None  # satisfy the linter
 
 
 def check_for_csseditor():
@@ -712,11 +713,11 @@ class Editor(object):
                     # style data zit in attrs['styledata'] en moet naar tekst element onder tag
                     newtext = str(attrs.pop('styledata', ''))  # en daarna moet deze hier weg
                     if style_item:
-                        oldtext = self.gui.get_element_data(style_item)
+                        self.gui.get_element_data(style_item)
                         self.gui.set_element_text(style_item, getshortname(newtext))
                         self.gui.set_element_data(style_item, newtext)
                     else:
-                        new_item = self.gui.addtreeitem(self.item, newtext, {}, -1)
+                        self.gui.addtreeitem(self.item, newtext, {}, -1)
                 attrdict.pop('styledata', '')
                 if 'style' in attrs and not attrs['style']:
                     attrs.pop('style')
@@ -1069,7 +1070,7 @@ class Editor(object):
         ele_ok = attr_name_ok = attr_value_ok = attr_ok = text_ok = False
         for newpos, data_item in enumerate(data):
             item, element_name, attr_data = data_item
-            itemtext = self.gui.get_element_text(item)
+            # itemtext = self.gui.get_element_text(item)
 
             if element_name.startswith(ELSTART):
                 ele_ok = attr_name_ok = attr_value_ok = attr_ok = text_ok = False

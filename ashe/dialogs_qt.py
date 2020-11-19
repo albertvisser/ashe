@@ -144,7 +144,7 @@ class ElementDialog(qtw.QDialog):
         else:
             self.styledata, self.attrs = self._parent.editor.cssm.call_editor(self, tag)
         if self.styledata is not None:  # is None bij aanroepen van css editor
-           self.refresh()
+            self.refresh()
 
     def refresh(self):
         "ververs het style / styledata element i.v.m. terugkeer uit css editor"
@@ -564,7 +564,7 @@ class CssDialog(qtw.QDialog):
         try:
             link = self._parent.editor.convert_link(link, self._parent.editor.xmlfn)
         except ValueError as msg:
-            self._parent.meld(mld)
+            self._parent.meld(msg)
             # qtw.QMessageBox.information(self, self._parent.title, msg)
             return
         self._parent.dialog_data = {"rel": 'stylesheet', "href": link, "type": 'text/css'}

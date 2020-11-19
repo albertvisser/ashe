@@ -1,8 +1,6 @@
 """wxPython specifieke routines voor mijn op een treeview gebaseerde HTML-editor
 """
 import os
-# import sys
-import copy
 import wx
 # import wx.grid as wxgrid
 import wx.lib.mixins.treemixin as treemix
@@ -66,18 +64,19 @@ class VisualTree(treemix.DragAndDrop, wx.TreeCtrl):
             "subitem(s) toevoegen aan copy buffer"
             text = self.GetItemText(elm)
             data = self.GetItemData(elm)
-            atrlist = []
+            attrlist = []
             if text.startswith(ELSTART):
-                children = []
+                # children = []
                 child, state = self.GetFirstChild(elm)
                 while child.IsOk():
-                    getsubtree(child, atrlist)
+                    getsubtree(child, attrlist)  # attrlist is updated implicitely
                     child, state = self.GetNextChild(elm, state)
-            result.append((text, data, atrlist))
+            result.append((text, data, attrlist))
             return result
-        def zetzeronder(node, eltree, pos=-1): # uit paste functie
+
+        def zetzeronder(node, eltree, pos=-1):  # uit paste functie
             "paste copy buffer into tree"
-            if len(eltree) ==3:
+            if len(eltree) == 3:
                 text, data, subtree = eltree
             else:
                 text, data, subtree = eltree, '', []
@@ -101,12 +100,13 @@ class VisualTree(treemix.DragAndDrop, wx.TreeCtrl):
         if not prev_item.IsOk():
             prev_item = self.GetItemParent(dragitem)
             if self.GetItemData(prev_item) == self._parent.editor.root:
-                prev_item = self.GetNextSibling(drag_item)
+                prev_item = self.GetNextSibling(dragitem)
         self.Delete(dragitem)
         zetzeronder(dropitem, dragtree)  # shared.putsubtree(self, dropitem, *dragtree)
         self.Expand(dropitem)
         self._parent.editor.mark_dirty(True)
         self._parent.editor.refresh_preview()
+
 
 class MainFrame(wx.Frame):
     "Main GUI"
@@ -215,7 +215,6 @@ class MainFrame(wx.Frame):
                 menu.Append(mnu)
             menu_bar.Append(menu, menu_text)
         self.SetMenuBar(menu_bar)
-
 
     # def setfilenametooltip((self):
         # """bedoeld om de filename ook als tooltip te tonen, uit te voeren
@@ -396,7 +395,7 @@ class MainFrame(wx.Frame):
     def set_item_expanded(self, item, state):
         """show item's children
         """
-        if self.tree.IsExpanded(item):
+        if not state:  # :self.tree.IsExpanded(item):
             # self.tree.Collapse(item)
             self.tree.CollapseAllChildren(item)
         else:

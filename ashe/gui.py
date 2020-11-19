@@ -5,4 +5,5 @@ if toolkit == 'qt':
     import ashe.gui_qt as gui
 elif toolkit == 'wx':
     import ashe.gui_wx as gui
-
+else:
+    raise ImportError('onbekende GUI toolkit')
