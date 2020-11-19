@@ -23,18 +23,17 @@ class ElementDialog(qtw.QDialog):
         self.setWindowTitle(title)
         self.setWindowIcon(self._parent.appicon)
         tagdata = analyze_element(tag, attrs)
-        tag_text, iscomment, style_text, styledata, self.has_style, is_stylesheet = tagdata
+        tag_text, iscomment, style_text = tagdata[:3]
+        self.styledata, self.has_style, self.is_stylesheet = tagdata[3:]
+        self.csseditor_called = False
+        self.old_styledata = self.styledata
         self.is_style_tag = tag_text == 'style'
-        if self.is_style_tag or self.has_style:
-            self._parent.editor.cssm.setup_flags(styledata, is_stylesheet)
         vbox = qtw.QVBoxLayout()
         hbox = qtw.QHBoxLayout()
         lbl = qtw.QLabel("element name:", self)
         self.tag_text = qtw.QLineEdit(self)
         self.tag_text.setMinimumWidth(250)
         self.comment_button = qtw.QCheckBox('&Comment(ed)', self)
-        self.is_stylesheet = False
-        self.styledata = ''
         self.tag_text.setText(tag_text)
         if iscomment:
             self.comment_button.toggle()
@@ -60,18 +59,16 @@ class ElementDialog(qtw.QDialog):
         self.attr_table.setTabKeyNavigation(False)
         if attrs:
             for attr, value in attrs.items():
-                idx = self.attr_table.rowCount()
-                self.attr_table.insertRow(idx)
+                row = self.attr_table.rowCount()
+                self.attr_table.insertRow(row)
                 item = qtw.QTableWidgetItem(attr)
-                self.attr_table.setItem(idx, 0, item)
-                if attr == 'style':
+                self.attr_table.setItem(row, 0, item)
+                if attr in ('style', 'styledata'):
                     item.setFlags(item.flags() & (not core.Qt.ItemIsEditable))
                 item = qtw.QTableWidgetItem(value)
-                self.attr_table.setItem(idx, 1, item)
-                if attr == 'style':
+                self.attr_table.setItem(row, 1, item)
+                if attr in ('style', 'styledata'):
                     item.setFlags(item.flags() & (not core.Qt.ItemIsEditable))
-        else:
-            self.row = -1
         hbox.addWidget(self.attr_table)
         box.addLayout(hbox)
 
@@ -81,14 +78,15 @@ class ElementDialog(qtw.QDialog):
         self.delete_button = qtw.QPushButton('&Delete Selected', self)
         self.delete_button.clicked.connect(self.on_del)
         self.style_button = qtw.QPushButton(style_text, self)
-        if self._parent.editor.cssedit_available:
-            self.style_button.clicked.connect(self.on_style)
-        else:
-            self.style_button.setDisabled(True)
+        self.style_button.clicked.connect(self.on_style)
+        # self.refresh_button = qtw.QPushButton('&Refresh', self)
+        # self.refresh_button.clicked.connect(self.refresh)
+        # self.refresh_button.setDisabled(True)
         hbox.addStretch()
         hbox.addWidget(self.add_button)
         hbox.addWidget(self.delete_button)
         hbox.addWidget(self.style_button)
+        # hbox.addWidget(self.refresh_button)
         hbox.addStretch()
         box.addLayout(hbox)
 
@@ -112,15 +110,19 @@ class ElementDialog(qtw.QDialog):
 
     def on_add(self):
         "attribuut toevoegen"
+        self.refresh()
         self.attr_table.setFocus()
-        idx = self.attr_table.rowCount()
-        self.attr_table.insertRow(idx)
-        self.attr_table.setCurrentCell(idx, 0)
+        row = self.attr_table.rowCount()
+        self.attr_table.insertRow(row)
+        self.attr_table.setCurrentCell(row, 0)
 
     def on_del(self):
         "attribuut verwijderen"
+        self.refresh()
         row = self.attr_table.currentRow()
         if row or row == 0:
+            if self.attr_table.item(row, 0).text() == 'style':
+                self.has_style = False
             self.attr_table.removeRow(row)
         else:
             qtw.QMessageBox.information(self, 'Delete attribute',
@@ -128,6 +130,7 @@ class ElementDialog(qtw.QDialog):
 
     def on_style(self):
         "adjust style attributes"
+        self.refresh()
         tag = self.tag_text.text()
         fname = ''
         test = self.attr_table.findItems('href', core.Qt.MatchFixedString)
@@ -136,19 +139,60 @@ class ElementDialog(qtw.QDialog):
             row = self.attr_table.row(item)
             if col == 0:
                 fname = self.attr_table.item(row, 1).text()
-        # FIXME: dit werkt(e) niet voor een inline style
-        self._parent.editor.cssm.call_editor(tag, fname, self._parent.app)
+        if self.is_stylesheet:
+            self._parent.editor.cssm.call_editor_for_stylesheet(fname)
+        else:
+            self.styledata, self.attrs = self._parent.editor.cssm.call_editor(self, tag)
+        if self.styledata is not None:  # is None bij aanroepen van css editor
+           self.refresh()
+
+    def refresh(self):
+        "ververs het style / styledata element i.v.m. terugkeer uit css editor"
+        if self.tag_text.text() == 'link':
+            return
+        self.is_style_tag = self.tag_text.text() == 'style'
+        attrname = 'styledata' if self.is_style_tag else 'style'
+        for row in range(self.attr_table.rowCount()):
+            # if self.attr_table.item(row, 0).text() in ('style', 'styledata'):
+            if self.attr_table.item(row, 0).text() == attrname:
+                if attrname == 'style':
+                    self.has_style = True
+                self.attr_table.item(row, 1).setText(self.styledata)
+                break
+        else:
+            row = self.attr_table.rowCount()
+            self.attr_table.insertRow(row)
+            item = qtw.QTableWidgetItem(attrname)
+            self.attr_table.setItem(row, 0, item)
+            item.setFlags(item.flags() & (not core.Qt.ItemIsEditable))
+            item = qtw.QTableWidgetItem(self.styledata)
+            self.attr_table.setItem(row, 1, item)
+            item.setFlags(item.flags() & (not core.Qt.ItemIsEditable))
+            self.style_button.setText(analyze_element('', {attrname: ''})[2])
+            if attrname == 'style':
+                self.has_style = True
+        self.old_styledata = self.styledata
+        # self.refresh_button.setDisabled(True)
+
+    def reject(self):
+        "controle bij afbreken: css data kan gewijzigd zijn"
+        if self.styledata != self.old_styledata:
+            qtw.QMessageBox.information(self, 'Let op', "bijbehorende style data is gewijzigd")
+            self.refresh()
+        else:
+            super().reject()
 
     def accept(self):
         "controle bij OK aanklikken"
+        self.refresh()
         # TODO: ensure no duplicate items are added
         tag = str(self.tag_text.text())
         test = string.ascii_letters + string.digits
         for letter in tag:
             if letter not in test:
-                qtw.QMessageBox.information(self, self._parent.editor.title,
+                qtw.QMessageBox.information(self, 'Add an element',
                                             'Illegal character(s) in tag name')
-                break
+                return
         commented = self.comment_button.checkState()
         attrs = {}
         for i in range(self.attr_table.rowCount()):
@@ -159,10 +203,14 @@ class ElementDialog(qtw.QDialog):
                 qtw.QMessageBox.information(self, 'Add an element',
                                             'Press enter on this item first')
                 return
-            if name != 'style':
+            if name not in ('styledata', 'style'):
                 attrs[name] = value
-        if self.is_style_tag or self.has_style:
-            self.styledata, attrs = self._parent.editor.cssm.check_if_modified(tag, attrs)
+        # hoeft dit nog met die refresh?
+        print('    has_style is', self.has_style)
+        attrname = 'styledata' if self.is_style_tag else 'style' if self.has_style else ''
+        print('    attrname is', attrname)
+        if attrname:
+            attrs[attrname] = self.styledata
         self._parent.dialog_data = tag, attrs, commented
         super().accept()
 
@@ -171,25 +219,27 @@ class TextDialog(qtw.QDialog):
     """dialoog om een tekst element op te voeren of aan te passen
     biedt tevens de mogelijkheid de tekst "op commentaar" te zetten"""
 
-    def __init__(self, parent, title='', text=None):
+    def __init__(self, parent, title='', text=None, show_commented=True):
         self._parent = parent
         super().__init__(parent)
         self.setWindowTitle(title)
         self.setWindowIcon(self._parent.appicon)
+        self.show_commented = show_commented
         vbox = qtw.QVBoxLayout()
-        hbox = qtw.QHBoxLayout()
-        self.comment_button = qtw.QCheckBox('&Comment(ed)', self)
-        if text is None:
-            text = ''
-        else:
-            if text.startswith(CMSTART):
-                self.comment_button.toggle()
-                try:
-                    dummy, text = text.split(None, 1)
-                except ValueError:
-                    text = ""
-        hbox.addWidget(self.comment_button)
-        vbox.addLayout(hbox)
+        if show_commented:
+            hbox = qtw.QHBoxLayout()
+            self.comment_button = qtw.QCheckBox('&Comment(ed)', self)
+            if text is None:
+                text = ''
+            else:
+                if text.startswith(CMSTART):
+                    self.comment_button.toggle()
+                    try:
+                        dummy, text = text.split(None, 1)
+                    except ValueError:
+                        text = ""
+            hbox.addWidget(self.comment_button)
+            vbox.addLayout(hbox)
 
         hbox = qtw.QHBoxLayout()
         self.data_text = qtw.QTextEdit(self)
@@ -213,8 +263,8 @@ class TextDialog(qtw.QDialog):
 
     def accept(self):
         "pass changed data to parent"
-        self._parent.dialog_data = (str(self.data_text.toPlainText()),
-                                    self.comment_button.checkState())
+        commented = self.comment_button.checkState() if self.show_commented else False
+        self._parent.dialog_data = (str(self.data_text.toPlainText()), commented)
         super().accept()
 
 
@@ -408,6 +458,7 @@ class CssDialog(qtw.QDialog):
     def __init__(self, parent):
         self._parent = parent
         self.styledata = ''
+        self.cssfilename = ''  # can be set from csseditor
         super().__init__(parent)
         self.setWindowTitle('Add Stylesheet')
         self.setWindowIcon(self._parent.appicon)
@@ -423,9 +474,15 @@ class CssDialog(qtw.QDialog):
 
         self.choose_button = qtw.QPushButton('&Browse', self)
         self.choose_button.clicked.connect(self.kies)
+        self.new_button = qtw.QPushButton('C&reate', self)
+        self.new_button.clicked.connect(self.nieuw)
+        self.edit_button = qtw.QPushButton('&Edit', self)
+        self.edit_button.clicked.connect(self.edit)
         box = qtw.QHBoxLayout()
         box.addStretch()
         box.addWidget(self.choose_button)
+        box.addWidget(self.new_button)
+        box.addWidget(self.edit_button)
         box.addStretch()
         gbox.addLayout(box, 1, 0, 1, 2)
 
@@ -457,38 +514,60 @@ class CssDialog(qtw.QDialog):
 
     def kies(self):
         "methode om het te linken document te selecteren"
-        loc = self._parent.editor.xmlfn or os.getcwd()
+        loc = self.link_text.text()
+        if not loc or (loc.startswith('http') and '://' in loc):
+            loc = os.path.dirname(self._parent.editor.xmlfn) or os.getcwd()
         fnaam, _ = qtw.QFileDialog.getOpenFileName(self, "Choose a file", loc,
                                                    self._parent.build_mask('css'))
         if fnaam:
             self.link_text.setText(fnaam)
 
+    def nieuw(self, evt):
+        "methode om het te linken document te maken en automatisch te selecteren"
+        loc = self.link_text.text()
+        if not loc or (loc.startswith('http') and '://' in loc):
+            loc = os.path.dirname(self._parent.editor.xmlfn) or os.getcwd()
+        fname, _ = qtw.QFileDialog.getSaveFileName(self, "Choose a file", loc,
+                                                   self._parent.build_mask('css'))
+        if not fname:
+            return
+        self.link_text.setText(fname)  # moet nog relatief gemaakt worden
+        self._parent.editor.cssm.call_editor_for_stylesheet(fname, new_ok=True)
+
+    def edit(self, evt):
+        "methode om het te linken document van hieruit te wijzigen"
+        fname = self.link_text.text()
+        self._parent.editor.cssm.call_editor_for_stylesheet(fname)
+
     def on_inline(self):
         "voegt een 'style' tag in"
-        self._parent.dialog_data = self._parent.editor.cssm.call_from_inline(self._parent,
-                                                                             self.text_text.text())
+        styledata = self._parent.editor.cssm.call_from_inline(self._parent, '')
+        self._parent.dialog_data = {"type": 'text/css', 'cssdata': styledata}
+        test = str(self.text_text.text())
+        if test:
+            self._parent.dialog_data["media"] = test
+        super().accept()
 
     def accept(self):
         """bij OK: het geselecteerde (absolute) pad omzetten in een relatief pad
         maar eerst kijken of dit geen inline stylesheet betreft """
-        # TODO: wat als er zowel styledata als een linkadres is?
         if self.styledata:
             self._parent.dialog_data = {"cssdata": self.styledata.decode()}
             super().accept()
             return
+        if self.cssfilename:
+            self.link_text.setText(self.cssfilename)  # moet nog relatief gemaakt worden
         link = str(self.link_text.text())
         if link in ('', 'http://'):
-            qtw.QMessageBox.information(self, self.parent().title, "bestandsnaam opgeven"
-                                        " of inline stylesheet definiëren s.v.p")
+            self._parent.meld("bestandsnaam opgeven of inline stylesheet definiëren s.v.p")
             return
         try:
             link = self._parent.editor.convert_link(link, self._parent.editor.xmlfn)
         except ValueError as msg:
-            qtw.QMessageBox.information(self, self._parent.title, msg)
+            self._parent.meld(mld)
+            # qtw.QMessageBox.information(self, self._parent.title, msg)
             return
-        self._parent.dialog_data = {"rel": 'stylesheet',
-                                    "href": link,
-                                    "type": 'text/css'}
+        self._parent.dialog_data = {"rel": 'stylesheet', "href": link, "type": 'text/css'}
         test = str(self.text_text.text())
         if test:
             self._parent.dialog_data["media"] = test

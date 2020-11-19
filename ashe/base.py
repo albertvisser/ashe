@@ -9,15 +9,29 @@ import shutil
 import pathlib
 import subprocess
 import bs4 as bs  # BeautifulSoup as bs
-try:
-    import cssedit.editor.csseditor_qt as csed
-    cssedit_available = True
-except ImportError:
-    cssedit_available = False
 
 from ashe.gui import gui
 from ashe.shared import ICO, TITEL, CMSTART, ELSTART, DTDSTART, IFSTART, BL
 CMELSTART = ' '.join((CMSTART, ELSTART))
+
+
+def check_for_csseditor():
+    """check if we can use a separate editor for the parts dealing with style
+    """
+    global csed
+    try:
+        from .toolkit import toolkit
+        if toolkit == 'qt':
+            import cssedit.editor.csseditor_qt as csed
+            from ashe.dialogs_qt import TextDialog
+        elif toolkit == 'wx':
+            import cssedit.editor.csseditor_wx as csed
+            from ashe.dialogs_wx import TextDialog
+        else:
+            import cssedit.editor.csseditor_txt as csed
+        return True
+    except ImportError:
+        return False
 
 
 def getelname(tag, attrs=None, comment=False):
@@ -81,81 +95,75 @@ class CssManager:
     """
     def __init__(self, parent):
         self._parent = parent
-        self.styledata = ''
+        self.cssedit_available = check_for_csseditor()
 
-    def setup_flags(self, styledata, is_stylesheet):
-        "set up shared state"
-        self.old_styledata = styledata
-        self.is_stylesheet = is_stylesheet
-
-    # def setup_flags(self, tag, attrs):
-    #     """initialize shared state
-    #     """
-    #     self.old_styledata = ''
-    #     self.is_stylesheet = has_style = iscomment = False
-    #     if tag:
-    #         x = tag.split(None, 1)
-    #         if x[0] == CMSTART:
-    #             iscomment = True
-    #             x = x[1].split(None, 1)
-    #         if x[0] == ELSTART:
-    #             x = x[1].split(None, 1)
-    #         origtag = x[0]
-    #     else:
-    #         origtag = tag
-    #     if attrs:
-    #         for attr, value in attrs.items():
-    #             if attr == 'styledata':
-    #                 self.old_styledata = value
-    #                 continue
-    #             elif origtag == 'link' and attr == 'rel' and value == 'stylesheet':
-    #                 self.is_stylesheet = True
-    #             elif attr == 'style':
-    #                 has_style = True
-    #                 self.old_styledata = value
-    #     if origtag == 'style':  # is_style_tag:
-    #         text = '&Edit styles'
-    #     elif self.is_stylesheet:
-    #         text = '&Edit linked stylesheet'
-    #     elif has_style:
-    #         text = '&Edit inline style'
-    #     else:
-    #         text = '&Add inline style'
-    #     return origtag, iscomment, has_style, text
-
-    def call_editor(self, tag, fname, app=None):
+    def call_editor(self, master, tag):  # , styledata):  # , app=None):
         """call external css editor from the edit element dialog
+        compare data returned with original data supplied
         """
-        if not self.is_stylesheet:
-            css = csed.MainWindow(self, app=app)     # calling the editor
-            # with this class as parent should make sure we get the css back as an attribute
+        self.styledata = self.old_styledata = master.styledata
+        self.tag = tag
+        if self.cssedit_available:
+            # css = csed.MainWindow(self, app=self._parent.gui.app)  # app)
+            css = csed.MainWindow(master, app=self._parent.gui.app)  # app)
+            # master is for setting returndata on (attributes styledata and cssfilename)
             if tag == 'style':
-                css.open(text=self.old_styledata)
+                css.open(text=self.styledata)
             else:
-                css.open(tag=tag, text=self.old_styledata)
+                css.open(tag=tag, text=self.styledata)
             css.show_from_external()  # sets self.styledata right before closing
-            return
-        print("started cssedit main window")
+            master.csseditor_called = True
+            return None, None    # doorgaan heeft hier geen zin
+        ok, dialog_data = self._parent.gui.call_dialog(gui.TextDialog(self._parent.gui,
+                                                                      title='Edit inline style',
+                                                                      text=self.styledata,
+                                                                      show_commented=False))
+        if ok:
+            self.styledata = dialog_data[0]
+        if self.styledata != self.old_styledata:
+            self.old_styledata = self.styledata
+        if self.tag == 'style':
+            attrs = {'styledata': self.old_styledata}
+        else:
+            attrs = {'style': self.old_styledata}
+        return self.styledata, attrs
+
+    def call_editor_for_stylesheet(self, fname, new_ok=False):
+        """call external css editor from the edit element dialog
+        no need for checking data
+        """
         mld = ''
-        if not fname:
-            mld = 'Please enter a link address first'
-        elif fname.startswith('/'):
-            mld = "Cannot determine file system location of stylesheet file"
+        if new_ok:
+            try:
+                with open(fname, 'w'):
+                    pass
+            except OSError as e:
+                mld = str(e)
+        if not mld and fname.startswith('/'):
+            if not os.path.exists(fname):
+                mld = "Cannot determine file system location of stylesheet file"
+        if mld:
+            pass
+        elif not self.cssedit_available:
+            mld = 'Please edit external stylesheet separately'
         else:
             if fname.startswith('http'):
+                # FIXME: wil ik hier wel vanaf het web kunnen editen?
                 h_fname = os.path.join('/tmp', 'ashe_{}'.format(os.path.basename(fname)))
                 subprocess.run(['wget', fname, '-O', h_fname])
                 fname = h_fname
-            else:
+            elif fname:
                 h_fname = fname
-                xmlfn_path = pathlib.Path(self._parent.xmlfn)
+                xmlfn_path = pathlib.Path(self._parent.xmlfn).parent
+                print('xmlfn_path, h_fname is', xmlfn_path, h_fname)
                 while h_fname.startswith('../'):
                     h_fname = h_fname[3:]
                     xmlfn_path = xmlfn_path.parent
+                    print('xmlfn_path, h_fname is', xmlfn_path, h_fname)
                 fname = str(xmlfn_path / h_fname)
-            self.styledata = self.old_styledata
+        if not mld:
             try:
-                css = csed.MainWindow(app=self._parent.app)
+                css = csed.MainWindow(app=self._parent.gui.app)
                 css.open(filename=fname)
             except Exception as e:
                 mld = str(e)
@@ -164,32 +172,15 @@ class CssManager:
         if mld:
             self._parent.gui.meld(mld)
 
-    def check_if_modified(self, tag, attrs):
-        """compare with original state saved in setup_flags
-        """
-        try:
-            self.styledata = self.styledata.decode()
-        except AttributeError:
-            pass
-        if self.styledata != self.old_styledata:
-            self.old_styledata = self.styledata
-        if tag == 'style':
-            attrs['styledata'] = self.old_styledata
-        else:
-            if self.old_styledata:
-                attrs['style'] = self.old_styledata
-        return self.styledata, attrs
-
-    def call_from_inline(self, win, text):
+    def call_from_inline(self, win, styledata):
         """edit from CSS Dialog
         """
-        win.dialog_data = {"type": 'text/css'}
-        if text:
-            win.dialog_data["media"] = text
-        css = csed.MainWindow(self, self._parent.app)
-        css.open(text="")
-        css.show_from_external()
-        return win.dialog_data
+        win.styledata = styledata
+        styledata, attrs = self.call_editor(win, 'style')  # , '')
+        if styledata is not None:
+            print('in call_from_inline, styledata is', styledata)
+            # return win.dialog_data
+            return styledata
 
 
 class Editor(object):
@@ -218,10 +209,9 @@ class Editor(object):
         self.constants = {'ELSTART': ELSTART}
         self.tree_dirty = False
         self.xmlfn = fname
-        self.cssedit_available = cssedit_available
         self.search_args = []
         self.gui = gui.MainFrame(editor=self, icon=ICO)
-        self.cssm = CssManager(self) if cssedit_available else None
+        self.cssm = CssManager(self)
         err = self.getsoup(self.xmlfn) or ''
         if err:
             self.gui.meld(str(err))
@@ -671,8 +661,11 @@ class Editor(object):
             return
         data = self.gui.get_element_text(self.item)
         test = self.gui.get_element_children(self.item)
-        if test:
-            style_item = test[0]
+        print('in edit, tag + data is', data, '+', self.gui.get_element_data(self.item))
+        for item in test:
+            print('  child: tag + data is', self.gui.get_element_text(item), '+',
+                  self.gui.get_element_data(item))
+        style_item = test[0] if test else None
         if data.startswith(DTDSTART):
             data = self.gui.get_element_data(self.item)
             prefix = 'HTML PUBLIC "-//W3C//DTD'
@@ -700,28 +693,39 @@ class Editor(object):
         if data.startswith(ELSTART) or data.startswith(CMELSTART):
             oldtag = get_tag_from_elname(data)
             attrdict = self.gui.get_element_data(self.item)
+            print('in edit voor ophalen styledata, attrdict is', attrdict)
             if oldtag == 'style':
-                attrdict['styledata'] = self.gui.get_element_attrs(style_item)
+                if style_item:
+                    attrdict['styledata'] = self.gui.get_element_data(style_item)
+                else:
+                    attrdict['styledata'] = ''
+            print('in edit na   ophalen styledata, attrdict is', attrdict)
             was_commented = data.startswith(CMSTART)
             ok, dialog_data = self.gui.do_edit_element(data, attrdict)
             if ok:
                 modified = True
                 tag, attrs, commented = dialog_data
+                print('in base.edit, terug uit dialoog, data is', tag, attrs, commented)
                 if under_comment:
                     commented = True
                 if tag == 'style':
                     # style data zit in attrs['styledata'] en moet naar tekst element onder tag
                     newtext = str(attrs.pop('styledata', ''))  # en daarna moet deze hier weg
-                    oldtext = self.gui.get_element_data(style_item)
-                    if newtext != oldtext:
+                    if style_item:
+                        oldtext = self.gui.get_element_data(style_item)
                         self.gui.set_element_text(style_item, getshortname(newtext))
                         self.gui.set_element_data(style_item, newtext)
+                    else:
+                        new_item = self.gui.addtreeitem(self.item, newtext, {}, -1)
                 attrdict.pop('styledata', '')
+                if 'style' in attrs and not attrs['style']:
+                    attrs.pop('style')
                 if tag != oldtag or attrs != attrdict:
                     self.gui.set_element_text(self.item, getelname(tag, attrs, commented))
                 self.gui.set_element_data(self.item, attrs)
                 if commented != was_commented:
                     self.comment_out(self.item, commented)
+            attrdict.pop('styledata', '')
         else:
             txt = CMSTART + " " if data.startswith(CMSTART) else ""
             data = self.gui.get_element_data(self.item)
@@ -957,6 +961,7 @@ class Editor(object):
         ok, dialog_data = self.gui.do_add_element(where)
         if ok:
             tag, attrs, commented = dialog_data
+            print('in base.insert, terug uit dialoog, data is', tag, attrs, commented)
             item = self.item if below else self.gui.get_element_parent(self.item)
             under_comment = self.gui.get_element_text(item).startswith(CMSTART)
             text = getelname(tag, attrs, commented or under_comment)
@@ -969,6 +974,15 @@ class Editor(object):
                 if pos >= len(self.gui.get_element_children(parent)):
                     pos = -1
                 new_item = self.gui.addtreeitem(parent, text, attrs, pos)
+            if tag == 'style':
+                # style data zit in attrs['styledata'] en moet naar tekst element onder tag
+                newtext = str(attrs.pop('styledata', ''))  # en daarna moet deze hier weg
+                print('  na poppen styledata, newtext, attrs is', newtext, attrs)
+                new_subitem = self.gui.addtreeitem(new_item, getshortname(newtext, False),
+                                                   newtext, -1)
+                print('  nog even kijken of het klopt:')
+                print('  text:', self.gui.get_element_text(new_subitem))
+                print('  data:', self.gui.get_element_data(new_subitem))
             if self.advance_selection_on_add:
                 self.gui.set_selected_item(new_item)
             self.mark_dirty(True)
@@ -1199,7 +1213,7 @@ class Editor(object):
         if not ok:
             return
         data = dialog_data
-        # determine the place to put the sylesheet
+        # determine the place to put the stylesheet
         self.item = None
         for item in self.gui.get_element_children(self.gui.top):
             if self.gui.get_element_text(item) == ' '.join((ELSTART, 'html')):
@@ -1214,7 +1228,9 @@ class Editor(object):
             text = getelname('link', data)
         else:
             text = getelname('style', data)
+            print(data)
             cssdata = data.pop('cssdata')
+            # cssdata = data.pop('styledata')
         node = self.gui.addtreeitem(self.item, text, data, -1)
         if 'href' not in data:
             self.gui.addtreeitem(node, getshortname(cssdata), cssdata, -1)

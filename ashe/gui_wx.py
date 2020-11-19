@@ -108,34 +108,6 @@ class VisualTree(treemix.DragAndDrop, wx.TreeCtrl):
         self._parent.editor.mark_dirty(True)
         self._parent.editor.refresh_preview()
 
-    # def mouseReleaseEvent(self, event):
-    #     "reimplemented event handler"
-    #     ## if event.button() == core.Qt.RightButton:
-    #         ## xc, yc = event.x(), event.y()
-    #         ## item = self.itemAt(xc, yc)
-    #         ## if item and item != self._parent.top:
-    #             ## return
-    #     super().mouseReleaseEvent(event)
-
-    # def dropEvent(self, event):
-    #     """wordt aangeroepen als een versleept item (dragitem) losgelaten wordt over
-    #     een ander (dropitem)
-    #     Het komt er altijd *onder* te hangen als laatste item
-    #     deze methode breidt de Treewidget methode uit met wat visuele zaken
-    #     """
-    #     ## item = self.itemAt(event.pos())
-    #     ## if not item or not item.text(0).startswith(self._parent.editor.constants['ELSTART']):
-    #         ## self._parent.meld('Can only drop on element')
-    #         ## return
-    #     ## dragitem = self.selectedItems()[0]
-    #     super().dropEvent(event)
-    #     ## self._parent.tree_dirty = True
-    #     ## dropitem = dragitem.parent()
-    #     ## self.setCurrentItem(dragitem)
-    #     ## dropitem.setExpanded(True)
-    #     ## self._parent.refresh_preview()
-
-
 class MainFrame(wx.Frame):
     "Main GUI"
 
@@ -237,8 +209,6 @@ class MainFrame(wx.Frame):
                     elif menuitem_text == 'Add &Stylesheet':
                         self.css_menu = mnu
                         self.css_menu_text = menuitem_text
-                        if not self.editor.cssedit_available:
-                            mnu.Enable(False)
                     else:
                         self.contextmenu_items.append(('A', (menuitem_text, callback, status_text)))
                     self.Bind(wx.EVT_MENU, callback, mnu)
@@ -359,9 +329,6 @@ class MainFrame(wx.Frame):
                 menuitem = wx.MenuItem(menu, wx.NewId(), item[0], item[2])
                 self.Bind(wx.EVT_MENU, item[1], menuitem)
                 menu.Append(menuitem)
-                if item[0] == self.css_menu_text:
-                    if not self.editor.cssedit_available:
-                        menuitem.enable(False)
             elif itemtype == 'M':
                 menu = wx.Menu()
                 popup_menu.AppendSubMenu(menu, item)

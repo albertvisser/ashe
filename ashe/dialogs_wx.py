@@ -22,17 +22,16 @@ class ElementDialog(wx.Dialog):
         self._parent = parent
         super().__init__(parent, -1, title=title, style=wx.DEFAULT_DIALOG_STYLE | wx.RESIZE_BORDER)
         tagdata = analyze_element(tag, attrs)
-        tag_text, iscomment, style_text, styledata, self.has_style, is_stylesheet = tagdata
+        tag_text, iscomment, style_text = tagdata[:3]
+        self.styledata, self.has_style, self.is_stylesheet = tagdata[3:]
+        self.csseditor_called = False
+        self.old_styledata = self.styledata
         self.is_style_tag = tag_text == 'style'
-        if self.is_style_tag or self.has_style:
-            self._parent.editor.cssm.setup_flags(styledata, is_stylesheet)
         vbox = wx.BoxSizer(wx.VERTICAL)
         hbox = wx.BoxSizer(wx.HORIZONTAL)
         lbl = wx.StaticText(self, label="element name:")
         self.tag_text = wx.TextCtrl(self, size=(150, -1))
         self.comment_button = wx.CheckBox(self, label='&Comment(ed)')
-        self.is_stylesheet = False
-        self.styledata = ''
         self.tag_text.SetValue(tag_text)
         self.comment_button.SetValue(iscomment)
         hbox.Add(lbl, 0, wx.ALIGN_CENTER_VERTICAL)
@@ -50,19 +49,21 @@ class ElementDialog(wx.Dialog):
         self.attr_table.SetColLabelValue(1, 'value')
         width = self.attr_table.GetSize().GetWidth() - 162
         self.attr_table.SetColSize(1, width)  # 178) # 160)   ## FIXME: werkt dit?
+        print('in ElementDialog, building grid')
+        self.inactive_colour = wx.SystemSettings().GetColour(wx.SYS_COLOUR_GRAYTEXT)
         if attrs:
             for attr, value in attrs.items():
                 self.attr_table.AppendRows(1)
-                idx = self.attr_table.GetNumberRows() - 1
-                self.attr_table.SetRowLabelValue(idx, '')
-                self.attr_table.SetCellValue(idx, 0, attr)
-                ## if attr == 'style':
-                    ## item.setFlags(item.flags() & (not core.Qt.ItemIsEditable))
-                self.attr_table.SetCellValue(idx, 1, value)
-                ## if attr == 'style':
-                    ## item.setFlags(item.flags() & (not core.Qt.ItemIsEditable))
-        else:
-            self.row = -1
+                row = self.attr_table.GetNumberRows() - 1
+                self.attr_table.SetRowLabelValue(row, '')
+                self.attr_table.SetCellValue(row, 0, attr)
+                if attr in ('style', 'styledata'):
+                    self.attr_table.SetReadOnly(row, 0, True)
+                    self.attr_table.SetCellTextColour(row, 0, self.inactive_colour)
+                self.attr_table.SetCellValue(row, 1, value)
+                if attr in ('style', 'styledata'):
+                    self.attr_table.SetReadOnly(row, 1, True)
+                    self.attr_table.SetCellTextColour(row, 1, self.inactive_colour)
         hbox.Add(self.attr_table, 1, wx.EXPAND)
         sbox.Add(hbox, 1, wx.ALL | wx.EXPAND, 5)
 
@@ -72,10 +73,7 @@ class ElementDialog(wx.Dialog):
         self.delete_button = wx.Button(self, label='&Delete Selected')
         self.delete_button.Bind(wx.EVT_BUTTON, self.on_del)
         self.style_button = wx.Button(self, label=style_text)
-        if self._parent.editor.cssedit_available:
-            self.style_button.Bind(wx.EVT_BUTTON, self.on_style)
-        else:
-            self.style_button.Disable(True)
+        self.style_button.Bind(wx.EVT_BUTTON, self.on_style)
         hbox.Add(self.add_button, 0, wx.EXPAND | wx.ALL, 1)
         hbox.Add(self.delete_button, 0, wx.EXPAND | wx.ALL, 1)
         hbox.Add(self.style_button, 0, wx.EXPAND | wx.ALL, 1)
@@ -85,6 +83,7 @@ class ElementDialog(wx.Dialog):
         hbox = wx.BoxSizer(wx.HORIZONTAL)
         self.ok_button = wx.Button(self, id=wx.ID_SAVE)
         self.cancel_button = wx.Button(self, id=wx.ID_CANCEL)
+        self.cancel_button.Bind(wx.EVT_BUTTON, self.on_cancel)
         self.SetAffirmativeId(wx.ID_SAVE)
         hbox.Add(self.ok_button, 0, wx.EXPAND | wx.ALL, 2)
         hbox.Add(self.cancel_button, 0, wx.EXPAND | wx.ALL, 2)
@@ -100,12 +99,14 @@ class ElementDialog(wx.Dialog):
 
     def on_add(self, event):
         "attribuut toevoegen"
+        self.refresh()
         self.attr_table.AppendRows(1)
-        idx = self.attr_table.GetNumberRows() - 1
-        self.attr_table.SetRowLabelValue(idx, '')
+        row = self.attr_table.GetNumberRows() - 1
+        self.attr_table.SetRowLabelValue(row, '')
 
     def on_del(self, event):
         "attribuut verwijderen"
+        self.refresh()
         rows = self.attr_table.GetSelectedRows()
         if rows:
             rows.reverse()
@@ -117,6 +118,7 @@ class ElementDialog(wx.Dialog):
 
     def on_style(self, event):
         "adjust style attributes"
+        self.refresh()
         tag = self.tag_text.GetValue()
         for row in range(self.attr_table.GetNumberRows()):
             if self.attr_table.GetCellValue(row, 0) == 'href':
@@ -124,17 +126,58 @@ class ElementDialog(wx.Dialog):
                 break
         else:
             fname = ''
-        self._parent.editor.cssm.call_editor(tag, fname)
+        if self.is_stylesheet:
+            self._parent.editor.cssm.call_editor_for_stylesheet(fname)
+        else:
+            self.styledata, attrs = self._parent.editor.cssm.call_editor(self, tag)
+        print('ín on_style, styledata is', self.styledata)
+        if self.styledata is not None:
+           self.refresh()
+
+    def refresh(self):
+        "ververs het style / styledata element i.v.m. terugkeer uit css editor"
+        if self.tag_text.GetValue() == 'link':
+            return
+        self.is_style_tag = self.tag_text.GetValue() == 'style'
+        attrname = 'styledata' if self.is_style_tag else 'style'
+        for row in range(self.attr_table.GetNumberRows()):
+            if self.attr_table.GetCellValue(row, 0) == attrname:
+                if attrname == 'style':
+                    self.has_style = True
+                self.attr_table.SetCellValue(row, 1, self.styledata)
+                break
+        else:  # new attribute
+            self.attr_table.AppendRows(1)
+            row = self.attr_table.GetNumberRows() - 1
+            self.attr_table.SetRowLabelValue(row, '')
+            self.attr_table.SetCellValue(row, 0, attrname)
+            self.attr_table.SetReadOnly(row, 0, True)
+            self.attr_table.SetCellTextColour(row, 0, self.inactive_colour)
+            self.attr_table.SetCellValue(row, 1, self.styledata)
+            self.attr_table.SetReadOnly(row, 1, True)
+            self.attr_table.SetCellTextColour(row, 1, self.inactive_colour)
+            self.style_button.SetLabel(analyze_element('', {attrname: ''})[2])
+            if attrname == 'style':
+                self.has_style = True
+        self.old_styledata = self.styledata
+
+    def on_cancel(self, event):
+        "controle bij afbreken: css kan gewijzigd zijn"
+        if self.styledata != self.old_styledata:
+            wx.MessageBox('Bijbehorende style data is gewijzigd', 'Let op', wx.ICON_WARN)
+            self.refresh()
+        else:
+            self.EndModal(wx.ID_CANCEL)
 
     def on_ok(self):
         "doorgeven in dialoog gewijzigde waarden aan hoofdscherm"
+        self.refresh()
         # TODO: ensure no duplicate items are added
         tag = self.tag_text.GetValue()
         test = string.ascii_letters + string.digits
         for letter in tag:
             if letter not in test:
-                wx.MessageBox('Illegal character(s) in tag name',
-                              'Add an item', wx.ICON_ERROR)
+                wx.MessageBox('Illegal character(s) in tag name', 'Add an element', wx.ICON_ERROR)
                 return False, ()
         commented = self.comment_button.GetValue()
         attrs = {}
@@ -143,13 +186,14 @@ class ElementDialog(wx.Dialog):
                 name = self.attr_table.GetCellValue(i, 0)
                 value = self.attr_table.GetCellValue(i, 1)
             except AttributeError:
-                wx.MessageBox('Press enter on this item first',
-                              'Add an item', wx.ICON_ERROR)
+                wx.MessageBox('Press enter on this item first', 'Add an element', wx.ICON_ERROR)
                 return False, ()
-            if name != 'style':
+            if name not in ('styledata', 'style'):
                 attrs[name] = value
-        if self.is_style_tag or self.has_style:
-            self.styledata, attrs = self._parent.editor.cssm.check_if_modified(tag, attrs)
+        # if self.styledata != self.old_styledata:
+        attrname = 'styledata' if self.is_style_tag else 'style' if self.has_style else ''
+        if attrname:
+            attrs[attrname] = self.styledata
         return True, (tag, attrs, commented)
 
 
@@ -157,24 +201,26 @@ class TextDialog(wx.Dialog):
     """dialoog om een tekst element op te voeren of aan te passen
     biedt tevens de mogelijkheid de tekst "op commentaar" te zetten"""
 
-    def __init__(self, parent, title='', text=None):
+    def __init__(self, parent, title='', text=None, show_commented=True):
         self._parent = parent
         super().__init__(parent, title=title,
                          style=wx.DEFAULT_DIALOG_STYLE | wx.RESIZE_BORDER)
         vbox = wx.BoxSizer(wx.VERTICAL)
-        hbox = wx.BoxSizer(wx.HORIZONTAL)
-        self.comment_button = wx.CheckBox(self, label='&Comment(ed)')
-        if text is None:
-            text = ''
-        else:
-            if text.startswith(CMSTART):
-                self.comment_button.SetValue(True)
-                try:
-                    dummy, text = text.split(None, 1)
-                except ValueError:
-                    text = ""
-        hbox.Add(self.comment_button, 0, wx.EXPAND | wx.ALL, 1)
-        vbox.Add(hbox, 0, wx.EXPAND | wx.LEFT | wx.RIGHT | wx.TOP, 20)
+        self.show_commented = show_commented
+        if show_commented:
+            hbox = wx.BoxSizer(wx.HORIZONTAL)
+            self.comment_button = wx.CheckBox(self, label='&Comment(ed)')
+            if text is None:
+                text = ''
+            else:
+                if text.startswith(CMSTART):
+                    self.comment_button.SetValue(True)
+                    try:
+                        dummy, text = text.split(None, 1)
+                    except ValueError:
+                        text = ""
+            hbox.Add(self.comment_button, 0, wx.EXPAND | wx.ALL, 1)
+            vbox.Add(hbox, 0, wx.EXPAND | wx.LEFT | wx.RIGHT | wx.TOP, 20)
 
         hbox = wx.BoxSizer(wx.HORIZONTAL)
         self.data_text = wx.TextCtrl(self, -1, size=(340, 175), style=wx.TE_MULTILINE)
@@ -200,7 +246,7 @@ class TextDialog(wx.Dialog):
 
     def on_ok(self):
         "doorgeven in dialoog gewijzigde waarden aan hoofdscherm"
-        commented = self.comment_button.IsChecked()
+        commented = self.comment_button.IsChecked() if self.show_commented else False
         tag = self.data_text.GetValue()
         return True, (tag, commented)
 
@@ -388,6 +434,7 @@ class CssDialog(wx.Dialog):
     def __init__(self, parent):
         self._parent = parent
         self.styledata = ''
+        self.cssfilename = ''  # can be set from csseditor
         super().__init__(parent, title='Add Stylesheet')
         vbox = wx.BoxSizer(wx.VERTICAL)
 
@@ -401,7 +448,16 @@ class CssDialog(wx.Dialog):
 
         self.choose_button = wx.Button(self, label='&Browse')
         self.choose_button.Bind(wx.EVT_BUTTON, self.kies)
-        gbox.Add(self.choose_button, (1, 0), (1, 2), wx.ALIGN_CENTER_HORIZONTAL)
+        self.new_button = wx.Button(self, label='C&reate')
+        self.new_button.Bind(wx.EVT_BUTTON, self.nieuw)
+        self.edit_button = wx.Button(self, label='&Edit')
+        self.edit_button.Bind(wx.EVT_BUTTON, self.edit)
+        hbox = wx.BoxSizer(wx.HORIZONTAL)
+        hbox.Add(self.choose_button, 0, wx.EXPAND | wx.ALL, 2)
+        hbox.Add(self.new_button, 0, wx.EXPAND | wx.ALL, 2)
+        hbox.Add(self.edit_button, 0, wx.EXPAND | wx.ALL, 2)
+        # gbox.Add(self.choose_button, (1, 0), (1, 2), wx.ALIGN_CENTER_HORIZONTAL)
+        gbox.Add(hbox, (1, 0), (1, 2), wx.ALIGN_CENTER_HORIZONTAL)
 
         lbl = wx.StaticText(self, label="for media type(s):")
         gbox.Add(lbl, (2, 0), (1, 1), wx.ALIGN_CENTER_VERTICAL)
@@ -438,27 +494,49 @@ class CssDialog(wx.Dialog):
             if dlg.ShowModal() == wx.ID_OK:
                 self.link_text.SetValue(dlg.GetPath())
 
+    def nieuw(self, evt):
+        "methode om het te linken document te maken en automatisch te selecteren"
+        loc = self.link_text.GetValue()
+        if not loc or (loc.startswith('http') and '://' in loc):
+            loc = os.path.dirname(self._parent.editor.xmlfn) or os.getcwd()
+        with wx.FileDialog(self, message="Choose a file", defaultDir=loc,
+                           wildcard=self._parent.build_mask('css'), style=wx.FD_SAVE) as dlg:
+            if dlg.ShowModal() == wx.ID_OK:
+                fname = dlg.GetPath()
+        self.link_text.SetValue(fname)  # moet nog relatief gemaakt worden
+        self._parent.editor.cssm.call_editor_for_stylesheet(fname, new_ok=True)
+
+    def edit(self, evt):
+        "methode om het te linken document van hieruit te wijzigen"
+        fname = self.link_text.GetValue()
+        self._parent.editor.cssm.call_editor_for_stylesheet(fname)
+
     def on_inline(self, event=None):
         "voegt een 'style' tag in"
-        self._parent.dialog_data = self._parent.editor.cssm.call_from_inline(self._parent,
-                                                                             self.text_text.GetValue())
+        self.styledata = self._parent.editor.cssm.call_from_inline(self._parent, '')
+        self.EndModal(wx.ID_OK)
+
+    def accept(self):
+        """bevestig vanuit css editor; voor compatibiliteit met qt versie"""
+        self.on_ok()
 
     def on_ok(self):
         """bij OK: het geselecteerde (absolute) pad omzetten in een relatief pad
         maar eerst kijken of dit geen inline stylesheet betreft """
-        # TODO: wat als er zowel styledata als een linkadres is?
         if self.styledata:
-            return True, {"cssdata": self.styledata.decode()}
-        link = str(self.link_text.GetValue())
-        if link in ('', 'http://'):
-            self._parent.meld("bestandsnaam opgeven of inline stylesheet definiëren s.v.p")
-            return False, {}
-        try:
-            link = self._parent.editor.convert_link(link, self._parent.editor.xmlfn)
-        except ValueError as msg:
-            self._parent.meld(msg)
-            return False, {}
-        dialog_data = {"rel": 'stylesheet', "href": link, "type": 'text/css'}
+            dialog_data = {'styledata': self.styledata}
+        else:
+            link = str(self.link_text.GetValue())
+            if link in ('', 'http://'):
+                self._parent.meld("bestandsnaam opgeven of inline stylesheet definiëren s.v.p")
+                return False, {}
+            try:
+                link = self._parent.editor.convert_link(link, self._parent.editor.xmlfn)
+            except ValueError as msg:
+                self._parent.meld(msg)
+                return False, {}
+            dialog_data = {"rel": 'stylesheet', "href": link}
+        dialog_data["type"] = 'text/css'
         test = self.text_text.GetValue()
         if test:
             dialog_data["media"] = test

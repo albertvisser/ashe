@@ -142,8 +142,6 @@ class MainFrame(qtw.QMainWindow):
                     self.dtd_menu = act
                 elif menuitem_text == 'Add &Stylesheet':
                     self.css_menu = act
-                    if not self.editor.cssedit_available:
-                        act.setDisabled(True)
                 if menu_text in ('&Edit', '&Search', '&HTML'):
                     self.contextmenu_items.append(('M', menu))
             if menu_text == '&View':
@@ -261,9 +259,6 @@ class MainFrame(qtw.QMainWindow):
         for itemtype, item in self.contextmenu_items:
             if itemtype == 'A':
                 act = menu.addAction(item)
-                if item == self.css_menu:
-                    if not self.editor.cssedit_available:
-                        act.setDisabled(True)
             elif itemtype == 'M':
                 menu.addMenu(item)
             else:
