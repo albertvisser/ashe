@@ -1,2 +1,3 @@
-# voor nu: qt of wx
+"""htmleditor: define which toolkit to use -  for now: qt or wx
+"""
 toolkit = 'qt'
