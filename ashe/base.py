@@ -184,7 +184,7 @@ class CssManager:
             return styledata
 
 
-class Editor(object):
+class Editor:
     "Gui-independent start of application"
     dtdlist = (('HTML 4.1 Strict', 'HTML PUBLIC "-//W3C//DTD HTML 4.01//EN'
                 ' http://www.w3.org/TR/html4/strict.dtd" '),
@@ -483,11 +483,15 @@ class Editor(object):
                             'current', self.insert_after),
                            ('Insert Element Under', 'Ins', '', 'Add a new element under the '
                             'current', self.insert_child))),
-                ('&Search', (("&Find", 'F', 'C', 'Open dialog to specify search and find first',
-                              self.search),
+                # ('&Search', (("&Find", 'F', 'C', 'Open dialog to specify search and find first',
+                #              self.search),
+                ('&Search', (("&Find", 'F', 'C', 'Open dialog to specify search and find next from'
+                              ' here of first from top', self.search_next_from),
                              ## ("&Replace", 'H', 'C', 'Search and replace', self.replace),
-                             ("Find &Last", 'F', 'SC', 'Find last occurrence of search argument',
-                              self.search_last),
+                             # ("Find &Last", 'F', 'SC', 'Find last occurrence of search argument',
+                             #  self.search_last),
+                             ("Find &Backwards", 'F', 'SC', 'Find previous occurrence of'
+                              ' search argument', self.search_prev_from),
                              ("Find &Next", 'F3', '', 'Find next occurrence of search argument',
                               self.search_next),
                              ("Find &Previous", 'F3', 'S', 'Find previous occurrence of search '
@@ -1112,9 +1116,9 @@ class Editor(object):
             return pos, itemfound
         return None
 
-    def _search(self, reverse=False):
+    def _search(self, reverse=False, pos=None):
         "start search after asking for options"
-        self._search_pos = None
+        self._search_pos = pos
         ok = False
         if not reverse or not self.search_args:
             ok, dialog_data = self.gui.get_search_args()
@@ -1185,6 +1189,35 @@ class Editor(object):
     def search_prev(self, event=None):
         "find backwards"
         self._search_next(reverse=True)
+
+    def _search_from(self, reverse=False, item=None):
+        "start search after asking for options"
+        ok = False
+        ok, dialog_data = self.gui.get_search_args()
+        if ok:
+            self.search_args, self.search_specs = dialog_data
+        if reverse or ok:
+            if item == self.gui.top:
+                found = self.find_next(self.flatten_tree(self.gui.top), self.search_args, reverse)
+            else:
+                pos = [x[0] for x in self.flatten_tree(self.gui.top)].index(item)
+                found = self.find_next(self.flatten_tree(self.gui.top), self.search_args, reverse,
+                                       (pos, item))
+            if found:
+                self.gui.set_selected_item(found[1])
+                self._search_pos = found
+            else:
+                self.gui.meld(self.search_specs + '\n\nNo (more) results')
+
+    def search_next_from(self, event=None):
+        "start search - context menu versie"
+        item = self.gui.get_selected_item()
+        self._search_from(item=item)
+
+    def search_prev_from(self, event=None):
+        "backwards search - context menu versie"
+        item = self.gui.get_selected_item()
+        self._search_from(reverse=True, item=item)
 
     def replace(self, event=None):
         "replace an element"
