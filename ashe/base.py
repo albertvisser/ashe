@@ -213,7 +213,7 @@ class Editor:
         self.search_args, self.replace_args = [], []
         self.gui = gui.MainFrame(editor=self, icon=ICO)
         self.cssm = CssManager(self)
-        err = self.getsoup(self.xmlfn) or ''
+        err = self.file2soup(self.xmlfn) or ''
         if err:
             self.gui.meld(str(err))
         else:
@@ -234,7 +234,7 @@ class Editor:
             title = title.replace(test2, test)
         self.gui.set_screen_title(title)
 
-    def getsoup(self, fname="", preserve=False):  # voor consistentie misschien file2soup
+    def file2soup(self, fname="", preserve=False):
         """build initial html or read from file and initialize tree
 
         `preserve` anticipates on the possibility to not strip out newlines
@@ -264,11 +264,11 @@ class Editor:
 
         self.root = root
         self.xmlfn = fname
-        self.init_tree()
+        self.soup2data()
         self.advance_selection_on_add = True
         return None
 
-    def init_tree(self, name='', message=''):  # voor consistentie hernoemen naar soup2data
+    def soup2data(self, name='', message=''):
         """build internal tree representation of the html
 
         calls gui-specific methods to build the visual structure
@@ -580,11 +580,11 @@ class Editor:
         """kijken of er wijzigingen opgeslagen moeten worden
         daarna nieuwe html aanmaken"""
         if self.check_tree_state() != -1:
-            err = self.getsoup()
+            err = self.file2soup()
             if err:
                 self.gui.meld(str(err))
             else:
-                self.init_tree(message='started new document')
+                self.soup2data(message='started new document')
                 self.refresh_preview()
 
     def openxml(self, event=None):
@@ -593,11 +593,11 @@ class Editor:
         if self.check_tree_state() != -1:
             fnaam = self.gui.ask_for_open_filename()
             if fnaam:
-                err = self.getsoup(fname=str(fnaam))
+                err = self.file2soup(fname=str(fnaam))
                 if err:
                     self.gui.meld(str(err))
                 else:
-                    self.init_tree(fnaam, 'loaded {}'.format(fnaam))  # self.xmlfn
+                    self.soup2data(fnaam, 'loaded {}'.format(fnaam))  # self.xmlfn
                     self.refresh_preview()
 
     def savexml(self, event=None):
@@ -630,11 +630,11 @@ class Editor:
 
     def reopenxml(self, event=None):
         """onvoorwaardelijk html bestand opnieuw laden"""
-        ret = self.getsoup(fname=self.xmlfn)
+        ret = self.file2soup(fname=self.xmlfn)
         if ret:
             self.gui.meld(str(ret))
         else:
-            self.init_tree(self.xmlfn, 'reloaded {}'.format(self.xmlfn))
+            self.soup2data(self.xmlfn, 'reloaded {}'.format(self.xmlfn))
             self.refresh_preview()
 
     def close(self, event=None):

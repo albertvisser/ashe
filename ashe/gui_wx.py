@@ -130,7 +130,7 @@ class MainFrame(wx.Frame):
             self.appicon = wx.Icon(icon, wx.BITMAP_TYPE_ICO)
             self.SetIcon(self.appicon)
 
-        self._setup_menu()
+        self.setup_menu()
         self.in_contextmenu = False
 
         self.pnl = wx.SplitterWindow(self)
@@ -175,7 +175,7 @@ class MainFrame(wx.Frame):
         """
         self.Close()
 
-    def _setup_menu(self):
+    def setup_menu(self):
         """build application menu
         """
         menu_bar = wx.MenuBar()

@@ -85,7 +85,7 @@ class MainFrame(qtw.QMainWindow):
         self.setWindowIcon(self.appicon)
         self.resize(1020, 900)
 
-        self._setup_menu()
+        self.setup_menu()
         self.in_contextmenu = False
 
         self.pnl = qtw.QSplitter(self)
@@ -110,7 +110,7 @@ class MainFrame(qtw.QMainWindow):
         """
         sys.exit(self.app.exec_())
 
-    def _setup_menu(self):
+    def setup_menu(self):
         """build application menu
         """
         menu_bar = self.menuBar()
