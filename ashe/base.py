@@ -210,7 +210,7 @@ class Editor:
         self.constants = {'ELSTART': ELSTART}
         self.tree_dirty = False
         self.xmlfn = fname
-        self.search_args = []
+        self.search_args, self.replace_args = [], []
         self.gui = gui.MainFrame(editor=self, icon=ICO)
         self.cssm = CssManager(self)
         err = self.getsoup(self.xmlfn) or ''
@@ -487,15 +487,23 @@ class Editor:
                 #              self.search),
                 ('&Search', (("&Find", 'F', 'C', 'Open dialog to specify search and find next from'
                               ' here of first from top', self.search_next_from),
-                             ## ("&Replace", 'H', 'C', 'Search and replace', self.replace),
                              # ("Find &Last", 'F', 'SC', 'Find last occurrence of search argument',
                              #  self.search_last),
-                             ("Find &Backwards", 'F', 'SC', 'Find previous occurrence of'
+                             ("Find &Backwards", 'F', 'CS', 'Find previous occurrence of'
                               ' search argument', self.search_prev_from),
                              ("Find &Next", 'F3', '', 'Find next occurrence of search argument',
                               self.search_next),
                              ("Find &Previous", 'F3', 'S', 'Find previous occurrence of search '
-                              'argument', self.search_prev))),
+                              'argument', self.search_prev),
+                             ('sep1', ),
+                             ("&Replace", 'H', 'C', 'Search and replace from first occurence',
+                              self.replace),
+                             ("&Replace From End", 'H', 'CS', 'Search and replace from last'
+                              ' occurence', self.replace_last),
+                             ("Replace This", 'F3', 'C', 'Replace and search forward',
+                              self.replace_this_and_next),
+                             ("Replace This", 'F3', 'CS', 'Replace and search back',
+                              self.replace_this_and_prev))),
                 ("&HTML", (('Add &DTD', '', '', 'Add a document type description', self.add_dtd),
                            ('Add &Stylesheet', '', '', 'Add a stylesheet', self.add_css),
                            ('sep1', ),
@@ -1133,25 +1141,25 @@ class Editor:
                 self.gui.meld(self.search_specs + '\n\nNo (more) results')
 
     @staticmethod
-    def build_search_spec(ele, attr_name, attr_val, text, attr):
+    def build_search_spec(ele, attr_name, attr_val, text, attr, replacements=None):
         "build text describing search action"
         if ele:
-            ele = '\n an element named `{}`'.format(ele)
+            ele = ' an element named `{}`'.format(ele)
         if attr_name or attr_val:
-            attr = '\n an attribute'
+            attr = ' an attribute'
             if attr_name:
                 attr += ' named `{}`'.format(attr_name)
             if attr_val:
-                attr += '\n that has value `{}`'.format(attr_val)
+                attr += ' that has value `{}`'.format(attr_val)
             if ele:
-                attr = '\n with' + attr[1:]
+                attr = ' with {}'.format(attr[1:])
         out = ''
         if text:
             out = 'search for text'
             if ele:
-                out += '\n under' + ele[1:]
+                out += ' under {}'.format(ele[1:])
             elif attr:
-                out += '\n under an element\n with'
+                out += ' under an element with'
             if attr:
                 out += attr
         elif ele:
@@ -1160,6 +1168,24 @@ class Editor:
                 out += attr
         elif attr:
             out = 'search for' + attr
+        if replacements:
+            out += '\nand replace '
+            replace = ''
+            if replacements[0]:
+                replace = 'element name with `{}`'.format(replacements[0])
+            if replacements[1]:
+                if replace:
+                    replace += ', '
+                replace += 'attribute name with `{}`'.format(replacements[1])
+            if replacements[2]:
+                if replace:
+                    replace += ', '
+                replace += 'attribute value with `{}`'.format(replacements[2])
+            if replacements[3]:
+                if replace:
+                    replace += ', '
+                replace += 'text with `{}`'.format(replacements[3])
+            out += replace
         return out
 
     def search(self, event=None):
@@ -1195,7 +1221,7 @@ class Editor:
         ok = False
         ok, dialog_data = self.gui.get_search_args()
         if ok:
-            self.search_args, self.search_specs = dialog_data
+            self.search_args, self.search_specs = dialog_data[:2]
         if reverse or ok:
             if item == self.gui.top:
                 found = self.find_next(self.flatten_tree(self.gui.top), self.search_args, reverse)
@@ -1220,8 +1246,59 @@ class Editor:
         self._search_from(reverse=True, item=item)
 
     def replace(self, event=None):
+        "find/replace: f/r all or find first, replace and find next"
+        self._replace()
+
+    def replace_last(self, event=None):
+        "find/replace: f/r all or find last, replace and find previous"
+        self._replace(reverse=True)
+
+    def _replace(self, reverse=False, item=None):
         "replace an element"
-        self.gui.meld('Replace: not sure if I wanna implement this')
+        # toon dialoog om zoekargumenten aan te geven en vervang informatie
+        # checkbox voor zoek vanaf begin / zoek vanaf eind
+        # knopjes (of knop + checkbox) voor vervolgactie: vervang deze / vervang alles
+        ok = False
+        ok, dialog_data = self.gui.get_search_args(replace=True)
+        if ok:
+            self.search_args, self.search_specs, self.replace_args = dialog_data
+            if item == self.gui.top:
+                found = self.find_next(self.flatten_tree(self.gui.top), self.search_args, reverse)
+            else:
+                pos = [x[0] for x in self.flatten_tree(self.gui.top)].index(item)
+                found = self.find_next(self.flatten_tree(self.gui.top), self.search_args, reverse,
+                                       (pos, item))
+            if found:
+                self.replace_and_find(found, reverse)
+            else:
+                self.gui.meld(self.search_specs + '\n\nNo (more) results')
+
+    def replace_this_and_next(self, event=None):
+        "replace and find next"
+        self.gui.meld('Replace current and search forward')
+        item = self.gui.get_selected_item()
+        self._replace_from(reverse=True, item=item)
+
+    def replace_this_and_prev(self, event=None):
+        "replace and find prev"
+        self.gui.meld('Replace current and search backwards')
+        item = self.gui.get_selected_item()
+        self._replace_from(reverse=True, item=item)
+
+    def _replace_from(self, reverse, item):
+        pos = [x[0] for x in self.flatten_tree(self.gui.top)].index(item)
+        self.replace_and_find((pos, item), reverse)
+
+    def replace_and_find(self, found, reverse):
+        "do replace action"
+        # do the replacement
+        # find next and reposition
+        found = self.find_next(self.flatten_tree(self.gui.top), self.search_args, reverse, found)
+        if found:
+            self.gui.set_selected_item(found[1])
+            self._search_pos = found
+        else:
+            self.gui.meld(self.search_specs + '\n\nNo (more) results')
 
     def add_dtd(self, event=None):
         "start toevoegen dtd m.b.v. dialoog"

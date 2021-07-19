@@ -79,7 +79,7 @@ class MainFrame(qtw.QMainWindow):
             return
 
         self.dialog_data = {}
-        self.search_args = []
+        # self.search_args = []
         self.setWindowTitle(self.editor.title)
         self.appicon = gui.QIcon(icon)
         self.setWindowIcon(self.appicon)
@@ -421,9 +421,10 @@ class MainFrame(qtw.QMainWindow):
         parent.removeChild(item)
         return prev
 
-    def get_search_args(self):
+    def get_search_args(self, replace=False):
         """show search options dialog"""
-        return self.call_dialog(SearchDialog(self, title='Search options'))
+        title = 'Search options'
+        return self.call_dialog(SearchDialog(self, title, replace))
 
     def meld(self, text):
         """notify about some information"""

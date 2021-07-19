@@ -271,28 +271,36 @@ class TextDialog(qtw.QDialog):
 class SearchDialog(qtw.QDialog):
     """Dialog to get search arguments
     """
-    def __init__(self, parent, title=""):
+    def __init__(self, parent, title="", replace=False):
         super().__init__(parent)
         self.setWindowTitle(title)
         self._parent = parent
+        self.replace = replace
 
-        self.cb_element = qtw.QLabel('Element', self)
-        lbl_element = qtw.QLabel("name:", self)
         self.txt_element = qtw.QLineEdit(self)
         self.txt_element.textChanged.connect(self.set_search)
 
-        self.cb_attr = qtw.QLabel('Attribute', self)
-        lbl_attr_name = qtw.QLabel("name:", self)
         self.txt_attr_name = qtw.QLineEdit(self)
         self.txt_attr_name.textChanged.connect(self.set_search)
-        lbl_attr_val = qtw.QLabel("value:", self)
         self.txt_attr_val = qtw.QLineEdit(self)
         self.txt_attr_val.textChanged.connect(self.set_search)
 
-        self.cb_text = qtw.QLabel('Text', self)
-        lbl_text = qtw.QLabel("value:", self)
         self.txt_text = qtw.QLineEdit(self)
         self.txt_text.textChanged.connect(self.set_search)
+
+        if self.replace:
+            self.txt_element_replace = qtw.QLineEdit(self)
+            self.txt_element_replace.textChanged.connect(self.set_search)
+
+            self.txt_attr_name_replace = qtw.QLineEdit(self)
+            self.txt_attr_name_replace.textChanged.connect(self.set_search)
+            self.txt_attr_val_replace = qtw.QLineEdit(self)
+            self.txt_attr_val_replace.textChanged.connect(self.set_search)
+
+            self.txt_text_replace = qtw.QLineEdit(self)
+            self.txt_text_replace.textChanged.connect(self.set_search)
+
+            self.cb_replace_all = qtw.QCheckBox('Replace All', self)
 
         self.lbl_search = qtw.QLabel('', self)
 
@@ -305,41 +313,47 @@ class SearchDialog(qtw.QDialog):
         sizer = qtw.QVBoxLayout()
 
         gsizer = qtw.QGridLayout()
+        gsizer.addWidget(qtw.QLabel('Search for:', self), 0, 0, 1, 3)
 
-        gsizer.addWidget(self.cb_element, 0, 0)
-        vsizer = qtw.QVBoxLayout()
-        hsizer = qtw.QHBoxLayout()
-        hsizer.addWidget(lbl_element)
-        hsizer.addWidget(self.txt_element)
-        vsizer.addLayout(hsizer)
-        gsizer.addLayout(vsizer, 0, 1)
+        gsizer.addWidget(qtw.QLabel('Element', self), 1, 0)
+        gsizer.addWidget(qtw.QLabel("name:", self), 1, 1)
+        gsizer.addWidget(self.txt_element, 1, 2)
 
-        vsizer = qtw.QVBoxLayout()
-        vsizer.addSpacing(5)
-        vsizer.addWidget(self.cb_attr)
-        vsizer.addStretch()
-        gsizer.addLayout(vsizer, 1, 0)
-        vsizer = qtw.QVBoxLayout()
-        hsizer = qtw.QHBoxLayout()
-        hsizer.addWidget(lbl_attr_name)
-        hsizer.addWidget(self.txt_attr_name)
-        vsizer.addLayout(hsizer)
-        hsizer = qtw.QHBoxLayout()
-        hsizer.addWidget(lbl_attr_val)
-        hsizer.addWidget(self.txt_attr_val)
-        vsizer.addLayout(hsizer)
-        gsizer.addLayout(vsizer, 1, 1)
+        gsizer.addWidget(qtw.QLabel('Attribute', self), 2, 0)
+        gsizer.addWidget(qtw.QLabel("name:", self), 2, 1)
+        gsizer.addWidget(self.txt_attr_name, 2, 2)
+        gsizer.addWidget(qtw.QLabel("value:", self), 3, 1)
+        gsizer.addWidget(self.txt_attr_val, 3, 2)
 
-        gsizer.addWidget(self.cb_text, 2, 0)
-        hsizer = qtw.QHBoxLayout()
-        hsizer.addWidget(lbl_text)
-        hsizer.addWidget(self.txt_text)
-        gsizer.addLayout(hsizer, 2, 1)
+        gsizer.addWidget(qtw.QLabel('Text', self), 4, 0)
+        gsizer.addWidget(qtw.QLabel("value:", self), 4, 1)
+        gsizer.addWidget(self.txt_text, 4, 2)
+
+        if replace:
+            gsizer.addWidget(qtw.QLabel("Replace with:"), 0, 3, 1, 3)
+
+            gsizer.addWidget(qtw.QLabel('Element', self), 1, 3)
+            gsizer.addWidget(qtw.QLabel("name:", self), 1, 4)
+            gsizer.addWidget(self.txt_element_replace, 1, 5)
+
+            gsizer.addWidget(qtw.QLabel('Attribute', self), 2, 3)
+            gsizer.addWidget(qtw.QLabel("name:", self), 2, 4)
+            gsizer.addWidget(self.txt_attr_name_replace, 2, 5)
+            gsizer.addWidget(qtw.QLabel("value:", self), 3, 4)
+            gsizer.addWidget(self.txt_attr_val_replace, 3, 5)
+
+            gsizer.addWidget(qtw.QLabel('Text', self), 4, 3)
+            gsizer.addWidget(qtw.QLabel("value:", self), 4, 4)
+            gsizer.addWidget(self.txt_text_replace, 4, 5)
+
+            gsizer.addWidget(self.cb_replace_all, 5, 3, 1, 3)
+
         sizer.addLayout(gsizer)
 
         hsizer = qtw.QHBoxLayout()
         hsizer.addWidget(self.lbl_search)
         sizer.addLayout(hsizer)
+        self.lbl_search.setWordWrap(True)
 
         hsizer = qtw.QHBoxLayout()
         hsizer.addStretch()
@@ -350,18 +364,27 @@ class SearchDialog(qtw.QDialog):
 
         self.setLayout(sizer)
 
-        if self._parent.search_args:
+        if self._parent.editor.search_args:
             self.txt_element.setText(self._parent.search_args[0])
             self.txt_attr_name.setText(self._parent.search_args[1])
             self.txt_attr_val.setText(self._parent.search_args[2])
             self.txt_text.setText(self._parent.search_args[3])
+        if replace and self._parent.editor.replace_args:
+            self.txt_element.setText(self._parent.replace_args[0])
+            self.txt_attr_name.setText(self._parent.replace_args[1])
+            self.txt_attr_val.setText(self._parent.replace_args[2])
+            self.txt_text.setText(self._parent.replace_args[3])
 
     def set_search(self):
         """build text describing search action"""
+        replace = (self.txt_element_replace.text(),
+                   self.txt_attr_name_replace.text(),
+                   self.txt_attr_val_replace.text(),
+                   self.txt_text_replace.text()) if self.replace else ()
         out = self._parent.editor.build_search_spec(self.txt_element.text(),
                                                     self.txt_attr_name.text(),
                                                     self.txt_attr_val.text(),
-                                                    self.txt_text.text(), '')
+                                                    self.txt_text.text(), '', replace)
         self.lbl_search.setText(out)
         self.search_specs = out
 
@@ -376,10 +399,23 @@ class SearchDialog(qtw.QDialog):
                                         ' enter search criteria or press cancel')
             self.txt_element.setFocus()
             return
+        search_args = (ele, attr_name, attr_val, text)
+        replace_args = ()
+        if self.replace:
+            ele = str(self.txt_element_replace.text())
+            attr_name = str(self.txt_attr_name_replace.text())
+            attr_val = str(self.txt_attr_val_replace.text())
+            text = str(self.txt_text_replace.text())
+            if not any((ele, attr_name, attr_val, text)):
+                qtw.QMessageBox.information(self, self._parent.title, 'Please'
+                                            ' enter replacement criteria or press cancel')
+                self.txt_element_replace.setFocus()
+                return
+            replace_args = (ele, attr_name, attr_val, text)
 
         # self._parent.search_args = (ele, attr_name, attr_val, text)
         # self._parent.search_specs = self.search_specs
-        self._parent.dialog_data = ((ele, attr_name, attr_val, text), self.search_specs)
+        self._parent.dialog_data = (search_args, self.search_specs, replace_args)
         super().accept()
 
 
