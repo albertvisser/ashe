@@ -300,7 +300,7 @@ class MainFrame(wx.Frame):
         self.tree.SelectItem(item)
 
     def init_tree(self, message):
-        "toolkit specifieke voortzetting van gelijknamige editor methode"
+        "toolkit specifieke zaken voor tree instellen"
         self.set_selected_item(self.top)
         self.adv_menu.Check(True)
         self.show_statusbar_message(message)

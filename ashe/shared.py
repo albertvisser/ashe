@@ -59,9 +59,9 @@ def analyze_element(tag, attrs):
 def get_dtd_menu_texts(has_dtd):
     """determine text to update dtd menu with
     """
+    # how to use in gui.<xx>.py:
+    #    def adjust_dtd_nemu(self):
+    #        label, helpstr = shared.get_dtd_menu_texts(self.dtdmenu.has_dtd)
     textdict = {'label': '{} &DTD', 'help': '{} the Document Type Declaration'}
     replacements = {True: 'Remove', False: 'Add'}
     return [textdict[key].format(replacements[has_dtd]) for key in ('label', 'help')]
-# how to use in gui.<xx>.py:
-#    def adjust_dtd_nemu(self):
-#        label, helpstr = shared.get_dtd_menu_texts(self.dtdmenu.has_dtd)

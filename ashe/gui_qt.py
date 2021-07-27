@@ -233,7 +233,7 @@ class MainFrame(qtw.QMainWindow):
         self.tree.setCurrentItem(item)
 
     def init_tree(self, message):
-        "toolkit specifieke voortzetting van gelijknamige editor methode"
+        "toolkit specifieke zaken van tree instellen"
         self.tree.setCurrentItem(self.top)
         self.adv_menu.setChecked(True)
         self.show_statusbar_message(message)
