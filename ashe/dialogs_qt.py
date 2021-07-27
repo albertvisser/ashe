@@ -364,16 +364,16 @@ class SearchDialog(qtw.QDialog):
 
         self.setLayout(sizer)
 
-        if self._parent.editor.search_args:
-            self.txt_element.setText(self._parent.search_args[0])
-            self.txt_attr_name.setText(self._parent.search_args[1])
-            self.txt_attr_val.setText(self._parent.search_args[2])
-            self.txt_text.setText(self._parent.search_args[3])
-        if replace and self._parent.editor.replace_args:
-            self.txt_element.setText(self._parent.replace_args[0])
-            self.txt_attr_name.setText(self._parent.replace_args[1])
-            self.txt_attr_val.setText(self._parent.replace_args[2])
-            self.txt_text.setText(self._parent.replace_args[3])
+        if self._parent.editor.srchhlp.search_args:
+            self.txt_element.setText(self._parent.editor.srchhlp.search_args[0])
+            self.txt_attr_name.setText(self._parent.editor.srchhlp.search_args[1])
+            self.txt_attr_val.setText(self._parent.editor.srchhlp.search_args[2])
+            self.txt_text.setText(self._parent.editor.srchhlp.search_args[3])
+        if replace and self._parent.editor.srchhlp.replace_args:
+            self.txt_element_replace.setText(self._parent.editor.srchhlp.replace_args[0])
+            self.txt_attr_name_replace.setText(self._parent.editor.srchhlp.replace_args[1])
+            self.txt_attr_val_replace.setText(self._parent.editor.srchhlp.replace_args[2])
+            self.txt_text_replace.setText(self._parent.editor.srchhlp.replace_args[3])
 
     def set_search(self):
         """build text describing search action"""
@@ -395,7 +395,7 @@ class SearchDialog(qtw.QDialog):
         attr_val = str(self.txt_attr_val.text())
         text = str(self.txt_text.text())
         if not any((ele, attr_name, attr_val, text)):
-            qtw.QMessageBox.information(self, self._parent.title, 'Please'
+            qtw.QMessageBox.information(self, self._parent.editor.title, 'Please'
                                         ' enter search criteria or press cancel')
             self.txt_element.setFocus()
             return
@@ -407,7 +407,7 @@ class SearchDialog(qtw.QDialog):
             attr_val = str(self.txt_attr_val_replace.text())
             text = str(self.txt_text_replace.text())
             if not any((ele, attr_name, attr_val, text)):
-                qtw.QMessageBox.information(self, self._parent.title, 'Please'
+                qtw.QMessageBox.information(self, self._parent.editor.title, 'Please'
                                             ' enter replacement criteria or press cancel')
                 self.txt_element_replace.setFocus()
                 return
