@@ -1131,8 +1131,8 @@ class EditorHelper:
                 self.gui.set_element_text(self.item, getshortname(txt, commented))
                 self.gui.set_element_data(self.item, txt)
         if modified:
-            self.mark_dirty(True)
-            self.refresh_preview()
+            self.editor.mark_dirty(True)
+            self.editor.refresh_preview()
 
     def comment(self):
         "do the heavy lifting"
@@ -1155,7 +1155,7 @@ class EditorHelper:
         else:
             self.gui.set_element_text(self.item, commented)
             self.gui.set_element_data(self.item, tag)
-        self.refresh_preview()
+        self.editor.refresh_preview()
 
     def comment_out(self, node, commented):
         "subitem(s) (ook) op commentaar zetten"
