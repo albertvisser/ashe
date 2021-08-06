@@ -9,9 +9,9 @@ import PyQt5.QtCore as core
 import PyQt5.QtWebKitWidgets as webkit
 
 from ashe.shared import masks
-from ashe.dialogs_qt import ElementDialog, TextDialog, DtdDialog, CssDialog, \
-    LinkDialog, ImageDialog, VideoDialog, AudioDialog, ListDialog, TableDialog, \
-    ScrolledTextDialog, CodeViewDialog, SearchDialog
+from ashe.dialogs_qt import (ElementDialog, TextDialog, DtdDialog, CssDialog, LinkDialog,
+                             ImageDialog, VideoDialog, AudioDialog, ListDialog, TableDialog,
+                             ScrolledTextDialog, CodeViewDialog, SearchDialog)
 
 
 class VisualTree(qtw.QTreeWidget):
@@ -370,7 +370,7 @@ class MainFrame(qtw.QMainWindow):
         self.advance_selection_on_add = self.adv_menu.isChecked()
 
     def refresh_preview(self, soup):
-        "toolkit specifieke voortzetting van gelijknamige editor methode"
+        "toolkit specifieke implementatie van gelijknamige editor methode"
         self.html.setHtml(str(soup).replace('%SOUP-ENCODING%', 'utf-8'))
         self.tree.setFocus()
 

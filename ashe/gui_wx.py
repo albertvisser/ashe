@@ -7,9 +7,9 @@ import wx.lib.mixins.treemixin as treemix
 import wx.html2 as wxhtml  # webkit
 
 from ashe.shared import ELSTART, masks
-from ashe.dialogs_wx import ElementDialog, TextDialog, DtdDialog, CssDialog, \
-    LinkDialog, ImageDialog, VideoDialog, AudioDialog, ListDialog, TableDialog, \
-    ScrolledTextDialog, CodeViewDialog, SearchDialog
+from ashe.dialogs_wx import (ElementDialog, TextDialog, DtdDialog, CssDialog, LinkDialog,
+                             ImageDialog, VideoDialog, AudioDialog, ListDialog, TableDialog,
+                             ScrolledTextDialog, CodeViewDialog, SearchDialog)
 
 
 class VisualTree(treemix.DragAndDrop, wx.TreeCtrl):
@@ -420,7 +420,7 @@ class MainFrame(wx.Frame):
         self.advance_selection_on_add = self.adv_menu.IsChecked()
 
     def refresh_preview(self, soup):
-        "toolkit specifieke voortzetting van gelijknamige editor methode"
+        "toolkit specifieke implementatie van gelijknamige editor methode"
         # self.data_file = os.path.join('/tmp', "ashe_tempfile.html")
         # with open(self.data_file, "w") as f_out:
         #     f_out.write(str(soup).replace('%SOUP-ENCODING%', 'utf-8'))
