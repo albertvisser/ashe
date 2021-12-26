@@ -72,6 +72,7 @@ class ElementDialog(wx.Dialog):
         self.add_button.Bind(wx.EVT_BUTTON, self.on_add)
         self.delete_button = wx.Button(self, label='&Delete Selected')
         self.delete_button.Bind(wx.EVT_BUTTON, self.on_del)
+        self.check_changes = False
         self.style_button = wx.Button(self, label=style_text)
         self.style_button.Bind(wx.EVT_BUTTON, self.on_style)
         hbox.Add(self.add_button, 0, wx.EXPAND | wx.ALL, 1)
@@ -118,7 +119,13 @@ class ElementDialog(wx.Dialog):
 
     def on_style(self, event):
         "adjust style attributes"
-        self.refresh()
+        if self.check_changes:
+            self.refresh()
+            self.check_changes = False
+            return
+        else:
+            self.check_changes = True
+            self.style_button.SetLabel('Chec&k Changes')
         tag = self.tag_text.GetValue()
         for row in range(self.attr_table.GetNumberRows()):
             if self.attr_table.GetCellValue(row, 0) == 'href':
@@ -128,11 +135,10 @@ class ElementDialog(wx.Dialog):
             fname = ''
         if self.is_stylesheet:
             self._parent.editor.cssm.call_editor_for_stylesheet(fname)
-        else:
-            self.styledata, attrs = self._parent.editor.cssm.call_editor(self, tag)
-        print('ín on_style, styledata is', self.styledata)
-        if self.styledata is not None:
             self.refresh()
+            self.check_changes = False
+        else:
+            self._parent.editor.cssm.call_editor(self, tag)
 
     def refresh(self):
         "ververs het style / styledata element i.v.m. terugkeer uit css editor"
@@ -514,7 +520,10 @@ class CssDialog(wx.Dialog):
     def on_inline(self, event=None):
         "voegt een 'style' tag in"
         self.styledata = self._parent.editor.cssm.call_from_inline(self._parent, '')
-        self.EndModal(wx.ID_OK)
+        # self.EndModal(wx.ID_OK)
+        for widget in (self.link_text, self.new_button, self.edit_button, self.choose_button,
+                       self.inline_button):
+            widget.Disable(True)
 
     def accept(self):
         """bevestig vanuit css editor; voor compatibiliteit met qt versie"""

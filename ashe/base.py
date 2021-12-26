@@ -20,17 +20,22 @@ def check_for_csseditor():
     """check if we can use a separate editor for the parts dealing with style
     """
     global csed
+    # try:
+    #     from .toolkit import toolkit
+    #     if toolkit == 'qt':
+    #         import cssedit.editor.csseditor_qt as csed
+    #     elif toolkit == 'wx':
+    #         import cssedit.editor.csseditor_wx as csed
+    #     else:
+    #         import cssedit.editor.csseditor_txt as csed
+    #     return True
+    # except ImportError:
+    #     return False
     try:
-        from .toolkit import toolkit
-        if toolkit == 'qt':
-            import cssedit.editor.csseditor_qt as csed
-        elif toolkit == 'wx':
-            import cssedit.editor.csseditor_wx as csed
-        else:
-            import cssedit.editor.csseditor_txt as csed
-        return True
-    except ImportError:
+        import cssedit.editor.main as csed
+    except ModuleNotFoundError:
         return False
+    return True
 
 
 def getelname(tag, attrs=None, comment=False):
@@ -95,24 +100,33 @@ class CssManager:
     def __init__(self, parent):
         self._parent = parent
         self.cssedit_available = check_for_csseditor()
+        if self.cssedit_available:
+            from ashe.toolkit import toolkit
+            if toolkit == 'wx':
+                self.cssedit_available = False
+
 
     def call_editor(self, master, tag):  # , styledata):  # , app=None):
         """call external css editor from the edit element dialog
         compare data returned with original data supplied
         """
+        print('in CssManager.call_editor, tag is', tag)
         self.styledata = self.old_styledata = master.styledata
         self.tag = tag
         if self.cssedit_available:
-            # css = csed.MainWindow(self, app=self._parent.gui.app)  # app)
-            css = csed.MainWindow(master, app=self._parent.gui.app)  # app)
+            print('in htmledit.call_editor, app is', self._parent.gui.app)
+            # css = csed.MainWindow(master, app=self._parent.gui.app)  # app)
+            css = csed.Editor(master, app=self._parent.gui.app)  # app)
             # master is for setting returndata on (attributes styledata and cssfilename)
             if tag == 'style':
                 css.open(text=self.styledata)
             else:
                 css.open(tag=tag, text=self.styledata)
+            print('in CssManager.call_editor, before show_from_external')
             css.show_from_external()  # sets self.styledata right before closing
+            print('in CssManager.call_editor, after  show_from_external')
             master.csseditor_called = True
-            return None, None    # doorgaan heeft hier geen zin
+            return None, None    # styledata is ingesteld in de dialoog
         ok, dialog_data = self._parent.gui.call_dialog(gui.TextDialog(self._parent.gui,
                                                                       title='Edit inline style',
                                                                       text=self.styledata,
@@ -121,6 +135,7 @@ class CssManager:
             self.styledata = dialog_data[0]
         if self.styledata != self.old_styledata:
             self.old_styledata = self.styledata
+        # het vervolg is tbv call_from_inline, kan net zo goed weggelaten worden
         if self.tag == 'style':
             attrs = {'styledata': self.old_styledata}
         else:
@@ -161,25 +176,34 @@ class CssManager:
                     print('xmlfn_path, h_fname is', xmlfn_path, h_fname)
                 fname = str(xmlfn_path / h_fname)
         if not mld:
-            try:
-                css = csed.MainWindow(app=self._parent.gui.app)
-                css.open(filename=fname)
-            except Exception as e:
-                mld = str(e)
-            else:
-                css.show_from_external()
+            # try:
+            #     css = csed.MainWindow(app=self._parent.gui.app)
+            #     css.open(filename=fname)
+            # except Exception as e:
+            #     mld = str(e)
+            # else:
+            #     css.show_from_external()
+            print('in htmledit.call_editor, app is', self._parent.gui.app)
+            css = csed.Editor(app=self._parent.gui.app)  # no need for master here
+            css.open(filename=fname)
+            css.show_from_external()
         if mld:
             self._parent.gui.meld(mld)
 
-    def call_from_inline(self, win, styledata):
+    def call_from_inline(self, master, styledata):
         """edit from CSS Dialog
         """
-        win.styledata = styledata
-        styledata, attrs = self.call_editor(win, 'style')  # , '')
-        if styledata is not None:
-            print('in call_from_inline, styledata is', styledata)
-            # return win.dialog_data
-            return styledata
+        print('in CssManager.call_from_inline')
+        master.styledata = styledata
+        # styledata, attrs = self.call_editor(master, 'style')  # , '')
+        self.call_editor(master, 'style')  # , '')
+        # het vervolg lijkt geen effect te hebben
+        # print('in CssManager.call_from_inline, call_editor levert', styledata, attrs)
+        # if styledata is not None:
+        #     print('in call_from_inline, styledata is', styledata)
+        #     # return win.dialog_data
+        #     return styledata
+        # return ''  # stond er eerst niet, maar '' is waarschijnlijk beter dan None
 
 
 class Editor:
@@ -256,10 +280,10 @@ class Editor:
             html = data.replace('<br/>', '<br />').replace('<hr/>', '<hr />')
         else:
             html = '<html><head><title></title></head><body></body></html>'
-        try:
-            root = bs.BeautifulSoup(html, 'lxml')
-        except Exception as err:
-            return err
+        # try:  # - kijken of dit zonder exception handling kan
+        root = bs.BeautifulSoup(html, 'lxml')
+        # except Exception as err:
+        #     return err
 
         self.root = root
         self.xmlfn = fname
@@ -784,17 +808,17 @@ class Editor:
             out += replace
         return out
 
-    def old_search(self, event=None):
-        "start search"
-        self.srchhlp.search()
+    # def old_search(self, event=None):
+    #     "start search"
+    #     self.srchhlp.search()
     def search(self, event=None):
         "start search - context menu versie"
         item = self.gui.get_selected_item()
         self.srchhlp.search_from(item=item)
 
-    def old_search_last(self, event=None):
-        "start backwards search"
-        self.srchhlp.search(reverse=True)
+    # def old_search_last(self, event=None):
+    #     "start backwards search"
+    #     self.srchhlp.search(reverse=True)
     def search_last(self, event=None):
         "backwards search - context menu versie"
         item = self.gui.get_selected_item()
@@ -846,7 +870,9 @@ class Editor:
 
     def add_css(self, event=None):
         "start toevoegen stylesheet m.b.v. dialoog"
+        print('in editor.add_css')
         ok, dialog_data = self.gui.get_css_data()
+        print('in editor.add_css, ok is', ok)
         if not ok:
             return
         data = dialog_data
@@ -1173,7 +1199,6 @@ class EditorHelper:
 
     def copy(self, cut=False, retain=True, ifcheck=True):
         "start copy/cut/delete actie"
-        self.item = self.editor.item
         def push_el(elm, result):
             "subitem(s) toevoegen aan copy buffer"
             text = self.gui.get_element_text(elm)
@@ -1186,6 +1211,7 @@ class EditorHelper:
             return result
         if not self.editor.checkselection():
             return
+        self.item = self.editor.item
         if self.item == self.editor.root:
             txt = 'cut' if cut else 'copy' if retain else 'delete'
             self.gui.meld("Can't %s the root" % txt)
@@ -1249,7 +1275,7 @@ class EditorHelper:
                 if not before:
                     idx += 1
                 node = self.gui.addtreeitem(add_to, self.item, data, idx)
-            if self.advance_selection_on_add:
+            if self.editor.advance_selection_on_add:
                 self.gui.set_selected_item(node)
         else:
             if below:
@@ -1262,7 +1288,7 @@ class EditorHelper:
                 if idx == len(self.gui.get_element_children(add_to)):
                     idx = -1
             new_item = zetzeronder(add_to, self.editor.cut_el[0], idx)
-            if self.advance_selection_on_add:
+            if self.editor.advance_selection_on_add:
                 self.gui.set_selected_item(new_item)
         self.editor.mark_dirty(True)
         self.editor.refresh_preview()
@@ -1368,7 +1394,7 @@ class SearchHelper:
     # kijken of ik verwijzingen naar gui class eruit kan krijgen?
     def search(self, reverse=False, pos=None):  # obsolete
         "start search after asking for options"
-        self._search_pos = poszc
+        self._search_pos = pos
         ok = False
         if not reverse or not self.search_args:
             ok, dialog_data = self.gui.get_search_args()
@@ -1454,7 +1480,8 @@ class SearchHelper:
         else:
             self.gui.meld(self.search_specs + '\n\nNo (more) results')
 
-    def find_next(self, data, search_args, reverse=False, pos=None):
+    @staticmethod
+    def find_next(data, search_args, reverse=False, pos=None):
         """searches the flattened tree from start or the given pos
         to find the next item that fulfills the search criteria
         """
@@ -1503,6 +1530,7 @@ class SearchHelper:
                 itemfound = item
                 break
 
+        # linter: kan newpos hier ongedefinieerd zijn?
         if itemfound:
             factor = 1
             if reverse:

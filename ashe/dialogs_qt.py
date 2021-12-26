@@ -23,7 +23,7 @@ class ElementDialog(qtw.QDialog):
         self.setWindowTitle(title)
         self.setWindowIcon(self._parent.appicon)
         tagdata = analyze_element(tag, attrs)
-        tag_text, iscomment, style_text = tagdata[:3]
+        tag_text, iscomment, self.style_text = tagdata[:3]
         self.styledata, self.has_style, self.is_stylesheet = tagdata[3:]
         self.csseditor_called = False
         self.old_styledata = self.styledata
@@ -77,7 +77,8 @@ class ElementDialog(qtw.QDialog):
         self.add_button.clicked.connect(self.on_add)
         self.delete_button = qtw.QPushButton('&Delete Selected', self)
         self.delete_button.clicked.connect(self.on_del)
-        self.style_button = qtw.QPushButton(style_text, self)
+        self.check_changes = False
+        self.style_button = qtw.QPushButton(self.style_text, self)
         self.style_button.clicked.connect(self.on_style)
         # self.refresh_button = qtw.QPushButton('&Refresh', self)
         # self.refresh_button.clicked.connect(self.refresh)
@@ -130,7 +131,14 @@ class ElementDialog(qtw.QDialog):
 
     def on_style(self):
         "adjust style attributes"
-        self.refresh()
+        if self.check_changes:
+            self.refresh()
+            self.check_changes = False
+            self.style_button.setText(self.style_text)
+            return
+        else:
+            self.check_changes = True
+            self.style_button.setText('Chec&k Changes')
         tag = self.tag_text.text()
         fname = ''
         test = self.attr_table.findItems('href', core.Qt.MatchFixedString)
@@ -141,10 +149,10 @@ class ElementDialog(qtw.QDialog):
                 fname = self.attr_table.item(row, 1).text()
         if self.is_stylesheet:
             self._parent.editor.cssm.call_editor_for_stylesheet(fname)
-        else:
-            self.styledata, self.attrs = self._parent.editor.cssm.call_editor(self, tag)
-        if self.styledata is not None:  # is None bij aanroepen van css editor
             self.refresh()
+            self.check_changes = False
+        else:
+            self._parent.editor.cssm.call_editor(self, tag)
 
     def refresh(self):
         "ververs het style / styledata element i.v.m. terugkeer uit css editor"
@@ -157,7 +165,7 @@ class ElementDialog(qtw.QDialog):
             if self.attr_table.item(row, 0).text() == attrname:
                 if attrname == 'style':
                     self.has_style = True
-                self.attr_table.item(row, 1).setText(self.styledata)
+                self.attr_table.item(row, 1).setText(str(self.styledata))
                 break
         else:
             row = self.attr_table.rowCount()
@@ -172,7 +180,6 @@ class ElementDialog(qtw.QDialog):
             if attrname == 'style':
                 self.has_style = True
         self.old_styledata = self.styledata
-        # self.refresh_button.setDisabled(True)
 
     def reject(self):
         "controle bij afbreken: css data kan gewijzigd zijn"
@@ -492,6 +499,7 @@ class CssDialog(qtw.QDialog):
     """dialoog om een stylesheet toe te voegen
     """
     def __init__(self, parent):
+        print('in CssDialog.__init__')
         self._parent = parent
         self.styledata = ''
         self.cssfilename = ''  # can be set from csseditor
@@ -508,11 +516,11 @@ class CssDialog(qtw.QDialog):
         self.link_text = qtw.QLineEdit("http://", self)
         gbox.addWidget(self.link_text, 0, 1)
 
-        self.choose_button = qtw.QPushButton('&Browse', self)
-        self.choose_button.clicked.connect(self.kies)
         self.new_button = qtw.QPushButton('C&reate', self)
         self.new_button.clicked.connect(self.nieuw)
-        self.edit_button = qtw.QPushButton('&Edit', self)
+        self.choose_button = qtw.QPushButton('&Select', self)
+        self.choose_button.clicked.connect(self.kies)
+        self.edit_button = qtw.QPushButton('Select + &Edit', self)
         self.edit_button.clicked.connect(self.edit)
         box = qtw.QHBoxLayout()
         box.addStretch()
@@ -533,6 +541,7 @@ class CssDialog(qtw.QDialog):
         self.ok_button = qtw.QPushButton('&Save', self)
         self.ok_button.clicked.connect(self.accept)
         self.ok_button.setDefault(True)
+        self.check_changes = False
         self.inline_button = qtw.QPushButton('&Add inline', self)
         self.inline_button.clicked.connect(self.on_inline)
         self.cancel_button = qtw.QPushButton('&Cancel', self)
@@ -547,48 +556,60 @@ class CssDialog(qtw.QDialog):
         self.setLayout(vbox)
 
         self.link_text.setFocus()
+        print('in CssDialog.__init__: end of method')
 
     def kies(self):
         "methode om het te linken document te selecteren"
-        loc = self.link_text.text()
-        if not loc or (loc.startswith('http') and '://' in loc):
-            loc = os.path.dirname(self._parent.editor.xmlfn) or os.getcwd()
-        fnaam, _ = qtw.QFileDialog.getOpenFileName(self, "Choose a file", loc,
-                                                   self._parent.build_mask('css'))
-        if fnaam:
-            self.link_text.setText(fnaam)
+        self.select_file()
 
     def nieuw(self, evt):
         "methode om het te linken document te maken en automatisch te selecteren"
-        loc = self.link_text.text()
-        if not loc or (loc.startswith('http') and '://' in loc):
-            loc = os.path.dirname(self._parent.editor.xmlfn) or os.getcwd()
-        fname, _ = qtw.QFileDialog.getSaveFileName(self, "Choose a file", loc,
-                                                   self._parent.build_mask('css'))
+        fname = self.select_file(create=True)
         if not fname:
             return
-        self.link_text.setText(fname)  # moet nog relatief gemaakt worden
         self._parent.editor.cssm.call_editor_for_stylesheet(fname, new_ok=True)
 
     def edit(self, evt):
         "methode om het te linken document van hieruit te wijzigen"
-        fname = self.link_text.text()
+        fname = self.select_file()
+        if not fname:
+            return
         self._parent.editor.cssm.call_editor_for_stylesheet(fname)
+
+    def select_file(self, create=False):
+        "methode om het te linken document te selecteren"
+        loc = self.link_text.text()
+        if not loc or (loc.startswith('http') and '://' in loc):
+            loc = os.path.dirname(self._parent.editor.xmlfn) or os.getcwd()
+        text, mask = "Choose a file", self._parent.build_mask('css')
+        if create:
+            fnaam = qtw.QFileDialog.getSaveFileName(self, text, loc, mask)[0]
+        else:
+            fnaam = qtw.QFileDialog.getOpenFileName(self, text, loc, mask)[0]
+        if fnaam:
+            self.link_text.setText(fnaam)
+        return fnaam
 
     def on_inline(self):
         "voegt een 'style' tag in"
-        styledata = self._parent.editor.cssm.call_from_inline(self._parent, '')
-        self._parent.dialog_data = {"type": 'text/css', 'cssdata': styledata}
-        test = str(self.text_text.text())
-        if test:
-            self._parent.dialog_data["media"] = test
-        super().accept()
+        self._parent.editor.cssm.call_from_inline(self, '')
+        # dit werkt niet, vandaar het dichtzetten van alles
+        # styledata = self._parent.editor.cssm.call_from_inline(self._parent, '')
+        # self._parent.dialog_data = {"type": 'text/css', 'cssdata': ''}  # styledata}
+        # test = str(self.text_text.text())
+        # if test:
+        #     self._parent.dialog_data["media"] = test
+        # super().accept()
+        for widget in (self.link_text, self.new_button, self.edit_button, self.choose_button,
+                       self.inline_button):
+            widget.setDisabled(True)
 
     def accept(self):
         """bij OK: het geselecteerde (absolute) pad omzetten in een relatief pad
         maar eerst kijken of dit geen inline stylesheet betreft """
         if self.styledata:
-            self._parent.dialog_data = {"cssdata": self.styledata.decode()}
+            # self._parent.dialog_data = {"cssdata": self.styledata.decode()}
+            self._parent.dialog_data = {"cssdata": self.styledata}
             super().accept()
             return
         if self.cssfilename:
