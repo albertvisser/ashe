@@ -199,7 +199,8 @@ class MainFrame(qtw.QMainWindow):
         "change stored attrs for this element"""
         node.setData(0, core.Qt.UserRole, data)
 
-    def addtreeitem(self, node, naam, data, index=-1):
+    @staticmethod
+    def addtreeitem(node, naam, data, index=-1):
         """itemnaam en -data toevoegen aan de interne tree
         default is achteraan onder node, anders index meegeven
         geeft referentie naar treeitem terug
@@ -328,7 +329,8 @@ class MainFrame(qtw.QMainWindow):
                                                    self.build_mask('html'))[0]
         return filename
 
-    def set_item_expanded(self, item, state):
+    @staticmethod
+    def set_item_expanded(item, state):
         """show item's children
         """
         item.setExpanded(state)

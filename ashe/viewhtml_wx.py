@@ -16,7 +16,7 @@ class HtmlView(wx.Frame):
         # en dit werkte ook niet tot ik ontdekte dat de Bind aanroep ontbrak
         menuitem = wx.MenuItem(None, text='exit')
         self.Bind(wx.EVT_MENU, self.close, menuitem)
-        accel=wx.AcceleratorEntry(cmd=menuitem.GetId())
+        accel = wx.AcceleratorEntry(cmd=menuitem.GetId())
         if accel.FromString('Escape'):
             self.SetAcceleratorTable(wx.AcceleratorTable([accel]))
         # en dit ook niet
@@ -51,7 +51,9 @@ class HtmlView(wx.Frame):
         self.html.LoadURL(url)
 
     def close(self, event=None):
+        "close viewer"
         self.Destroy()
+
 
 def main(path):
     "main function"
