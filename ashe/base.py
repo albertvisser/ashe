@@ -159,13 +159,13 @@ class CssManager:
         if mld:
             pass
         elif not self.cssedit_available:
-            mld = 'Please edit external stylesheet separately'
+            mld = 'No CSS editor support; please edit external stylesheet separately'
         else:
             if fname.startswith('http'):
-                # FIXME: wil ik hier wel vanaf het web kunnen editen?
-                h_fname = os.path.join('/tmp', 'ashe_{}'.format(os.path.basename(fname)))
-                subprocess.run(['wget', fname, '-O', h_fname])
-                fname = h_fname
+                # h_fname = os.path.join('/tmp', 'ashe_{}'.format(os.path.basename(fname)))
+                # subprocess.run(['wget', fname, '-O', h_fname])
+                # fname = h_fname
+                mld = 'Editing of possibly off-site stylesheets (http-links) is disabled'
             elif fname:
                 h_fname = fname
                 xmlfn_path = pathlib.Path(self._parent.xmlfn).parent
