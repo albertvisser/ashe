@@ -48,7 +48,7 @@ class ElementDialog(wx.Dialog):
         self.attr_table.SetColLabelValue(0, 'attribute')
         self.attr_table.SetColLabelValue(1, 'value')
         width = self.attr_table.GetSize().GetWidth() - 162
-        self.attr_table.SetColSize(1, width)  # 178) # 160)   ## FIXME: werkt dit?
+        self.attr_table.SetColSize(1, width)
         print('in ElementDialog, building grid')
         self.inactive_colour = wx.SystemSettings().GetColour(wx.SYS_COLOUR_GRAYTEXT)
         if attrs:
@@ -178,12 +178,12 @@ class ElementDialog(wx.Dialog):
     def on_ok(self):
         "doorgeven in dialoog gewijzigde waarden aan hoofdscherm"
         self.refresh()
-        # TODO: ensure no duplicate items are added
+        add_title = 'Add an element'
         tag = self.tag_text.GetValue()
         test = string.ascii_letters + string.digits
         for letter in tag:
             if letter not in test:
-                wx.MessageBox('Illegal character(s) in tag name', 'Add an element', wx.ICON_ERROR)
+                wx.MessageBox('Illegal character(s) in tag name', add_title, wx.ICON_ERROR)
                 return False, ()
         commented = self.comment_button.GetValue()
         attrs = {}
@@ -192,10 +192,13 @@ class ElementDialog(wx.Dialog):
                 name = self.attr_table.GetCellValue(i, 0)
                 value = self.attr_table.GetCellValue(i, 1)
             except AttributeError:
-                wx.MessageBox('Press enter on this item first', 'Add an element', wx.ICON_ERROR)
+                wx.MessageBox('Press enter on this item first', add_title, wx.ICON_ERROR)
                 return False, ()
             if name not in ('styledata', 'style'):
                 attrs[name] = value
+        if tuple([x for x in attrs.keys()]) != list([x for x in attrs.keys()]):
+            wx.MessageBox('Duplicate attributes, please merge', add_title, wx.ICON_ERROR)
+            return False, ()
         # if self.styledata != self.old_styledata:
         attrname = 'styledata' if self.is_style_tag else 'style' if self.has_style else ''
         if attrname:

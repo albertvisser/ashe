@@ -192,13 +192,13 @@ class ElementDialog(qtw.QDialog):
     def accept(self):
         "controle bij OK aanklikken"
         self.refresh()
+        add_title = 'Add an element'
         # TODO: ensure no duplicate items are added
         tag = str(self.tag_text.text())
         test = string.ascii_letters + string.digits
         for letter in tag:
             if letter not in test:
-                qtw.QMessageBox.information(self, 'Add an element',
-                                            'Illegal character(s) in tag name')
+                qtw.QMessageBox.information(self, add_title, 'Illegal character(s) in tag name')
                 return
         commented = self.comment_button.checkState()
         attrs = {}
@@ -207,15 +207,15 @@ class ElementDialog(qtw.QDialog):
                 name = str(self.attr_table.item(i, 0).text())
                 value = str(self.attr_table.item(i, 1).text())
             except AttributeError:
-                qtw.QMessageBox.information(self, 'Add an element',
-                                            'Press enter on this item first')
+                qtw.QMessageBox.information(self, add_title, 'Press enter on this item first')
                 return
             if name not in ('styledata', 'style'):
                 attrs[name] = value
+        if tuple([x for x in attrs.keys()]) != list([x for x in attrs.keys()]):
+            qtw.QMessageBox.information(self, add_title, 'Duplicate attributes, please merge')
+            return
         # hoeft dit nog met die refresh?
-        print('    has_style is', self.has_style)
         attrname = 'styledata' if self.is_style_tag else 'style' if self.has_style else ''
-        print('    attrname is', attrname)
         if attrname:
             attrs[attrname] = self.styledata
         self._parent.dialog_data = tag, attrs, commented
