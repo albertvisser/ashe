@@ -193,7 +193,6 @@ class ElementDialog(qtw.QDialog):
         "controle bij OK aanklikken"
         self.refresh()
         add_title = 'Add an element'
-        # TODO: ensure no duplicate items are added
         tag = str(self.tag_text.text())
         test = string.ascii_letters + string.digits
         for letter in tag:
