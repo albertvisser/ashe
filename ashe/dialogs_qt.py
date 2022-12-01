@@ -208,12 +208,12 @@ class ElementDialog(qtw.QDialog):
             except AttributeError:
                 qtw.QMessageBox.information(self, add_title, 'Press enter on this item first')
                 return
+            if name in attrs:
+                qtw.QMessageBox.information(self, add_title, 'Duplicate attributes, please merge')
+                return
             if name not in ('styledata', 'style'):
                 attrs[name] = value
-        if tuple([x for x in attrs.keys()]) != list([x for x in attrs.keys()]):
-            qtw.QMessageBox.information(self, add_title, 'Duplicate attributes, please merge')
-            return
-        # hoeft dit nog met die refresh?
+        # hoeft dit nog als ik die refresh doe?
         attrname = 'styledata' if self.is_style_tag else 'style' if self.has_style else ''
         if attrname:
             attrs[attrname] = self.styledata
