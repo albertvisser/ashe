@@ -6,7 +6,8 @@ import PyQt5.QtWidgets as qtw
 import PyQt5.QtGui as gui
 import PyQt5.QtCore as core
 ## import PyQt5.QtWebKit as webkit
-import PyQt5.QtWebKitWidgets as webkit
+# import PyQt5.QtWebKitWidgets as webkit
+import PyQt5.QtWebEngineWidgets as webeng
 
 from ashe.shared import masks
 from ashe.dialogs_qt import (ElementDialog, TextDialog, DtdDialog, CssDialog, LinkDialog,
@@ -83,7 +84,7 @@ class MainFrame(qtw.QMainWindow):
         self.setWindowTitle(self.editor.title)
         self.appicon = gui.QIcon(icon)
         self.setWindowIcon(self.appicon)
-        self.resize(1020, 900)
+        self.resize(1200, 900)
 
         self.setup_menu()
         self.in_contextmenu = False
@@ -95,12 +96,14 @@ class MainFrame(qtw.QMainWindow):
         self.tree.headerItem().setHidden(True)
         self.pnl.addWidget(self.tree)
 
-        self.html = webkit.QWebView(self.pnl)  # , -1,
+        # self.html = webkit.QWebView(self.pnl)  # , -1,
+        self.html = webeng.QWebEngineView(self.pnl)
         self.pnl.addWidget(self.html)
 
         self.sb = self.statusBar()
 
         self.tree.resize(500, 100)
+        self.pnl.setSizes([300, 900])
         self.tree.setFocus()
         self.adv_menu.setChecked(True)
         self.show()
@@ -373,7 +376,9 @@ class MainFrame(qtw.QMainWindow):
 
     def refresh_preview(self, soup):
         "toolkit specifieke implementatie van gelijknamige editor methode"
-        self.html.setHtml(str(soup).replace('%SOUP-ENCODING%', 'utf-8'))
+        print(os.path.abspath(self.editor.xmlfn))
+        self.html.setHtml(str(soup).replace('%SOUP-ENCODING%', 'utf-8'),
+                          baseUrl=core.QUrl.fromLocalFile(os.path.abspath(self.editor.xmlfn)))
         self.tree.setFocus()
 
     def call_dialog(self, obj):
