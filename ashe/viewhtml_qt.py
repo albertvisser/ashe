@@ -4,7 +4,7 @@ import sys
 import PyQt5.QtWidgets as qtw
 ## import PyQt5.QtGui as gui
 import PyQt5.QtCore as core
-import PyQt5.QtWebKitWidgets as webkit
+import PyQt5.QtWebEngineWidgets as webeng
 
 
 class HtmlView(qtw.QMainWindow):
@@ -13,7 +13,7 @@ class HtmlView(qtw.QMainWindow):
     def __init__(self):
         super().__init__()
         self.resize(1020, 900)
-        self.html = webkit.QWebView(self)
+        self.html = webeng.QWebEngineView(self)
         self.setCentralWidget(self.html)
 
     def keyPressEvent(self, event):
