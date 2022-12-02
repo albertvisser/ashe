@@ -28,4 +28,4 @@ Requirements
 
 - Python
 - BeautifulSoup (and lxml)
-- PyQt(5, including QtWebKit) or wxPython (4, including wxhtml2)
+- PyQt(5, including QtWebEngine) or wxPython (4, including wxhtml2)
