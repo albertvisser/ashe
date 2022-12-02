@@ -15,6 +15,10 @@ class HtmlView(qtw.QMainWindow):
         self.resize(1020, 900)
         self.html = webeng.QWebEngineView(self)
         self.setCentralWidget(self.html)
+        closeaction = qtw.QAction('close', self)
+        closeaction.setShortcuts(['Ctrl+Q', 'Escape'])
+        closeaction.triggered.connect(self.close)
+        self.addAction(closeaction)
 
     def keyPressEvent(self, event):
         """event handler voor toetsaanslagen
