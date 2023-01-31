@@ -10,7 +10,7 @@ import pathlib
 import subprocess
 import bs4 as bs  # BeautifulSoup as bs
 
-from ashe.gui import gui
+from ashe.gui import gui, toolkit
 from ashe.shared import ICO, TITEL, CMSTART, ELSTART, DTDSTART, IFSTART, BL
 CMELSTART = ' '.join((CMSTART, ELSTART))
 csed = None  # reference to the csseditor import
@@ -50,7 +50,7 @@ def getelname(tag, attrs=None, comment=False):
         except KeyError:
             return ''
         else:
-            return ' {}="{}"'.format(att, hlp)
+            return f' {att}="{hlp}"'
     tagattdict = {'div': 'class',
                   'span': 'class',
                   'a': 'title',
@@ -59,7 +59,7 @@ def getelname(tag, attrs=None, comment=False):
                   'table': 'summary'}
     if attrs is None:
         attrs = {}
-    naam = '{} {}{}{}'.format('<>', tag, expand('id'), expand('name'))
+    naam = f"<> {tag}{expand('id')}{expand('name')}"
     try:
         naam += expand(tagattdict[tag])
     except KeyError:
@@ -101,20 +101,18 @@ class CssManager:
         self._parent = parent
         self.cssedit_available = check_for_csseditor()
         if self.cssedit_available:
-            from ashe.toolkit import toolkit
             if toolkit == 'wx':
                 self.cssedit_available = False
-
 
     def call_editor(self, master, tag):  # , styledata):  # , app=None):
         """call external css editor from the edit element dialog
         compare data returned with original data supplied
         """
-        print('in CssManager.call_editor, tag is', tag)
+        # print('in CssManager.call_editor, tag is', tag)
         self.styledata = self.old_styledata = master.styledata
         self.tag = tag
         if self.cssedit_available:
-            print('in htmledit.call_editor, app is', self._parent.gui.app)
+            # print('in htmledit.call_editor, app is', self._parent.gui.app)
             # css = csed.MainWindow(master, app=self._parent.gui.app)  # app)
             css = csed.Editor(master, app=self._parent.gui.app)  # app)
             # master is for setting returndata on (attributes styledata and cssfilename)
@@ -122,9 +120,9 @@ class CssManager:
                 css.open(text=self.styledata)
             else:
                 css.open(tag=tag, text=self.styledata)
-            print('in CssManager.call_editor, before show_from_external')
+            # print('in CssManager.call_editor, before show_from_external')
             css.show_from_external()  # sets self.styledata right before closing
-            print('in CssManager.call_editor, after  show_from_external')
+            # print('in CssManager.call_editor, after  show_from_external')
             master.csseditor_called = True
             return None, None    # styledata is ingesteld in de dialoog
         ok, dialog_data = self._parent.gui.call_dialog(gui.TextDialog(self._parent.gui,
@@ -142,7 +140,7 @@ class CssManager:
             attrs = {'style': self.old_styledata}
         return self.styledata, attrs
 
-    def call_editor_for_stylesheet(self, fname, new_ok=False):
+    def call_editor_for_stylesheet_old(self, fname, new_ok=False):
         """call external css editor from the edit element dialog
         no need for checking data
         """
@@ -166,7 +164,7 @@ class CssManager:
                 # subprocess.run(['wget', fname, '-O', h_fname])
                 # fname = h_fname
                 mld = 'Editing of possibly off-site stylesheets (http-links) is disabled'
-            elif fname:
+            elif fname:      # fname can be empty here !?
                 h_fname = fname
                 xmlfn_path = pathlib.Path(self._parent.xmlfn).parent
                 print('xmlfn_path, h_fname is', xmlfn_path, h_fname)
@@ -190,10 +188,48 @@ class CssManager:
         if mld:
             self._parent.gui.meld(mld)
 
+    def call_editor_for_stylesheet(self, fname, new_ok=False):
+        """call external css editor from the edit element dialog
+        no need for checking data
+        """
+        mld = ''
+        if not self.cssedit_available:
+            mld = 'No CSS editor support; please edit external stylesheet separately'
+        if not mld and fname.startswith('http'):
+            mld = 'Editing of possibly off-site stylesheets (http-links) is disabled'
+        if not mld and fname.startswith('/'):
+            if not os.path.exists(fname):
+                mld = "Cannot determine file system location of stylesheet file"
+        if not mld:
+            if not fname:
+                # assuming we can create new stylesheet without providing the name
+                # if so, we should be prompted by cssedit for a save name which should be
+                # returned and used on returning, whenever that is
+                if not new_ok:
+                    mld = 'Please provide filename for existing stylesheet'
+            else:
+                # use pathlib to translate ../ notation (works for startswith('/') as well?)
+                try:
+                    fpath = pathlib.Path(fname).resolve(strict=True)
+                except FileNotFoundError:
+                    mld = "Cannot find specified stylesheet file on file system"
+                else:
+                    if not fpath.exists():
+                        if new_ok:
+                            fpath.touch()
+                        else:
+                            mld = 'Stylesheet does not exist'
+        if not mld:
+            css = csed.Editor(app=self._parent.gui.app)  # no need for master here
+            css.open(filename=str(fpath))  # en wat als we de filename nog niet weten?
+            css.show_from_external()
+        if mld:
+            self._parent.gui.meld(mld)
+
     def call_from_inline(self, master, styledata):
         """edit from CSS Dialog
         """
-        print('in CssManager.call_from_inline')
+        # print('in CssManager.call_from_inline')
         master.styledata = styledata
         # styledata, attrs = self.call_editor(master, 'style')  # , '')
         self.call_editor(master, 'style')  # , '')
