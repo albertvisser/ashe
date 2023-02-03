@@ -200,8 +200,10 @@ class CssManager:
         if not mld and fname.startswith('/'):
             if not os.path.exists(fname):
                 mld = "Cannot determine file system location of stylesheet file"
+            # als het pad wel bestaat is het eigenlijk ook niet goed
         if not mld:
             if not fname:
+                fpath = ''  # pathlib.Path(fname).resolve()
                 # assuming we can create new stylesheet without providing the name
                 # if so, we should be prompted by cssedit for a save name which should be
                 # returned and used on returning, whenever that is
@@ -209,22 +211,18 @@ class CssManager:
                     mld = 'Please provide filename for existing stylesheet'
             else:
                 # use pathlib to translate ../ notation (works for startswith('/') as well?)
-                try:
-                    fpath = pathlib.Path(fname).resolve(strict=True)
-                except FileNotFoundError:
-                    mld = "Cannot find specified stylesheet file on file system"
-                else:
-                    if not fpath.exists():
-                        if new_ok:
-                            fpath.touch()
-                        else:
-                            mld = 'Stylesheet does not exist'
-        if not mld:
-            css = csed.Editor(app=self._parent.gui.app)  # no need for master here
-            css.open(filename=str(fpath))  # en wat als we de filename nog niet weten?
-            css.show_from_external()
+                fpath = pathlib.Path(fname).resolve()
+                if not fpath.exists():
+                    if new_ok:
+                        fpath.touch()
+                    else:
+                        mld = 'Stylesheet does not exist'
         if mld:
             self._parent.gui.meld(mld)
+            return
+        css = csed.Editor(app=self._parent.gui.app)  # no need for master here
+        css.open(filename=str(fpath))  # en wat als we de filename nog niet weten?
+        css.show_from_external()
 
     def call_from_inline(self, master, styledata):
         """edit from CSS Dialog
@@ -268,7 +266,7 @@ class Editor:
         self.constants = {'ELSTART': ELSTART}
         self.tree_dirty = False
         self.xmlfn = fname
-        self.gui = gui.MainFrame(editor=self, icon=ICO)
+        self.gui = gui.EditorGui(editor=self, icon=ICO)
         self.cssm = CssManager(self)
         self.edhlp = EditorHelper(self)
         self.srchhlp = SearchHelper(self)
@@ -276,22 +274,10 @@ class Editor:
         if err:
             self.gui.meld(str(err))
         else:
+            self.soup2data()
             self.refresh_preview()
+        self.advance_selection_on_add = True
         self.gui.go()
-
-    def mark_dirty(self, state):
-        """set "modified" indicator
-        """
-        self.tree_dirty = state
-        title = self.gui.get_screen_title()
-        test = ' - ' + self.title
-        test2 = '*' + test
-        if state:
-            if test2 not in title:
-                title = title.replace(test, test2)
-        else:
-            title = title.replace(test2, test)
-        self.gui.set_screen_title(title)
 
     def file2soup(self, fname="", preserve=False):
         """build initial html or read from file and initialize tree
@@ -316,15 +302,13 @@ class Editor:
             html = data.replace('<br/>', '<br />').replace('<hr/>', '<hr />')
         else:
             html = '<html><head><title></title></head><body></body></html>'
-        # try:  # - kijken of dit zonder exception handling kan
+        # try:  # - kijken of dit zonder exception handling kan - of is dit vanwege die lxml?
         root = bs.BeautifulSoup(html, 'lxml')
         # except Exception as err:
         #     return err
 
         self.root = root
-        self.xmlfn = fname
-        self.soup2data()
-        self.advance_selection_on_add = True
+        # self.xmlfn = fname
         return None
 
     def soup2data(self, name='', message=''):
@@ -476,19 +460,6 @@ class Editor:
             f_out.write(str(self.soup))
         self.mark_dirty(False)
 
-    def check_tree_state(self):
-        """vraag of de wijzigingen moet worden opgeslagen
-        keuze uitvoeren en teruggeven (i.v.m. eventueel gekozen Cancel)
-        retourneert 1 = Yes, 0 = No, -1 = Cancel
-        """
-        if self.tree_dirty:
-            text = "HTML data has been modified - save before continuing?"
-            retval = self.gui.ask_how_to_continue(self.title, text)
-            if retval > 0:
-                self.savexml()
-            return retval
-        return 0
-
     def get_menulist(self):
         """menu definition
         """
@@ -575,6 +546,33 @@ class Editor:
                            ('&Check syntax', '', '', 'Validate HTML with Tidy', self.validate))),
                 ("Help", (('&About', '', '', 'Info about this application', self.about), )))
 
+    def mark_dirty(self, state):
+        """set "modified" indicator
+        """
+        self.tree_dirty = state
+        title = self.gui.get_screen_title()
+        test = ' - ' + self.title
+        test2 = '*' + test
+        if state:
+            if test2 not in title:
+                title = title.replace(test, test2)
+        else:
+            title = title.replace(test2, test)
+        self.gui.set_screen_title(title)
+
+    def check_tree_state(self):
+        """vraag of de wijzigingen moet worden opgeslagen
+        keuze uitvoeren en teruggeven (i.v.m. eventueel gekozen Cancel)
+        retourneert 1 = Yes, 0 = No, -1 = Cancel
+        """
+        if self.tree_dirty:
+            text = "HTML data has been modified - save before continuing?"
+            retval = self.gui.ask_how_to_continue(self.title, text)
+            if retval > 0:
+                self.savexml()
+            return retval
+        return 0
+
     def is_stylesheet_node(self, node):
         """determine if node is for stylesheet definition
         """
@@ -612,6 +610,7 @@ class Editor:
             if err:
                 self.gui.meld(str(err))
             else:
+                self.xmlfn = ''
                 self.soup2data(message='started new document')
                 self.refresh_preview()
 
