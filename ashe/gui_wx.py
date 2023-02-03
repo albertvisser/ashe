@@ -108,7 +108,7 @@ class VisualTree(treemix.DragAndDrop, wx.TreeCtrl):
         self._parent.editor.refresh_preview()
 
 
-class MainFrame(wx.Frame):
+class EditorGui(wx.Frame):
     "Main GUI"
 
     def __init__(self, parent=None, editor=None, err=None, icon=None):

@@ -67,7 +67,7 @@ class VisualTree(qtw.QTreeWidget):
         self._parent.editor.refresh_preview()
 
 
-class MainFrame(qtw.QMainWindow):
+class EditorGui(qtw.QMainWindow):
     "Main GUI"
 
     def __init__(self, parent=None, editor=None, err=None, icon=None):
