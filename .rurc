@@ -1,0 +1,10 @@
+[testdir]
+unittests/
+
+[testscripts]
+base: test_base.py
+shr: test_shared.py
+
+[testees]
+base: ashe/base.py
+shr: ashe/shared.py
