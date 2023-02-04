@@ -288,15 +288,17 @@ class Editor:
             # fname = os.path.abspath(os.path.expanduser(fname))
             fpath = pathlib.Path(fname).expanduser().resolve()
             try:
-                with fpath.open() as f_in:
-                    data = ''.join([x.strip() for x in f_in])
+                # with fpath.open() as f_in:
+                #     data = ''.join([x.strip() for x in f_in])
+                data = fpath.read_text()
             except FileNotFoundError as err:
-                return err
+                return str(err)
             except UnicodeDecodeError:
-                with fpath.open(encoding="iso-8859-1") as f_in:
-                    data = ''.join([x.strip() for x in f_in])
+                # with fpath.open(encoding="iso-8859-1") as f_in:
+                #     data = ''.join([x.strip() for x in f_in])
+                data = fpath.read_text(encoding="iso-8859-1")
             if not preserve:
-                data = data.replace('\t', ' ')
+                data = data.replace('\t', ' ')  # wil ik tab echt vervangen of ook weghalen?
                 data = data.replace('\n', '')
             # modify some self-closing tags: to accomodate BS:
             html = data.replace('<br/>', '<br />').replace('<hr/>', '<hr />')
@@ -317,52 +319,6 @@ class Editor:
         calls gui-specific methods to build the visual structure
         to be overridden with gui-specific method that calls this one
         """
-        def add_to_tree(item, node, commented=False):
-            """add contents of BeautifulSoup node (`node`) to tree item (`item`)
-            `commented` flag is used in building item text"""
-            for subnode in [h for h in node.contents]:
-                if isinstance(subnode, bs.Tag):
-                    data = subnode.attrs
-                    dic = dict(data)
-                    for key, value in dic.items():
-                        if '%SOUP-ENCODING%' in value:
-                            dic[key] = value.replace('%SOUP-ENCODING%',
-                                                     self.root.originalEncoding)
-                        elif isinstance(value, list):  # hack i.v.m. nieuwe versie
-                            dic[key] = ' '.join(value)
-                    naam = getelname(subnode.name, dic, commented)
-                    newitem = self.gui.addtreeitem(item, naam, dic)
-                    add_to_tree(newitem, subnode, commented)
-                elif isinstance(subnode, bs.Doctype):  # Declaration):
-                    dtdtext = ' '.join((DTDSTART, str(subnode)))
-                    self.has_dtd = True
-                    newitem = self.gui.addtreeitem(item, getshortname(dtdtext), subnode)
-                elif isinstance(subnode, bs.Comment):
-                    test = subnode.string
-                    if test.lower().startswith('[if'):
-                        cond, data = test.split(']>', 1)
-                        cond = cond[3:].strip()
-                        try:
-                            data, _ = data.rsplit('<![', 1)
-                        except ValueError:
-                            print('IE conditional genegeerd:', test)
-                        else:
-                            newitem = self.gui.addtreeitem(item, ' '.join((IFSTART, cond)), '')
-                            # newnode = bs.BeautifulSoup(data, 'lxml').contents[0].contents[0]
-                            newnode = bs.BeautifulSoup(data, 'lxml').contents[0]
-                            add_to_tree(newitem, newnode)
-                    else:
-                        newnode = bs.BeautifulSoup(test, 'lxml')
-                        try:
-                            # correct BS wrapping this in <html><body>
-                            newnode = newnode.find_all('body')[0]
-                        except IndexError:
-                            pass
-                        add_to_tree(item, newnode, commented=True)
-                else:
-                    newitem = self.gui.addtreeitem(item, getshortname(str(subnode), commented),
-                                                   str(subnode))
-
         self.has_dtd = self.has_stylesheet = False
         if name:
             titel = name
@@ -371,73 +327,59 @@ class Editor:
         else:
             titel = '[untitled]'
         self.gui.addtreetop(titel, " - ".join((os.path.basename(titel), TITEL)))
-        add_to_tree(self.gui.top, self.root)
+        self.add_node_to_tree(self.gui.top, self.root)
         self.gui.adjust_dtd_menu()
         self.gui.init_tree(message)
         self.mark_dirty(False)
 
+    def add_node_to_tree(self, item, node, commented=False):
+        """recursively add contents of BeautifulSoup node (`node`) to tree item (`item`)
+        `commented` flag is used in building item text"""
+        for subnode in list(node.contents):
+            if isinstance(subnode, bs.Tag):
+                data = subnode.attrs
+                dic = dict(data)
+                for key, value in dic.items():
+                    if '%SOUP-ENCODING%' in value:
+                        dic[key] = value.replace('%SOUP-ENCODING%',
+                                                 self.root.originalEncoding)
+                    elif isinstance(value, list):  # hack i.v.m. nieuwe versie
+                        dic[key] = ' '.join(value)
+                naam = getelname(subnode.name, dic, commented)
+                newitem = self.gui.addtreeitem(item, naam, dic)
+                self.add_node_to_tree(newitem, subnode, commented)
+            elif isinstance(subnode, bs.Doctype):  # Declaration):
+                dtdtext = ' '.join((DTDSTART, str(subnode)))
+                self.has_dtd = True
+                newitem = self.gui.addtreeitem(item, getshortname(dtdtext), subnode)
+            elif isinstance(subnode, bs.Comment):
+                test = subnode.string
+                if test.lower().startswith('[if'):
+                    cond, data = test.split(']>', 1)
+                    cond = cond[3:].strip()
+                    try:
+                        data, _ = data.rsplit('<![', 1)
+                    except ValueError:
+                        print('IE conditional genegeerd:', test)
+                    else:
+                        newitem = self.gui.addtreeitem(item, ' '.join((IFSTART, cond)), '')
+                        # newnode = bs.BeautifulSoup(data, 'lxml').contents[0].contents[0]
+                        newnode = bs.BeautifulSoup(data, 'lxml').contents[0]
+                        self.add_node_to_tree(newitem, newnode)
+                else:
+                    newnode = bs.BeautifulSoup(test, 'lxml')
+                    try:
+                        # correct BS wrapping this in <html><body>
+                        newnode = newnode.find_all('body')[0]
+                    except IndexError:
+                        pass
+                    self.add_node_to_tree(item, newnode, commented=True)
+            else:
+                newitem = self.gui.addtreeitem(item, getshortname(str(subnode), commented),
+                                               str(subnode))
+
     def data2soup(self):
         "interne tree omzetten in BeautifulSoup object"
-        def expandnode(node, root, data, commented=False):
-            "tree item (node) met inhoud (data) toevoegen aan BS node (root)"
-            try:
-                for att in data:
-                    root[str(att)] = str(data[att])
-            except TypeError:
-                pass
-            for elm in self.gui.get_element_children(node):
-                text = self.gui.get_element_text(elm)
-                data = self.gui.get_element_data(elm)
-                if text.startswith(ELSTART) or text.startswith(CMELSTART):
-                    # data is een dict: leeg of een mapping van data op attributen
-                    if text.startswith(CMSTART):
-                        text = text.split(None, 1)[1]
-                        if not commented:
-                            is_comment = True
-                            soup = bs.BeautifulSoup('', 'lxml')
-                            sub = soup.new_tag(text.split()[1])
-                            expandnode(elm, sub, data, is_comment)
-                            sub = bs.Comment(str(sub))  # .decode("utf-8")) niet voor Py3
-                        else:
-                            is_comment = False
-                            sub = self.soup.new_tag(text.split()[1])
-                    else:
-                        is_comment = False
-                        sub = self.soup.new_tag(text.split()[1])
-                    root.append(sub)  # insert(0,sub)
-                    if not is_comment:
-                        expandnode(elm, sub, data, commented)
-                elif text.startswith(DTDSTART):
-                    text = text.split(None, 1)[1]
-                    sub = bs.Doctype(data)
-                    root.append(sub)
-                elif text.startswith(IFSTART):
-                    # onthou conditie
-                    cond = text.split(None, 1)[1]
-                    text = ''
-                    # onderliggende elementen langslopen
-                    for subel in self.gui.get_element_children(elm):
-                        subtext = self.gui.get_element_text(subel)
-                        data = self.gui.get_element_data(subel)
-                        if subtext.startswith(ELSTART):
-                            # element in tekst omzetten en deze aan text toevoegen
-                            onthou = self.soup
-                            self.soup = bs.BeautifulSoup('', 'lxml')
-                            tag = self.soup.new_tag(subtext.split()[1])
-                            expandnode(subel, tag, data)
-                            text += str(tag)
-                            self.soup = onthou
-                        else:
-                            # tekst aan text toevoegen
-                            text += str(data)
-                    # complete tekst als commentaar element aan de soup toevoegen
-                    sub = bs.Comment('[if {}]>{}<![endif]'.format(cond, text))
-                    root.append(sub)
-                else:
-                    sub = bs.NavigableString(str(data))  # .decode("utf-8")) niet voor Py3
-                    if text.startswith(CMSTART) and not commented:
-                        sub = bs.Comment(data)  # .decode("utf-8")) niet voor Py3
-                    root.append(sub)  # data.decode("latin-1")) # insert(0,sub)
         self.soup = bs.BeautifulSoup('', 'lxml')  # self.root.originalEncoding)
         for tag in self.gui.get_element_children(self.gui.top):
             text = self.gui.get_element_text(tag)
@@ -448,8 +390,69 @@ class Editor:
             elif text.startswith(ELSTART):
                 root = self.soup.new_tag(text.split(None, 2)[1])
                 self.soup.append(root)
-                expandnode(tag, root, data)
+                self.expandnode(tag, root, data)
         return self.soup
+
+    def expandnode(self, node, root, data, commented=False):
+        "tree item (node) met inhoud (data) toevoegen aan BS node (root)"
+        try:
+            for att in data:
+                root[str(att)] = str(data[att])
+        except TypeError:
+            pass
+        for elm in self.gui.get_element_children(node):
+            text = self.gui.get_element_text(elm)
+            data = self.gui.get_element_data(elm)
+            if text.startswith(ELSTART) or text.startswith(CMELSTART):
+                # data is een dict: leeg of een mapping van data op attributen
+                if text.startswith(CMSTART):
+                    text = text.split(None, 1)[1]
+                    if not commented:
+                        is_comment = True
+                        soup = bs.BeautifulSoup('', 'lxml')
+                        sub = soup.new_tag(text.split()[1])
+                        self.expandnode(elm, sub, data, is_comment)
+                        sub = bs.Comment(str(sub))  # .decode("utf-8")) niet voor Py3
+                    else:
+                        is_comment = False
+                        sub = self.soup.new_tag(text.split()[1])
+                else:
+                    is_comment = False
+                    sub = self.soup.new_tag(text.split()[1])
+                root.append(sub)  # insert(0,sub)
+                if not is_comment:
+                    self.expandnode(elm, sub, data, commented)
+            elif text.startswith(DTDSTART):
+                text = text.split(None, 1)[1]
+                sub = bs.Doctype(data)
+                root.append(sub)
+            elif text.startswith(IFSTART):
+                # onthou conditie
+                cond = text.split(None, 1)[1]
+                text = ''
+                # onderliggende elementen langslopen
+                for subel in self.gui.get_element_children(elm):
+                    subtext = self.gui.get_element_text(subel)
+                    data = self.gui.get_element_data(subel)
+                    if subtext.startswith(ELSTART):
+                        # element in tekst omzetten en deze aan text toevoegen
+                        onthou = self.soup
+                        self.soup = bs.BeautifulSoup('', 'lxml')
+                        tag = self.soup.new_tag(subtext.split()[1])
+                        self.expandnode(subel, tag, data)
+                        text += str(tag)
+                        self.soup = onthou
+                    else:
+                        # tekst aan text toevoegen
+                        text += str(data)
+                # complete tekst als commentaar element aan de soup toevoegen
+                sub = bs.Comment(f'[if {cond}]>{text}<![endif]')
+                root.append(sub)
+            else:
+                sub = bs.NavigableString(str(data))  # .decode("utf-8")) niet voor Py3
+                if text.startswith(CMSTART) and not commented:
+                    sub = bs.Comment(data)  # .decode("utf-8")) niet voor Py3
+                root.append(sub)  # data.decode("latin-1")) # insert(0,sub)
 
     def soup2file(self, saveas=False):
         "write HTML to file"
@@ -595,9 +598,9 @@ class Editor:
             parent = self.gui.get_element_parent(node)
             if test == ' '.join((ELSTART, 'body')):
                 return True
-            elif test == ' '.join((ELSTART, 'head')):
+            if test == ' '.join((ELSTART, 'head')):
                 return False
-            elif parent is None:  # only for <html> tag - do we need this?
+            if parent is None:  # only for <html> tag - do we need this?
                 return False
             return is_node_ok(parent)
         return is_node_ok(node)
@@ -624,7 +627,7 @@ class Editor:
                 if err:
                     self.gui.meld(str(err))
                 else:
-                    self.soup2data(fnaam, 'loaded {}'.format(fnaam))  # self.xmlfn
+                    self.soup2data(fnaam, f'loaded {fnaam}')  # self.xmlfn
                     self.refresh_preview()
 
     def savexml(self, event=None):
@@ -638,7 +641,7 @@ class Editor:
             except IOError as err:
                 self.gui.meld(str(err))
                 return
-            self.gui.show_statusbar_message("saved {}".format(self.xmlfn))
+            self.gui.show_statusbar_message(f"saved {self.xmlfn}")
 
     def savexmlas(self, event=None):
         """vraag bestand om html op te slaan
@@ -653,7 +656,7 @@ class Editor:
                 self.gui.meld(str(err))
                 return
             self.gui.set_element_text(self.gui.top, self.xmlfn)
-            self.gui.show_statusbar_message("saved as {}".format(self.xmlfn))
+            self.gui.show_statusbar_message(f"saved as {self.xmlfn}")
 
     def reopenxml(self, event=None):
         """onvoorwaardelijk html bestand opnieuw laden"""
@@ -661,7 +664,7 @@ class Editor:
         if ret:
             self.gui.meld(str(ret))
         else:
-            self.soup2data(self.xmlfn, 'reloaded {}'.format(self.xmlfn))
+            self.soup2data(self.xmlfn, f'reloaded {self.xmlfn}')
             self.refresh_preview()
 
     def close(self, event=None):
@@ -799,20 +802,20 @@ class Editor:
     def build_search_spec(ele, attr_name, attr_val, text, attr, replacements=None):
         "build text describing search action"
         if ele:
-            ele = ' an element named `{}`'.format(ele)
+            ele = f' an element named `{ele}`'
         if attr_name or attr_val:
             attr = ' an attribute'
             if attr_name:
-                attr += ' named `{}`'.format(attr_name)
+                attr += f' named `{attr_name}`'
             if attr_val:
-                attr += ' that has value `{}`'.format(attr_val)
+                attr += f' that has value `{attr_val}`'
             if ele:
-                attr = ' with {}'.format(attr[1:])
+                attr = f' with {attr[1:]}'
         out = ''
         if text:
             out = 'search for text'
             if ele:
-                out += ' under {}'.format(ele[1:])
+                out += f' under {ele[1:]}'
             elif attr:
                 out += ' under an element with'
             if attr:
@@ -827,19 +830,19 @@ class Editor:
             out += '\nand replace '
             replace = ''
             if replacements[0]:
-                replace = 'element name with `{}`'.format(replacements[0])
+                replace = f'element name with `{replacements[0]}`'
             if replacements[1]:
                 if replace:
                     replace += ', '
-                replace += 'attribute name with `{}`'.format(replacements[1])
+                replace += f'attribute name with `{replacements[1]}`'
             if replacements[2]:
                 if replace:
                     replace += ', '
-                replace += 'attribute value with `{}`'.format(replacements[2])
+                replace += f'attribute value with `{replacements[2]}`'
             if replacements[3]:
                 if replace:
                     replace += ', '
-                replace += 'text with `{}`'.format(replacements[3])
+                replace += f'text with `{replacements[3]}`'
             out += replace
         return out
 
@@ -953,7 +956,7 @@ class Editor:
         test = link.split('/', 1)
         if not link:
             raise ValueError("link opgeven of cancel kiezen s.v.p")
-        elif not os.path.exists(link):
+        if not os.path.exists(link):
             nice_link = link
         elif link == '/' or len(test) == 1 or test[0] in ('http://', './', '../'):
             nice_link = link
@@ -1009,8 +1012,7 @@ class Editor:
                 data['controls'] = ''
                 src = data.pop('src')
                 node = self.gui.addtreeitem(self.item, getelname('video', data), data, -1)
-                child_data = {'src': src,
-                              'type': 'video/{}'.format(pathlib.Path(src).suffix[1:])}
+                child_data = {'src': src, 'type': f'video/{pathlib.Path(src).suffix[1:]}'}
                 self.gui.addtreeitem(node, getelname('source', child_data), child_data, -1)
                 self.mark_dirty(True)
                 self.refresh_preview()
@@ -1128,7 +1130,7 @@ class EditorHelper:
                 text = 'doctype cannot be determined'
             self.gui.meld(text)
             return
-        elif text.startswith(IFSTART):
+        if text.startswith(IFSTART):
             self.gui.meld("About to edit this conditional")
             # start dialog to edit condition
             cond, ok = self.gui.ask_for_text(text)
@@ -1249,7 +1251,7 @@ class EditorHelper:
         self.item = self.editor.item
         if self.item == self.editor.root:
             txt = 'cut' if cut else 'copy' if retain else 'delete'
-            self.gui.meld("Can't %s the root" % txt)
+            self.gui.meld(f"Can't {txt} the root")
             return
         text = self.gui.get_element_text(self.item)
         if ifcheck and text.startswith(IFSTART):
@@ -1297,9 +1299,8 @@ class EditorHelper:
             if before:
                 self.gui.meld("Can't paste before the root")
                 return
-            else:
-                self.gui.meld("Pasting as first element below root")
-                below = True
+            self.gui.meld("Pasting as first element below root")
+            below = True
         if self.editor.cut_txt:
             item = getshortname(self.editor.cut_txt)
             data = self.editor.cut_txt
@@ -1565,7 +1566,7 @@ class SearchHelper:
                 itemfound = item
                 break
 
-        # linter: kan newpos hier ongedefinieerd zijn?
+        # linter: kan newpos hier ongedefinieerd zijn? Als `data` leeg is?
         if itemfound:
             factor = 1
             if reverse:
@@ -1602,7 +1603,7 @@ class SearchHelper:
             else:
                 elem_list.append((subitem, text, {}))
         if top:
-            print(elem_list)
+            # print(elem_list)
             elem_list = elem_list[1:]
         return elem_list
 

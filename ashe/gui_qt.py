@@ -372,7 +372,7 @@ class EditorGui(qtw.QMainWindow):
 
     def get_adv_sel_setting(self):
         "callback for menu option"
-        self.advance_selection_on_add = self.adv_menu.isChecked()
+        return self.adv_menu.isChecked()
 
     def refresh_preview(self, soup):
         "toolkit specifieke implementatie van gelijknamige editor methode"

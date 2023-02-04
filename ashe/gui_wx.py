@@ -417,7 +417,7 @@ class EditorGui(wx.Frame):
 
     def get_adv_sel_setting(self):
         "callback for menu option"
-        self.advance_selection_on_add = self.adv_menu.IsChecked()
+        return self.adv_menu.IsChecked()
 
     def refresh_preview(self, soup):
         "toolkit specifieke implementatie van gelijknamige editor methode"
