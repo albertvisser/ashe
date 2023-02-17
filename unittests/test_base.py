@@ -28,7 +28,7 @@ class MockEditorGui:
     # def __init__(self):
     #     print('called gui.__init__()')
     def __init__(self, *args, **kwargs):
-        print('called EditorGui.__init__()')
+        print('called EditorGui.__init__')
         self.textcounter = self.datacounter = self.childcounter = 0
     def go(self):
         print('called EditorGui.go()')
@@ -65,6 +65,9 @@ class MockEditorGui:
         return []  # 'node1', 'node2'
     def addtreetop(self, *args):
         print('called EditorGui.addtreetop with args', args)
+    def addtreeitem(self, *args):
+        print('called EditorGui.addtreeitem with args', args)
+        return 'node'
     def adjust_dtd_menu(self):
         print('called EditorGui.adjust_dtd_menu')
     def init_tree(self, *args):
@@ -84,30 +87,45 @@ class MockManager:
 
 class MockEditorHelper:
     def __init__(self, *args):
-        print('called EditorHelper.__init__()')
+        print('called EditorHelper.__init__')
 
     def edit(self):
-        print('called EditorHelper.__init__()')
+        print('called EditorHelper.edit')
 
     def comment(self):
-        print('called EditorHelper.__init__()')
+        print('called EditorHelper.comment')
 
     def copy(self, **kwargs):
-        print('called EditorHelper.__init__() with args', kwargs)
+        print('called EditorHelper.copy with args', kwargs)
 
     def paste(self, **kwargs):
-        print('called EditorHelper.__init__() with args', kwargs)
+        print('called EditorHelper.paste with args', kwargs)
 
     def insert(self, **kwargs):
-        print('called EditorHelper.__init__() with args', kwargs)
+        print('called EditorHelper.insert with args', kwargs)
 
     def add_text(self, **kwargs):
-        print('called EditorHelper.__init__() with args', kwargs)
+        print('called EditorHelper.add_text with args', kwargs)
 
 
 class MockSearchHelper:
     def __init__(self, *args):
-        print('called SearchHelper.__init__()')
+        print('called SearchHelper.__init__')
+
+    def search(self, **kwargs):
+        print('called SearchHelper.search with args', kwargs)
+
+    def search_from(self, *args, **kwargs):
+        print('called SearchHelper.search_from with args', args, kwargs)
+
+    def search_next(self, **kwargs):
+        print('called SearchHelper.search_next with args', kwargs)
+
+    def replace_from(self, *args, **kwargs):
+        print('called SearchHelper.replace_from with args', args, kwargs)
+
+    def replace_next(self, **kwargs):
+        print('called SearchHelper.replace_next with args', kwargs)
 
 
 class MockEditor:
@@ -305,13 +323,35 @@ def test_call_from_inline(monkeypatch, capsys):
 
 
 #-- Editor ---------------------------
+def mock_refresh(self):
+    print('called Editor.refresh_preview')
+
+def mock_mark_dirty(self, value):
+    print(f'called.Editor.mark_dirty with value `{value}`')
+
+def mock_init_editor(self, filename):
+    print(f'called Editor.__init__ with filename `{filename}`')
+    self.xmlfn = filename
+    self.root = 'root'
+    self.gui = MockEditorGui()
+    # self.cssm = MockManager()
+    self.edhlp = MockEditorHelper()
+    self.srchhlp = MockSearchHelper()
+
+def setup_editor(monkeypatch, capsys):
+    monkeypatch.setattr(testee.Editor, '__init__', mock_init_editor)
+    testobj = testee.Editor('')
+    assert capsys.readouterr().out == ('called Editor.__init__ with filename ``\n'
+                                       'called EditorGui.__init__\n'
+                                       'called EditorHelper.__init__\n'
+                                       'called SearchHelper.__init__\n')
+    return testobj
+
 def test_editor_init(monkeypatch, capsys):
     def mock_file2soup(self, arg):
         print(f'called Editor.file2soup with arg `{arg}`')
     def mock_soup2data(self):
         print('called Editor.soup2data')
-    def mock_refresh(self):
-        print('called Editor.refresh_preview')
     monkeypatch.setattr(testee.gui, 'EditorGui', MockEditorGui)
     monkeypatch.setattr(testee, 'CssManager', MockManager)
     monkeypatch.setattr(testee, 'EditorHelper', MockEditorHelper)
@@ -328,10 +368,10 @@ def test_editor_init(monkeypatch, capsys):
     assert isinstance(testobj.cssm, testee.CssManager)
     assert isinstance(testobj.edhlp, testee.EditorHelper)
     assert isinstance(testobj.srchhlp, testee.SearchHelper)
-    assert capsys.readouterr().out == ('called EditorGui.__init__()\n'
+    assert capsys.readouterr().out == ('called EditorGui.__init__\n'
                                        'called CssManager.__init__()\n'
-                                       'called EditorHelper.__init__()\n'
-                                       'called SearchHelper.__init__()\n'
+                                       'called EditorHelper.__init__\n'
+                                       'called SearchHelper.__init__\n'
                                        'called Editor.file2soup with arg `x`\n'
                                        'called Editor.soup2data\n'
                                        'called Editor.refresh_preview\n'
@@ -346,42 +386,18 @@ def test_editor_init(monkeypatch, capsys):
     assert isinstance(testobj.cssm, testee.CssManager)
     assert isinstance(testobj.edhlp, testee.EditorHelper)
     assert isinstance(testobj.srchhlp, testee.SearchHelper)
-    assert capsys.readouterr().out == ('called EditorGui.__init__()\n'
+    assert capsys.readouterr().out == ('called EditorGui.__init__\n'
                                        'called CssManager.__init__()\n'
-                                       'called EditorHelper.__init__()\n'
-                                       'called SearchHelper.__init__()\n'
+                                       'called EditorHelper.__init__\n'
+                                       'called SearchHelper.__init__\n'
                                        'called EditorGui.meld with arg `message`\n'
                                        'called EditorGui.go()\n')
-
-def mock_init_editor(self, filename):
-    print(f'called Editor.__init__ with filename `{filename}`')
-    self.xmlfn = filename
-    self.root = 'root'
-    self.gui = MockEditorGui()
-    # self.cssm = MockManager()
-    self.edhlp = MockEditorHelper()
-    # self.srchhlp = MockSearchHelper()
-
-def setup_editor(monkeypatch, capsys):
-    monkeypatch.setattr(testee.Editor, '__init__', mock_init_editor)
-    testobj = testee.Editor('')
-    assert capsys.readouterr().out == ('called Editor.__init__ with filename ``\n'
-                                       'called EditorGui.__init__()\n'
-                                       'called EditorHelper.__init__()\n')
-    return testobj
-
-def mock_mark_dirty(self, value):
-    print(f'called.Editor.mark_dirty with value `{value}`')
 
 def test_file2soup(monkeypatch, capsys, tmp_path):
     def mock_bs(*args):
         print('called BeautifulSoup with args', args)
         return 'root'
     monkeypatch.setattr(testee.bs, 'BeautifulSoup', mock_bs)
-    # monkeypatch.setattr(testee.Editor, '__init__', mock_init_editor)
-    # testobj = testee.Editor('')
-    # assert capsys.readouterr().out == ('called Editor.__init__ with filename ``\n'
-    #                                    'called EditorGui.__init__()\n')
     testobj = setup_editor(monkeypatch, capsys)
     assert testobj.file2soup() is None
     assert testobj.root == 'root'
@@ -405,12 +421,9 @@ def test_file2soup(monkeypatch, capsys, tmp_path):
 def test_soup2data(monkeypatch, capsys):
     def mock_add_node(self, *args):
         print('called Editor.add_node_to_tree with args', args)
-    monkeypatch.setattr(testee.Editor, '__init__', mock_init_editor)
     monkeypatch.setattr(testee.Editor, 'add_node_to_tree', mock_add_node)
     monkeypatch.setattr(testee.Editor, 'mark_dirty', mock_mark_dirty)
-    testobj = testee.Editor('')
-    assert capsys.readouterr().out == ('called Editor.__init__ with filename ``\n'
-                                       'called EditorGui.__init__()\n')
+    testobj = setup_editor(monkeypatch, capsys)
     testobj.soup2data()
     assert not testobj.has_dtd
     assert not testobj.has_stylesheet
@@ -471,11 +484,8 @@ def test_data2soup(monkeypatch, capsys):
     monkeypatch.setattr(MockEditorGui, 'get_element_text', mock_element_text)
     monkeypatch.setattr(MockEditorGui, 'get_element_data', mock_element_data)
     monkeypatch.setattr(testee, 'bs', MockBs)
-    monkeypatch.setattr(testee.Editor, '__init__', mock_init_editor)
     monkeypatch.setattr(testee.Editor, 'expandnode', mock_expandnode)
-    testobj = testee.Editor('')
-    assert capsys.readouterr().out == ('called Editor.__init__ with filename ``\n'
-                                       'called EditorGui.__init__()\n')
+    testobj = setup_editor(monkeypatch, capsys)
     assert testobj.data2soup() == ['doctypedata', 'element']
     assert capsys.readouterr().out == (
             "called bs.BeautifulSoup with args ('', 'lxml')\n"
@@ -493,7 +503,10 @@ def test_soup2file(monkeypatch, capsys, tmp_path):
     backup = tmp_path / 'testsoup2file.html.bak'
     testobj = testee.Editor(str(xmlfn))
     assert capsys.readouterr().out == (f'called Editor.__init__ with filename `{xmlfn}`\n'
-                                       'called EditorGui.__init__()\n')
+                                       'called EditorGui.__init__\n'
+                                       'called EditorHelper.__init__\n'
+                                       'called SearchHelper.__init__\n')
+    # testobj = setup_editor(monkeypatch, capsys)
     testobj.soup = 12
     testobj.soup2file()
     assert not backup.exists()
@@ -518,14 +531,11 @@ def _test_get_menulist(monkeypatch, capsys):
     monkeypatch.setattr(testee.Editor, '__init__', mock_init_editor)
     testobj = testee.Editor('')
     assert capsys.readouterr().out == (f'called Editor.__init__ with filename `{xmlfn}`\n'
-                                       'called EditorGui.__init__()\n')
+                                       'called EditorGui.__init__\n')
 
 
 def test_mark_dirty(monkeypatch, capsys):
-    monkeypatch.setattr(testee.Editor, '__init__', mock_init_editor)
-    testobj = testee.Editor('')
-    assert capsys.readouterr().out == (f'called Editor.__init__ with filename ``\n'
-                                       'called EditorGui.__init__()\n')
+    testobj = setup_editor(monkeypatch, capsys)
     testobj.title = 'x'
     testobj.mark_dirty(True)
     assert testobj.tree_dirty
@@ -553,12 +563,9 @@ def test_check_tree_state(monkeypatch, capsys):
         counter += 1
         print('called EditorGui.ask_how_to_continue with args', args)
         return counter - 1
-    monkeypatch.setattr(testee.Editor, '__init__', mock_init_editor)
     monkeypatch.setattr(testee.Editor, 'savexml', mock_savexml)
     monkeypatch.setattr(MockEditorGui, 'ask_how_to_continue', mock_ask_how)
-    testobj = testee.Editor('')
-    assert capsys.readouterr().out == (f'called Editor.__init__ with filename ``\n'
-                                       'called EditorGui.__init__()\n')
+    testobj = setup_editor(monkeypatch, capsys)
     testobj.tree_dirty = False
     assert testobj.check_tree_state() == 0
     assert capsys.readouterr().out == ''
@@ -591,36 +598,24 @@ def test_is_stylesheet_node(monkeypatch, capsys):
         return {'rel': 'stylesheet'}
     monkeypatch.setattr(MockEditorGui, 'get_element_text', mock_get_text)
     monkeypatch.setattr(MockEditorGui, 'get_element_data', mock_get_data)
-    monkeypatch.setattr(testee.Editor, '__init__', mock_init_editor)
-    testobj = testee.Editor('')
-    assert capsys.readouterr().out == (f'called Editor.__init__ with filename ``\n'
-                                       'called EditorGui.__init__()\n')
+    testobj = setup_editor(monkeypatch, capsys)
     assert not testobj.is_stylesheet_node('node')
     assert capsys.readouterr().out == 'called EditorGui.get_element_text for `node`\n'
 
     monkeypatch.setattr(MockEditorGui, 'get_element_text', mock_get_text_2)
-    monkeypatch.setattr(testee.Editor, '__init__', mock_init_editor)
-    testobj = testee.Editor('')
-    assert capsys.readouterr().out == (f'called Editor.__init__ with filename ``\n'
-                                       'called EditorGui.__init__()\n')
+    testobj = setup_editor(monkeypatch, capsys)
     assert testobj.is_stylesheet_node('node')
     assert capsys.readouterr().out == 'called EditorGui.get_element_text for `node`\n'
 
     monkeypatch.setattr(MockEditorGui, 'get_element_text', mock_get_text_3)
-    monkeypatch.setattr(testee.Editor, '__init__', mock_init_editor)
-    testobj = testee.Editor('')
-    assert capsys.readouterr().out == (f'called Editor.__init__ with filename ``\n'
-                                       'called EditorGui.__init__()\n')
+    testobj = setup_editor(monkeypatch, capsys)
     assert not testobj.is_stylesheet_node('node')
     assert capsys.readouterr().out == ('called EditorGui.get_element_text for `node`\n'
                                        'called EditorGui.get_element_data for `node`\n')
 
     monkeypatch.setattr(MockEditorGui, 'get_element_text', mock_get_text_3)
     monkeypatch.setattr(MockEditorGui, 'get_element_data', mock_get_data_2)
-    monkeypatch.setattr(testee.Editor, '__init__', mock_init_editor)
-    testobj = testee.Editor('')
-    assert capsys.readouterr().out == (f'called Editor.__init__ with filename ``\n'
-                                       'called EditorGui.__init__()\n')
+    testobj = setup_editor(monkeypatch, capsys)
     assert testobj.is_stylesheet_node('node')
     assert capsys.readouterr().out == ('called EditorGui.get_element_text for `node`\n'
                                        'called EditorGui.get_element_data for `node`\n')
@@ -658,10 +653,7 @@ def test_in_body(monkeypatch, capsys):
     # element zonder parent
     monkeypatch.setattr(MockEditorGui, 'get_element_text', mock_get_text)
     monkeypatch.setattr(MockEditorGui, 'get_element_parent', mock_get_parent)
-    monkeypatch.setattr(testee.Editor, '__init__', mock_init_editor)
-    testobj = testee.Editor('')
-    assert capsys.readouterr().out == (f'called Editor.__init__ with filename ``\n'
-                                       'called EditorGui.__init__()\n')
+    testobj = setup_editor(monkeypatch, capsys)
     counter = 0
     assert not testobj.in_body('node')
     assert capsys.readouterr().out == ('called EditorGui.get_element_text for `node`\n'
@@ -669,30 +661,23 @@ def test_in_body(monkeypatch, capsys):
     # head
     monkeypatch.setattr(MockEditorGui, 'get_element_text', mock_get_text_2)
     monkeypatch.setattr(MockEditorGui, 'get_element_parent', mock_get_parent_2)
-    monkeypatch.setattr(testee.Editor, '__init__', mock_init_editor)
-    testobj = testee.Editor('')
-    assert capsys.readouterr().out == (f'called Editor.__init__ with filename ``\n'
-                                       'called EditorGui.__init__()\n')
+    testobj = setup_editor(monkeypatch, capsys)
     counter = 0
     assert not testobj.in_body('node')
     assert capsys.readouterr().out == ('called EditorGui.get_element_text for `node`\n'
                                        'called EditorGui.get_element_parent for `node`\n')
+    testobj = setup_editor(monkeypatch, capsys)
     # body
     monkeypatch.setattr(MockEditorGui, 'get_element_text', mock_get_text_3)
-    monkeypatch.setattr(testee.Editor, '__init__', mock_init_editor)
-    testobj = testee.Editor('')
-    assert capsys.readouterr().out == (f'called Editor.__init__ with filename ``\n'
-                                       'called EditorGui.__init__()\n')
+    testobj = setup_editor(monkeypatch, capsys)
     counter = 0
     assert testobj.in_body('node')
     assert capsys.readouterr().out == ('called EditorGui.get_element_text for `node`\n'
                                        'called EditorGui.get_element_parent for `node`\n')
+    testobj = setup_editor(monkeypatch, capsys)
     # element onder head
     monkeypatch.setattr(MockEditorGui, 'get_element_text', mock_get_text_4)
-    monkeypatch.setattr(testee.Editor, '__init__', mock_init_editor)
-    testobj = testee.Editor('')
-    assert capsys.readouterr().out == (f'called Editor.__init__ with filename ``\n'
-                                       'called EditorGui.__init__()\n')
+    testobj = setup_editor(monkeypatch, capsys)
     counter = 0
     assert not testobj.in_body('node')
     assert capsys.readouterr().out == ('called EditorGui.get_element_text for `node`\n'
@@ -703,10 +688,7 @@ def test_in_body(monkeypatch, capsys):
                                        'called EditorGui.get_element_parent for `x`\n')
     # element onder body
     monkeypatch.setattr(MockEditorGui, 'get_element_text', mock_get_text_5)
-    monkeypatch.setattr(testee.Editor, '__init__', mock_init_editor)
-    testobj = testee.Editor('')
-    assert capsys.readouterr().out == (f'called Editor.__init__ with filename ``\n'
-                                       'called EditorGui.__init__()\n')
+    testobj = setup_editor(monkeypatch, capsys)
     counter = 0
     assert testobj.in_body('node')
     assert capsys.readouterr().out == ('called EditorGui.get_element_text for `node`\n'
@@ -726,30 +708,23 @@ def test_newxml(monkeypatch, capsys):
         print('called Editor.soup2data with args', args, kwargs)
     def mock_refresh_preview(self):
         print('called Editor.refresh_preview')
-    monkeypatch.setattr(testee.Editor, '__init__', mock_init_editor)
     monkeypatch.setattr(testee.Editor, 'check_tree_state', mock_check_state)
     monkeypatch.setattr(testee.Editor, 'file2soup', mock_file2soup)
     monkeypatch.setattr(testee.Editor, 'soup2data', mock_soup2data)
     monkeypatch.setattr(testee.Editor, 'refresh_preview', mock_refresh_preview)
-    testobj = testee.Editor('')
-    assert capsys.readouterr().out == (f'called Editor.__init__ with filename ``\n'
-                                       'called EditorGui.__init__()\n')
+    testobj = setup_editor(monkeypatch, capsys)
     testobj.newxml()
     assert capsys.readouterr().out == ("called Editor.check_tree_state\n"
             "called Editor.file2soup with args () {}\n"
             "called Editor.soup2data with args () {'message': 'started new document'}\n"
             "called Editor.refresh_preview\n")
     monkeypatch.setattr(testee.Editor, 'file2soup', lambda *x: 'error')
-    testobj = testee.Editor('')
-    assert capsys.readouterr().out == (f'called Editor.__init__ with filename ``\n'
-                                       'called EditorGui.__init__()\n')
+    testobj = setup_editor(monkeypatch, capsys)
     testobj.newxml()
     assert capsys.readouterr().out == ("called Editor.check_tree_state\n"
                                        "called EditorGui.meld with arg `error`\n")
     monkeypatch.setattr(testee.Editor, 'check_tree_state', lambda *x: -1)
-    testobj = testee.Editor('')
-    assert capsys.readouterr().out == (f'called Editor.__init__ with filename ``\n'
-                                       'called EditorGui.__init__()\n')
+    testobj = setup_editor(monkeypatch, capsys)
     testobj.newxml()
     assert capsys.readouterr().out == ''
 
@@ -766,39 +741,30 @@ def test_openxml(monkeypatch, capsys):
     def mock_refresh_preview(self):
         print('called Editor.refresh_preview')
     monkeypatch.setattr(MockEditorGui, 'ask_for_open_filename', mock_ask_filename)
-    monkeypatch.setattr(testee.Editor, '__init__', mock_init_editor)
     monkeypatch.setattr(testee.Editor, 'check_tree_state', mock_check_state)
     monkeypatch.setattr(testee.Editor, 'file2soup', mock_file2soup)
     monkeypatch.setattr(testee.Editor, 'soup2data', mock_soup2data)
     monkeypatch.setattr(testee.Editor, 'refresh_preview', mock_refresh_preview)
-    testobj = testee.Editor('')
-    assert capsys.readouterr().out == (f'called Editor.__init__ with filename ``\n'
-                                       'called EditorGui.__init__()\n')
+    testobj = setup_editor(monkeypatch, capsys)
     testobj.openxml()
     assert capsys.readouterr().out == ('called Editor.check_tree_state\n'
                                        'called EditorGui.ask_for_open_filename\n')
 
     monkeypatch.setattr(MockEditorGui, 'ask_for_open_filename', lambda *x: 'somefile')
-    testobj = testee.Editor('')
-    assert capsys.readouterr().out == (f'called Editor.__init__ with filename ``\n'
-                                       'called EditorGui.__init__()\n')
+    testobj = setup_editor(monkeypatch, capsys)
     testobj.openxml()
     assert capsys.readouterr().out == ('called Editor.check_tree_state\n'
             "called Editor.file2soup with args () {'fname': 'somefile'}\n"
             "called Editor.soup2data with args ('somefile', 'loaded somefile') {}\n"
             "called Editor.refresh_preview\n")
     monkeypatch.setattr(testee.Editor, 'file2soup', lambda *x, **y: 'error')
-    testobj = testee.Editor('')
-    assert capsys.readouterr().out == (f'called Editor.__init__ with filename ``\n'
-                                       'called EditorGui.__init__()\n')
+    testobj = setup_editor(monkeypatch, capsys)
     testobj.openxml()
     assert capsys.readouterr().out == ("called Editor.check_tree_state\n"
                                        "called EditorGui.meld with arg `error`\n")
 
     monkeypatch.setattr(testee.Editor, 'check_tree_state', lambda *x: -1)
-    testobj = testee.Editor('')
-    assert capsys.readouterr().out == (f'called Editor.__init__ with filename ``\n'
-                                       'called EditorGui.__init__()\n')
+    testobj = setup_editor(monkeypatch, capsys)
     testobj.openxml()
     assert capsys.readouterr().out == ''
 
@@ -811,13 +777,10 @@ def test_savexml(monkeypatch, capsys):
         print('called Editor.soup2file with args', args, kwargs)
     def mock_soup2file_2(self, *args, **kwargs):
         raise IOError('Error')
-    monkeypatch.setattr(testee.Editor, '__init__', mock_init_editor)
     monkeypatch.setattr(testee.Editor, 'savexmlas', mock_savexmlas)
     monkeypatch.setattr(testee.Editor, 'data2soup', mock_data2soup)
     monkeypatch.setattr(testee.Editor, 'soup2file', mock_soup2file)
-    testobj = testee.Editor('')
-    assert capsys.readouterr().out == (f'called Editor.__init__ with filename ``\n'
-                                       'called EditorGui.__init__()\n')
+    testobj = setup_editor(monkeypatch, capsys)
     testobj.xmlfn = ''
     testobj.savexml()
     assert capsys.readouterr().out == 'called Editor.savexmlas\n'
@@ -828,9 +791,7 @@ def test_savexml(monkeypatch, capsys):
                                        'called EditorGui.show_statusbar_message with arg'
                                        ' `saved filename`\n')
     monkeypatch.setattr(testee.Editor, 'soup2file', mock_soup2file_2)
-    testobj = testee.Editor('')
-    assert capsys.readouterr().out == (f'called Editor.__init__ with filename ``\n'
-                                       'called EditorGui.__init__()\n')
+    testobj = setup_editor(monkeypatch, capsys)
     testobj.xmlfn = 'filename'
     testobj.savexml()
     assert capsys.readouterr().out == ('called Editor.data2soup with args () {}\n'
@@ -844,18 +805,13 @@ def test_savexmlas(monkeypatch, capsys):
     def mock_soup2file_2(self, *args, **kwargs):
         raise IOError('Error')
     monkeypatch.setattr(MockEditorGui, 'ask_for_save_filename', lambda *x: '')
-    monkeypatch.setattr(testee.Editor, '__init__', mock_init_editor)
     monkeypatch.setattr(testee.Editor, 'data2soup', mock_data2soup)
     monkeypatch.setattr(testee.Editor, 'soup2file', mock_soup2file)
-    testobj = testee.Editor('')
-    assert capsys.readouterr().out == (f'called Editor.__init__ with filename ``\n'
-                                       'called EditorGui.__init__()\n')
+    testobj = setup_editor(monkeypatch, capsys)
     testobj.savexmlas()
     assert capsys.readouterr().out == ''
     monkeypatch.setattr(MockEditorGui, 'ask_for_save_filename', lambda *x: 'filename')
-    testobj = testee.Editor('')
-    assert capsys.readouterr().out == (f'called Editor.__init__ with filename ``\n'
-                                       'called EditorGui.__init__()\n')
+    testobj = setup_editor(monkeypatch, capsys)
     testobj.savexmlas()
     assert capsys.readouterr().out == ('called Editor.data2soup with args () {}\n'
                                        "called Editor.soup2file with args () {'saveas': True}\n"
@@ -863,9 +819,7 @@ def test_savexmlas(monkeypatch, capsys):
                                        'called EditorGui.show_statusbar_message with arg'
                                        ' `saved as filename`\n')
     monkeypatch.setattr(testee.Editor, 'soup2file', mock_soup2file_2)
-    testobj = testee.Editor('')
-    assert capsys.readouterr().out == (f'called Editor.__init__ with filename ``\n'
-                                       'called EditorGui.__init__()\n')
+    testobj = setup_editor(monkeypatch, capsys)
     testobj.savexmlas()
     assert capsys.readouterr().out == ('called Editor.data2soup with args () {}\n'
                                        'called EditorGui.meld with arg `Error`\n')
@@ -877,13 +831,10 @@ def test_reopenxml(monkeypatch, capsys):
         print('called Editor.soup2data with args', args, kwargs)
     def mock_refresh_preview(self):
         print('called Editor.refresh_preview')
-    monkeypatch.setattr(testee.Editor, '__init__', mock_init_editor)
     monkeypatch.setattr(testee.Editor, 'file2soup', mock_file2soup)
     monkeypatch.setattr(testee.Editor, 'soup2data', mock_soup2data)
     monkeypatch.setattr(testee.Editor, 'refresh_preview', mock_refresh_preview)
-    testobj = testee.Editor('')
-    assert capsys.readouterr().out == (f'called Editor.__init__ with filename ``\n'
-                                       'called EditorGui.__init__()\n')
+    testobj = setup_editor(monkeypatch, capsys)
     testobj.xmlfn = 'xxx'
     testobj.reopenxml()
     assert capsys.readouterr().out == (
@@ -891,9 +842,7 @@ def test_reopenxml(monkeypatch, capsys):
             "called Editor.soup2data with args ('xxx', 'reloaded xxx') {}\n"
             'called Editor.refresh_preview\n')
     monkeypatch.setattr(testee.Editor, 'file2soup', lambda *x, **y: 'error')
-    testobj = testee.Editor('')
-    assert capsys.readouterr().out == (f'called Editor.__init__ with filename ``\n'
-                                       'called EditorGui.__init__()\n')
+    testobj = setup_editor(monkeypatch, capsys)
     testobj.reopenxml()
     assert capsys.readouterr().out == "called EditorGui.meld with arg `error`\n"
 
@@ -901,27 +850,19 @@ def test_close(monkeypatch, capsys):
     def mock_check_state(self):
         print('called Editor.check_tree_state')
         return 0
-    monkeypatch.setattr(testee.Editor, '__init__', mock_init_editor)
     monkeypatch.setattr(testee.Editor, 'check_tree_state', lambda *x: -1)
-    testobj = testee.Editor('')
-    assert capsys.readouterr().out == (f'called Editor.__init__ with filename ``\n'
-                                       'called EditorGui.__init__()\n')
+    testobj = setup_editor(monkeypatch, capsys)
     testobj.close()
     assert capsys.readouterr().out == ''
     monkeypatch.setattr(testee.Editor, 'check_tree_state', mock_check_state)
-    testobj = testee.Editor('')
-    assert capsys.readouterr().out == (f'called Editor.__init__ with filename ``\n'
-                                       'called EditorGui.__init__()\n')
+    testobj = setup_editor(monkeypatch, capsys)
     testobj.close()
     assert capsys.readouterr().out == 'called Editor.check_tree_state\ncalled EditorGui.close()\n'
 
 def test_expand(monkeypatch, capsys):
     def mock_expand():
         print('called EditorGui.expand')
-    monkeypatch.setattr(testee.Editor, '__init__', mock_init_editor)
-    testobj = testee.Editor('')
-    assert capsys.readouterr().out == (f'called Editor.__init__ with filename ``\n'
-                                       'called EditorGui.__init__()\n')
+    testobj = setup_editor(monkeypatch, capsys)
     testobj.gui.expand = mock_expand
     testobj.expand()
     assert capsys.readouterr().out == 'called EditorGui.expand\n'
@@ -929,10 +870,7 @@ def test_expand(monkeypatch, capsys):
 def test_collapse(monkeypatch, capsys):
     def mock_collapse():
         print('called EditorGui.collapse')
-    monkeypatch.setattr(testee.Editor, '__init__', mock_init_editor)
-    testobj = testee.Editor('')
-    assert capsys.readouterr().out == (f'called Editor.__init__ with filename ``\n'
-                                       'called EditorGui.__init__()\n')
+    testobj = setup_editor(monkeypatch, capsys)
     testobj.gui.collapse = mock_collapse
     testobj.collapse()
     assert capsys.readouterr().out == 'called EditorGui.collapse\n'
@@ -941,10 +879,7 @@ def test_advance_selection_onoff(monkeypatch, capsys):
     def mock_get_setting():
         print('called EditorGui.get_adv_sel_setting')
         return 'sett'
-    monkeypatch.setattr(testee.Editor, '__init__', mock_init_editor)
-    testobj = testee.Editor('')
-    assert capsys.readouterr().out == (f'called Editor.__init__ with filename ``\n'
-                                       'called EditorGui.__init__()\n')
+    testobj = setup_editor(monkeypatch, capsys)
     testobj.gui.get_adv_sel_setting = mock_get_setting
     testobj.advance_selection_onoff()
     assert capsys.readouterr().out == 'called EditorGui.get_adv_sel_setting\n'
@@ -956,21 +891,15 @@ def test_refresh_preview(monkeypatch, capsys):
         return 'soup'
     def mock_refresh(arg):
         print(f'called EditorGui.refresh_preview with arg `{arg}`')
-    monkeypatch.setattr(testee.Editor, '__init__', mock_init_editor)
     monkeypatch.setattr(testee.Editor, 'data2soup', mock_data2soup)
-    testobj = testee.Editor('')
-    assert capsys.readouterr().out == (f'called Editor.__init__ with filename ``\n'
-                                       'called EditorGui.__init__()\n')
+    testobj = setup_editor(monkeypatch, capsys)
     testobj.gui.refresh_preview = mock_refresh
     testobj.refresh_preview()
     assert capsys.readouterr().out == ('called Editor.data2soup\n'
                                        'called EditorGui.refresh_preview with arg `soup`\n')
 
 def test_checkselection(monkeypatch, capsys):
-    monkeypatch.setattr(testee.Editor, '__init__', mock_init_editor)
-    testobj = testee.Editor('')
-    assert capsys.readouterr().out == (f'called Editor.__init__ with filename ``\n'
-                                       'called EditorGui.__init__()\n')
+    testobj = setup_editor(monkeypatch, capsys)
     assert not testobj.checkselection()
     assert testobj.item is None
     assert capsys.readouterr().out == (
@@ -978,9 +907,7 @@ def test_checkselection(monkeypatch, capsys):
             'called EditorGui.meld with arg `You need to select an element or text first`\n')
 
     monkeypatch.setattr(MockEditorGui, 'get_selected_item', lambda *x: 'top')
-    testobj = testee.Editor('')
-    assert capsys.readouterr().out == (f'called Editor.__init__ with filename ``\n'
-                                       'called EditorGui.__init__()\n')
+    testobj = setup_editor(monkeypatch, capsys)
     testobj.gui.top = 'top'
     assert not testobj.checkselection()
     assert testobj.item == 'top'
@@ -988,28 +915,340 @@ def test_checkselection(monkeypatch, capsys):
             'called EditorGui.meld with arg `You need to select an element or text first`\n')
 
     monkeypatch.setattr(MockEditorGui, 'get_selected_item', lambda *x: 'not_top')
-    testobj = testee.Editor('')
-    assert capsys.readouterr().out == (f'called Editor.__init__ with filename ``\n'
-                                       'called EditorGui.__init__()\n')
+    testobj = setup_editor(monkeypatch, capsys)
     testobj.gui.top = 'top'
     assert testobj.checkselection()
     assert testobj.item == 'not_top'
     assert capsys.readouterr().out == ''
 
 def test_edit(monkeypatch, capsys):
-    monkeypatch.setattr(testee.Editor, '__init__', mock_init_editor)
     monkeypatch.setattr(testee.Editor, 'checkselection', lambda *x: True)
-    testobj = testee.Editor('')
-    assert capsys.readouterr().out == (f'called Editor.__init__ with filename ``\n'
-                                       'called EditorGui.__init__()\n')
+    testobj = setup_editor(monkeypatch, capsys)
     testobj.edit()
-    assert capsys.readouterr().out == 'called EditorHelper.edit'
+    assert capsys.readouterr().out == 'called EditorHelper.edit\n'
     monkeypatch.setattr(testee.Editor, 'checkselection', lambda *x: False)
-    testobj = testee.Editor('')
-    assert capsys.readouterr().out == (f'called Editor.__init__ with filename ``\n'
-                                       'called EditorGui.__init__()\n')
+    testobj = setup_editor(monkeypatch, capsys)
     testobj.edit()
     assert capsys.readouterr().out == ''
+
+def test_comment(monkeypatch, capsys):
+    monkeypatch.setattr(testee.Editor, 'checkselection', lambda *x: True)
+    testobj = setup_editor(monkeypatch, capsys)
+    testobj.comment()
+    assert capsys.readouterr().out == 'called EditorHelper.comment\n'
+    monkeypatch.setattr(testee.Editor, 'checkselection', lambda *x: False)
+    testobj = setup_editor(monkeypatch, capsys)
+    testobj.comment()
+    assert capsys.readouterr().out == ''
+
+def _test_make_conditional(monkeypatch, capsys):
+    ...
+
+def _test_remove_condition(monkeypatch, capsys):
+    ...
+
+def test_cut(monkeypatch, capsys):
+    testobj = setup_editor(monkeypatch, capsys)
+    testobj.cut()
+    assert capsys.readouterr().out == "called EditorHelper.copy with args {'cut': True}\n"
+
+def test_delete(monkeypatch, capsys):
+    testobj = setup_editor(monkeypatch, capsys)
+    testobj.delete()
+    assert capsys.readouterr().out == ("called EditorHelper.copy with args {'cut': True,"
+                                       " 'retain': False}\n")
+
+def test_copy(monkeypatch, capsys):
+    testobj = setup_editor(monkeypatch, capsys)
+    testobj.copy()
+    assert capsys.readouterr().out == "called EditorHelper.copy with args {}\n"
+
+def test_paste_after(monkeypatch, capsys):
+    testobj = setup_editor(monkeypatch, capsys)
+    testobj.paste_after()
+    assert capsys.readouterr().out == "called EditorHelper.paste with args {'before': False}\n"
+
+def test_paste_below(monkeypatch, capsys):
+    testobj = setup_editor(monkeypatch, capsys)
+    testobj.paste_below()
+    assert capsys.readouterr().out == "called EditorHelper.paste with args {'below': True}\n"
+
+def test_paste(monkeypatch, capsys):
+    testobj = setup_editor(monkeypatch, capsys)
+    testobj.paste()
+    assert capsys.readouterr().out == "called EditorHelper.paste with args {}\n"
+
+def test_insert(monkeypatch, capsys):
+    testobj = setup_editor(monkeypatch, capsys)
+    testobj.insert()
+    assert capsys.readouterr().out == "called EditorHelper.insert with args {}\n"
+
+def test_insert_after(monkeypatch, capsys):
+    testobj = setup_editor(monkeypatch, capsys)
+    testobj.insert_after()
+    assert capsys.readouterr().out == "called EditorHelper.insert with args {'before': False}\n"
+
+def test_insert_child(monkeypatch, capsys):
+    testobj = setup_editor(monkeypatch, capsys)
+    testobj.insert_child()
+    assert capsys.readouterr().out == "called EditorHelper.insert with args {'below': True}\n"
+
+def test_add_text(monkeypatch, capsys):
+    testobj = setup_editor(monkeypatch, capsys)
+    testobj.add_text()
+    assert capsys.readouterr().out == "called EditorHelper.add_text with args {}\n"
+
+def test_add_text_after(monkeypatch, capsys):
+    testobj = setup_editor(monkeypatch, capsys)
+    testobj.add_text_after()
+    assert capsys.readouterr().out == "called EditorHelper.add_text with args {'before': False}\n"
+
+def test_add_textchild(monkeypatch, capsys):
+    testobj = setup_editor(monkeypatch, capsys)
+    testobj.add_textchild()
+    assert capsys.readouterr().out == "called EditorHelper.add_text with args {'below': True}\n"
+
+def _test_build_search_spec(monkeypatch, capsys):
+    ...
+
+def test_search(monkeypatch, capsys):
+    testobj = setup_editor(monkeypatch, capsys)
+    testobj.search()
+    assert capsys.readouterr().out == (
+            "called EditorGui.get_selected_item\n"
+            "called SearchHelper.search_from with args () {'item': None}\n")
+
+def test_search_last(monkeypatch, capsys):
+    testobj = setup_editor(monkeypatch, capsys)
+    testobj.search_last()
+    assert capsys.readouterr().out == (
+            "called EditorGui.get_selected_item\n"
+            "called SearchHelper.search_from with args () {'reverse': True, 'item': None}\n")
+
+def test_search_next(monkeypatch, capsys):
+    testobj = setup_editor(monkeypatch, capsys)
+    testobj.search_next()
+    assert capsys.readouterr().out == "called SearchHelper.search_next with args {}\n"
+
+def test_search_prev(monkeypatch, capsys):
+    testobj = setup_editor(monkeypatch, capsys)
+    testobj.search_prev()
+    assert capsys.readouterr().out == "called SearchHelper.search_next with args {'reverse': True}\n"
+
+def test_replace(monkeypatch, capsys):
+    testobj = setup_editor(monkeypatch, capsys)
+    testobj.replace()
+    assert capsys.readouterr().out == (
+            "called EditorGui.get_selected_item\n"
+            "called SearchHelper.replace_from with args () {'item': None}\n")
+
+def test_replace_last(monkeypatch, capsys):
+    testobj = setup_editor(monkeypatch, capsys)
+    testobj.replace_last()
+    assert capsys.readouterr().out == (
+            "called EditorGui.get_selected_item\n"
+            "called SearchHelper.replace_from with args () {'reverse': True, 'item': None}\n")
+
+def test_replace_and_next(monkeypatch, capsys):
+    testobj = setup_editor(monkeypatch, capsys)
+    testobj.replace_and_next()
+    assert capsys.readouterr().out == "called SearchHelper.replace_next with args {}\n"
+
+def test_replace_and_prev(monkeypatch, capsys):
+    testobj = setup_editor(monkeypatch, capsys)
+    testobj.replace_and_prev()
+    assert capsys.readouterr().out == "called SearchHelper.replace_next with args {'reverse': True}\n"
+
+def _test_add_dtd(monkeypatch, capsys):
+    ...
+
+def _test_add_css(monkeypatch, capsys):
+    ...
+
+def test_check_if_adding_ok(monkeypatch, capsys):
+    monkeypatch.setattr(MockEditorGui, 'get_element_text',lambda *x: 'text')
+    monkeypatch.setattr(testee.Editor, 'checkselection', lambda *x: False)
+    testobj = setup_editor(monkeypatch, capsys)
+    assert not testobj.check_if_adding_ok()
+    monkeypatch.setattr(testee.Editor, 'checkselection', lambda *x: True)
+    testobj = setup_editor(monkeypatch, capsys)
+    testobj.item = 'x'
+    assert not testobj.check_if_adding_ok()
+    monkeypatch.setattr(MockEditorGui, 'get_element_text',lambda *x: '<> text')
+    testobj.item = 'x'
+    assert testobj.check_if_adding_ok()
+
+def _test_convert_link(monkeypatch, capsys):
+    ...
+
+def test_add_link(monkeypatch, capsys):
+    def mock_get_link_data():
+        print('called EditorGui.get_link_data')
+        return True, ('txt', 'data')
+    def mock_get_link_data_2():
+        print('called EditorGui.get_link_data')
+        return False, ('', '')
+    def mock_getelname(*args):
+        print('called getelname with args', args)
+    def mock_getshortname(*args):
+        print('called getshortname with args', args)
+    monkeypatch.setattr(testee, 'getelname', mock_getelname)
+    monkeypatch.setattr(testee, 'getshortname', mock_getshortname)
+    monkeypatch.setattr(testee.Editor, 'check_if_adding_ok', lambda *x: True)
+    monkeypatch.setattr(testee.Editor, 'mark_dirty', mock_mark_dirty)
+    monkeypatch.setattr(testee.Editor, 'refresh_preview', mock_refresh)
+    testobj = setup_editor(monkeypatch, capsys)
+    testobj.gui.get_link_data = mock_get_link_data
+    testobj.item = 'item'
+    testobj.add_link()
+    assert capsys.readouterr().out == (
+            "called EditorGui.get_link_data\n"
+            "called getelname with args ('a', 'data')\n"
+            "called EditorGui.addtreeitem with args ('item', None, 'data', -1)\n"
+            "called getshortname with args ('txt',)\n"
+            "called EditorGui.addtreeitem with args ('node', None, 'txt', -1)\n"
+            "called.Editor.mark_dirty with value `True`\n"
+            "called Editor.refresh_preview\n")
+    testobj.gui.get_link_data = mock_get_link_data_2
+    testobj.add_link()
+    assert capsys.readouterr().out == 'called EditorGui.get_link_data\n'
+    monkeypatch.setattr(testee.Editor, 'check_if_adding_ok', lambda *x: False)
+    testobj.add_link()
+    assert capsys.readouterr().out == ''
+
+def test_add_image(monkeypatch, capsys):
+    def mock_get_image_data():
+        print('called EditorGui.get_image_data')
+        return True, ('txt', 'data')
+    def mock_get_image_data_2():
+        print('called EditorGui.get_image_data')
+        return False, ('', '')
+    def mock_getelname(*args):
+        print('called getelname with args', args)
+    monkeypatch.setattr(testee, 'getelname', mock_getelname)
+    monkeypatch.setattr(testee.Editor, 'check_if_adding_ok', lambda *x: True)
+    monkeypatch.setattr(testee.Editor, 'mark_dirty', mock_mark_dirty)
+    monkeypatch.setattr(testee.Editor, 'refresh_preview', mock_refresh)
+    testobj = setup_editor(monkeypatch, capsys)
+    testobj.gui.get_image_data = mock_get_image_data
+    testobj.item = 'item'
+    testobj.add_image()
+    assert capsys.readouterr().out == (
+            "called EditorGui.get_image_data\n"
+            "called getelname with args ('image', ('txt', 'data'))\n"
+            "called EditorGui.addtreeitem with args ('item', None, ('txt', 'data'), -1)\n"
+            "called.Editor.mark_dirty with value `True`\n"
+            "called Editor.refresh_preview\n")
+    testobj.gui.get_image_data = mock_get_image_data_2
+    testobj.add_image()
+    assert capsys.readouterr().out == 'called EditorGui.get_image_data\n'
+    monkeypatch.setattr(testee.Editor, 'check_if_adding_ok', lambda *x: False)
+    testobj.add_image()
+    assert capsys.readouterr().out == ''
+
+
+def test_add_audio(monkeypatch, capsys):
+    def mock_get_audio_data():
+        print('called EditorGui.get_audio_data')
+        return True, ({'x': 'y'})
+    def mock_get_audio_data_2():
+        print('called EditorGui.get_audio_data')
+        return False, ('', '')
+    def mock_getelname(*args):
+        print('called getelname with args', args)
+    monkeypatch.setattr(testee, 'getelname', mock_getelname)
+    monkeypatch.setattr(testee.Editor, 'check_if_adding_ok', lambda *x: True)
+    monkeypatch.setattr(testee.Editor, 'mark_dirty', mock_mark_dirty)
+    monkeypatch.setattr(testee.Editor, 'refresh_preview', mock_refresh)
+    testobj = setup_editor(monkeypatch, capsys)
+    testobj.gui.get_audio_data = mock_get_audio_data
+    testobj.item = 'item'
+    testobj.add_audio()
+    assert capsys.readouterr().out == (
+            "called EditorGui.get_audio_data\n"
+            "called getelname with args ('audio', {'x': 'y', 'controls': ''})\n"
+            "called EditorGui.addtreeitem with args ('item', None, {'x': 'y', 'controls': ''}, -1)\n"
+            "called.Editor.mark_dirty with value `True`\n"
+            "called Editor.refresh_preview\n")
+    testobj.gui.get_audio_data = mock_get_audio_data_2
+    testobj.add_audio()
+    assert capsys.readouterr().out == 'called EditorGui.get_audio_data\n'
+    monkeypatch.setattr(testee.Editor, 'check_if_adding_ok', lambda *x: False)
+    testobj.add_audio()
+    assert capsys.readouterr().out == ''
+
+def test_add_video(monkeypatch, capsys):
+    def mock_get_video_data():
+        print('called EditorGui.get_video_data')
+        return True, ({'src': 'y.mp4'})
+    def mock_get_video_data_2():
+        print('called EditorGui.get_video_data')
+        return False, ('', '')
+    def mock_getelname(*args):
+        print('called getelname with args', args)
+    monkeypatch.setattr(testee, 'getelname', mock_getelname)
+    monkeypatch.setattr(testee.Editor, 'check_if_adding_ok', lambda *x: True)
+    monkeypatch.setattr(testee.Editor, 'mark_dirty', mock_mark_dirty)
+    monkeypatch.setattr(testee.Editor, 'refresh_preview', mock_refresh)
+    testobj = setup_editor(monkeypatch, capsys)
+    testobj.gui.get_video_data = mock_get_video_data
+    testobj.item = 'item'
+    testobj.add_video()
+    assert capsys.readouterr().out == (
+            "called EditorGui.get_video_data\n"
+            "called getelname with args ('video', {'controls': ''})\n"
+            "called EditorGui.addtreeitem with args ('item', None, {'controls': ''}, -1)\n"
+            "called getelname with args ('source', {'src': 'y.mp4', 'type': 'video/mp4'})\n"
+            "called EditorGui.addtreeitem with args ('node', None, {'src': 'y.mp4',"
+            " 'type': 'video/mp4'}, -1)\n"
+            "called.Editor.mark_dirty with value `True`\n"
+            "called Editor.refresh_preview\n")
+    testobj.gui.get_video_data = mock_get_video_data_2
+    testobj.add_video()
+    assert capsys.readouterr().out == 'called EditorGui.get_video_data\n'
+    monkeypatch.setattr(testee.Editor, 'check_if_adding_ok', lambda *x: False)
+    testobj.add_video()
+    assert capsys.readouterr().out == ''
+
+def _test_add_list(monkeypatch, capsys):
+    ...
+
+def _test_add_table(monkeypatch, capsys):
+    ...
+
+def _test_validate(monkeypatch, capsys):
+    ...
+
+def test_do_validate(monkeypatch, capsys):
+    def mock_run(*args):
+        print("call subprocess.run with args", args)
+        pathlib.Path('/tmp/ashe_check').write_text('ashe_check')
+    monkeypatch.setattr(testee.subprocess, 'run', mock_run)
+    testobj = setup_editor(monkeypatch, capsys)
+    assert testobj.do_validate('test.html') == 'ashe_check'
+    assert capsys.readouterr().out == ("call subprocess.run with args"
+                                       " (['tidy', '-e', '-f', '/tmp/ashe_check', 'test.html'],)\n")
+
+def test_view_code(monkeypatch, capsys):
+    def mock_data2soup(self, *args, **kwargs):
+        print('called Editor.data2soup with args', args, kwargs)
+    def mock_prettify(*args):
+        print('called BeautifulSoup.prettify')
+    def mock_show_code(*args):
+        print('called EditorGui.show_code')
+    monkeypatch.setattr(testee.Editor, 'data2soup', mock_data2soup)
+    testobj = setup_editor(monkeypatch, capsys)
+    testobj.soup = types.SimpleNamespace(prettify=mock_prettify)
+    testobj.gui.show_code = mock_show_code
+    testobj.view_code()
+    assert capsys.readouterr().out == ('called Editor.data2soup with args () {}\n'
+                                       'called BeautifulSoup.prettify\n'
+                                       'called EditorGui.show_code\n')
+
+def test_about(monkeypatch, capsys):
+    testobj = setup_editor(monkeypatch, capsys)
+    testobj.about()
+    assert capsys.readouterr().out == f'called EditorGui.meld with arg `{testee.ABOUT}`\n'
 
 #-- EditorHelper ---------------------
 def test_editorhelper_init(monkeypatch, capsys):
@@ -1025,10 +1264,10 @@ def test_searchhelper_init(monkeypatch, capsys):
     assert hasattr(testobj, 'gui')
     assert testobj.search_args == []
     assert testobj.replace_args == []
-    assert capsys.readouterr().out == 'called EditorGui.__init__()\ncalled Editor.__init__()\n'
+    assert capsys.readouterr().out == 'called EditorGui.__init__\ncalled Editor.__init__()\n'
 
 
-def test_search_from(monkeypatch, capsys):
+def test_helper_search_from(monkeypatch, capsys):
     def mock_flatten(self, *args):
         return (('top', 'filenaam', {}), ('ele', '<> html', {}))
     def mock_next(self, *args):
@@ -1038,7 +1277,7 @@ def test_search_from(monkeypatch, capsys):
     monkeypatch.setattr(testobj, 'flatten_tree', mock_flatten)
     monkeypatch.setattr(testobj, 'find_next', mock_next)
     testobj.search_from('top')
-    assert capsys.readouterr().out == ('called EditorGui.__init__()\ncalled Editor.__init__()\n'
+    assert capsys.readouterr().out == ('called EditorGui.__init__\ncalled Editor.__init__()\n'
                                        "called search.find_next() with args `(('x', 'y', 'z', 'a')"
                                        ", False)`\n"
                                        'called EditorGui.set_selected_item(`1`)\n')
@@ -1062,7 +1301,7 @@ def test_search_from(monkeypatch, capsys):
                                        'No (more) results`\n')
 
 
-def test_search_next(monkeypatch, capsys):
+def test_helper_search_next(monkeypatch, capsys):
     def mock_flatten(self, *args):
         return (('top', 'filenaam', {}), ('ele', '<> html', {}))
     def mock_next(self, *args):
@@ -1072,7 +1311,7 @@ def test_search_next(monkeypatch, capsys):
     monkeypatch.setattr(testobj, 'flatten_tree', mock_flatten)
     monkeypatch.setattr(testobj, 'find_next', mock_next)
     testobj.search_next()
-    assert capsys.readouterr().out == 'called EditorGui.__init__()\ncalled Editor.__init__()\n'
+    assert capsys.readouterr().out == 'called EditorGui.__init__\ncalled Editor.__init__()\n'
     testobj.search_args = ('x', 'y', 'z', 'a')
     testobj.search_pos = (1, 'ele')
     testobj.search_next()
@@ -1088,7 +1327,7 @@ def test_search_next(monkeypatch, capsys):
                                        'No (more) results`\n')
 
 
-def test_replace_from(monkeypatch, capsys):
+def test_helper_replace_from(monkeypatch, capsys):
     def mock_flatten(self, *args):
         return (('top', 'filenaam', {}), ('ele', '<> html', {}))
     def mock_next(self, *args):
@@ -1101,7 +1340,7 @@ def test_replace_from(monkeypatch, capsys):
     monkeypatch.setattr(testobj, 'find_next', mock_next)
     monkeypatch.setattr(testobj, 'replace_and_find', mock_replace)
     testobj.replace_from('top')
-    assert capsys.readouterr().out == ('called EditorGui.__init__()\ncalled Editor.__init__()\n'
+    assert capsys.readouterr().out == ('called EditorGui.__init__\ncalled Editor.__init__()\n'
                                        "called search.find_next() with args `(('x', 'y', 'z', 'a')"
                                        ", False)`\n"
                                        "called search.replace_and_find() with args `('pos', 1)`,"
@@ -1129,13 +1368,13 @@ def test_replace_from(monkeypatch, capsys):
                                        'No (more) results`\n')
 
 
-def test_replace_next(monkeypatch, capsys):
+def test_helper_replace_next(monkeypatch, capsys):
     def mock_replace(*args):
         print('called search.replace_and_find() with args `{}`, `{}`'.format(args[0], args[1]))
     testobj = testee.SearchHelper(MockEditor())
     monkeypatch.setattr(testobj, 'replace_and_find', mock_replace)
     testobj.replace_next()
-    assert capsys.readouterr().out == 'called EditorGui.__init__()\ncalled Editor.__init__()\n'
+    assert capsys.readouterr().out == 'called EditorGui.__init__\ncalled Editor.__init__()\n'
     testobj.replace_args = ('x', 'y', 'z', 'a')
     testobj.search_pos = '1'
     testobj.replace_next()
@@ -1166,7 +1405,7 @@ def test_replace_and_find(monkeypatch, capsys):
     testobj.replace_args = ('x', 'y', 'z', 'a')
     testobj.replace_and_find((1, 'ele'), False)
     assert testobj.search_pos == ('pos', 1)
-    assert capsys.readouterr().out == ('called EditorGui.__init__()\ncalled Editor.__init__()\n'
+    assert capsys.readouterr().out == ('called EditorGui.__init__\ncalled Editor.__init__()\n'
                                        'called search.replace_element()\n'
                                        'called search.replace_attr()\n'
                                        'called search.replace_text()\n'
@@ -1216,7 +1455,7 @@ def test_flatten_tree_1(monkeypatch, capsys):
     testobj = testee.SearchHelper(MockEditor())
     data = testobj.flatten_tree('top')
     assert data == []
-    assert capsys.readouterr().out == 'called EditorGui.__init__()\ncalled Editor.__init__()\n'
+    assert capsys.readouterr().out == 'called EditorGui.__init__\ncalled Editor.__init__()\n'
 
 
 def test_flatten_tree_2(monkeypatch, capsys):
@@ -1234,7 +1473,7 @@ def test_flatten_tree_2(monkeypatch, capsys):
     # import pdb; pdb.set_trace()
     data = testobj.flatten_tree('top')
     assert data == [('ele1', '<> html', {}), ('ele2', '<> div', {}), ('text', 'some text', {})]
-    assert capsys.readouterr().out == 'called EditorGui.__init__()\ncalled Editor.__init__()\n'
+    assert capsys.readouterr().out == 'called EditorGui.__init__\ncalled Editor.__init__()\n'
 
 
 def test_flatten_tree_3(monkeypatch, capsys):
@@ -1252,7 +1491,7 @@ def test_flatten_tree_3(monkeypatch, capsys):
     data = testobj.flatten_tree('top')
     assert data == [('ele1', '<!> <> html', {}), ('ele2', '<!> <> div', {}),
                     ('text', '<!> some text', {})]
-    assert capsys.readouterr().out == 'called EditorGui.__init__()\ncalled Editor.__init__()\n'
+    assert capsys.readouterr().out == 'called EditorGui.__init__\ncalled Editor.__init__()\n'
 
 
 def test_replace_element(monkeypatch, capsys):
@@ -1264,7 +1503,7 @@ def test_replace_element(monkeypatch, capsys):
     testobj = testee.SearchHelper(MockEditor())
     testobj.replace_args = ('x', 'y', 'z', 'a')
     testobj.replace_element(('el1',))
-    assert capsys.readouterr().out == ('called EditorGui.__init__()\ncalled Editor.__init__()\n'
+    assert capsys.readouterr().out == ('called EditorGui.__init__\ncalled Editor.__init__()\n'
                                        'called EditorGui.set_element_text for `el1` to `<> x`\n')
     testobj.replace_element(('el2',))
     assert capsys.readouterr().out == 'called EditorGui.set_element_text for `el2` to `<> x id="1"`\n'
@@ -1287,7 +1526,7 @@ def test_replace_attr(monkeypatch, capsys):
     testobj.replace_args = ('x', 'y', '', 'a')
     testobj.replace_attr(('el1',))
     assert capsys.readouterr().out == (
-            'called EditorGui.__init__()\ncalled Editor.__init__()\n'
+            'called EditorGui.__init__\ncalled Editor.__init__()\n'
             "called EditorGui.set_element_data for `el1` to `{'y': '1'}`\n"
             "called EditorGui.set_element_text for `el1` to `<> html`\n")
     def mock_element_text(self, node):
@@ -1298,7 +1537,7 @@ def test_replace_attr(monkeypatch, capsys):
     testobj.replace_args = ('x', 'y', 'z', 'a')
     testobj.replace_attr(('el2',))
     assert capsys.readouterr().out == (
-            'called EditorGui.__init__()\ncalled Editor.__init__()\n'
+            'called EditorGui.__init__\ncalled Editor.__init__()\n'
             "called EditorGui.set_element_data for `el2` to `{'y': 'z'}`\n"
             "called EditorGui.set_element_text for `el2` to `<!> <> div`\n")
     def mock_element_text(self, node):
@@ -1309,7 +1548,7 @@ def test_replace_attr(monkeypatch, capsys):
     testobj.replace_args = ('x', '', 'z', 'a')
     testobj.replace_attr(('el3',))
     assert capsys.readouterr().out == (
-            'called EditorGui.__init__()\ncalled Editor.__init__()\n'
+            'called EditorGui.__init__\ncalled Editor.__init__()\n'
             "called EditorGui.set_element_data for `el3` to `{'id': 'z'}`\n"
             'called EditorGui.set_element_text for `el3` to `<> p id="z"`\n')
     testobj = testee.SearchHelper(MockEditor())
@@ -1317,7 +1556,7 @@ def test_replace_attr(monkeypatch, capsys):
     testobj.replace_args = ('x', '=/= y', 'z', 'a')
     testobj.replace_attr(('el4',))
     assert capsys.readouterr().out == (
-            'called EditorGui.__init__()\ncalled Editor.__init__()\n'
+            'called EditorGui.__init__\ncalled Editor.__init__()\n'
             "called EditorGui.set_element_data for `el4` to `{'id': 'z'}`\n"
             'called EditorGui.set_element_text for `el4` to `<> p id="z"`\n')
 
@@ -1330,5 +1569,5 @@ def test_replace_text(monkeypatch, capsys):
     testobj.search_args = ('x', 'y', 'z', 'tex')
     testobj.replace_args = ('x', 'y', 'z', 'a')
     testobj.replace_text(('ele',))
-    assert capsys.readouterr().out == ('called EditorGui.__init__()\ncalled Editor.__init__()\n'
+    assert capsys.readouterr().out == ('called EditorGui.__init__\ncalled Editor.__init__()\n'
                                        "called EditorGui.set_element_text for `ele` to `some at`\n")
