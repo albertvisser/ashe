@@ -14,6 +14,11 @@ from ashe.gui import gui, toolkit
 from ashe.shared import ICO, TITEL, CMSTART, ELSTART, DTDSTART, IFSTART, BL
 CMELSTART = ' '.join((CMSTART, ELSTART))
 csed = None  # reference to the csseditor import
+ABOUT = """\
+            Tree-based HTML editor with simultaneous preview
+
+            Started in 2007 by Albert Visser
+            Versions for PC and PDA available"""
 
 
 def check_for_csseditor():
@@ -456,7 +461,7 @@ class Editor:
 
     def soup2file(self, saveas=False):
         "write HTML to file"
-        if not saveas:
+        if not saveas:                     # maakt het uit of saveas aan of uit staat?
             if os.path.exists(self.xmlfn):
                 shutil.copyfile(self.xmlfn, self.xmlfn + '.bak')
         with open(self.xmlfn, "w") as f_out:
@@ -1092,11 +1097,7 @@ class Editor:
 
     def about(self, event=None):
         "get info about the application"
-        self.gui.meld("""\
-            Tree-based HTML editor with simultaneous preview
-
-            Started in 2008 by Albert Visser
-            Versions for PC and PDA available""")
+        self.gui.meld(ABOUT)
 
 
 class EditorHelper:
