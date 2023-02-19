@@ -454,7 +454,7 @@ def test_soup2data(monkeypatch, capsys):
                                        "called.Editor.mark_dirty with value `False`\n")
 
 def _test_add_node_to_tree(monkeypatch, capsys):
-    ...
+    testobj = setup_editor(monkeypatch, capsys)
 
 def test_data2soup(monkeypatch, capsys):
     def mock_expandnode(self, *args):
@@ -494,7 +494,7 @@ def test_data2soup(monkeypatch, capsys):
             "called Editor.expandnode with args (['other'], 'element', 'elementdata')\n")
 
 def _test_expandnode(monkeypatch, capsys):
-    ...
+    testobj = setup_editor(monkeypatch, capsys)
 
 def test_soup2file(monkeypatch, capsys, tmp_path):
     monkeypatch.setattr(testee.Editor, '__init__', mock_init_editor)
@@ -527,11 +527,23 @@ def test_soup2file(monkeypatch, capsys, tmp_path):
     testobj.soup2file(saveas=True)
 
 
-def _test_get_menulist(monkeypatch, capsys):
-    monkeypatch.setattr(testee.Editor, '__init__', mock_init_editor)
-    testobj = testee.Editor('')
-    assert capsys.readouterr().out == (f'called Editor.__init__ with filename `{xmlfn}`\n'
-                                       'called EditorGui.__init__\n')
+def test_get_menulist(monkeypatch, capsys):
+    menuitems_per_menu = (7, 6, 18, 9, 13 ,1)
+    sep_locations = ((0, 5), (1, 2), (1, 4), (2, 4), (2, 10), (3, 4), (4, 2), (4, 7), (4, 10))
+    with_indicator = ((1, 0), (1, 1))
+    testobj = setup_editor(monkeypatch, capsys)
+    data = testobj.get_menulist()
+    assert len(data) == 6
+    for menuseq, menu in enumerate(data):
+        name, menuitems = menu
+        assert len(menuitems) == menuitems_per_menu[menuseq]
+        for itemseq, menuitem in enumerate(menuitems):
+            if (menuseq, itemseq) in sep_locations:
+                assert len(menuitem) == 1
+            elif (menuseq, itemseq) in with_indicator:
+                assert len(menuitem) == 6
+            else:
+                assert len(menuitem) == 5
 
 
 def test_mark_dirty(monkeypatch, capsys):
@@ -942,10 +954,10 @@ def test_comment(monkeypatch, capsys):
     assert capsys.readouterr().out == ''
 
 def _test_make_conditional(monkeypatch, capsys):
-    ...
+    testobj = setup_editor(monkeypatch, capsys)
 
 def _test_remove_condition(monkeypatch, capsys):
-    ...
+    testobj = setup_editor(monkeypatch, capsys)
 
 def test_cut(monkeypatch, capsys):
     testobj = setup_editor(monkeypatch, capsys)
@@ -1009,7 +1021,7 @@ def test_add_textchild(monkeypatch, capsys):
     assert capsys.readouterr().out == "called EditorHelper.add_text with args {'below': True}\n"
 
 def _test_build_search_spec(monkeypatch, capsys):
-    ...
+    testobj = setup_editor(monkeypatch, capsys)
 
 def test_search(monkeypatch, capsys):
     testobj = setup_editor(monkeypatch, capsys)
@@ -1060,10 +1072,10 @@ def test_replace_and_prev(monkeypatch, capsys):
     assert capsys.readouterr().out == "called SearchHelper.replace_next with args {'reverse': True}\n"
 
 def _test_add_dtd(monkeypatch, capsys):
-    ...
+    testobj = setup_editor(monkeypatch, capsys)
 
 def _test_add_css(monkeypatch, capsys):
-    ...
+    testobj = setup_editor(monkeypatch, capsys)
 
 def test_check_if_adding_ok(monkeypatch, capsys):
     monkeypatch.setattr(MockEditorGui, 'get_element_text',lambda *x: 'text')
@@ -1079,7 +1091,7 @@ def test_check_if_adding_ok(monkeypatch, capsys):
     assert testobj.check_if_adding_ok()
 
 def _test_convert_link(monkeypatch, capsys):
-    ...
+    testobj = setup_editor(monkeypatch, capsys)
 
 def test_add_link(monkeypatch, capsys):
     def mock_get_link_data():
@@ -1211,13 +1223,13 @@ def test_add_video(monkeypatch, capsys):
     assert capsys.readouterr().out == ''
 
 def _test_add_list(monkeypatch, capsys):
-    ...
+    testobj = setup_editor(monkeypatch, capsys)
 
 def _test_add_table(monkeypatch, capsys):
-    ...
+    testobj = setup_editor(monkeypatch, capsys)
 
 def _test_validate(monkeypatch, capsys):
-    ...
+    testobj = setup_editor(monkeypatch, capsys)
 
 def test_do_validate(monkeypatch, capsys):
     def mock_run(*args):
@@ -1256,6 +1268,27 @@ def test_editorhelper_init(monkeypatch, capsys):
     assert hasattr(testobj, 'editor')
     assert hasattr(testobj, 'gui')
 
+def _test_editorhelper_edit(monkeypatch, capsys):
+    testobj = testee.EditorHelper(MockEditor())
+
+def _test_editorhelper_comment(monkeypatch, capsys):
+    testobj = testee.EditorHelper(MockEditor())
+
+def _test_editorhelper_comment_out(monkeypatch, capsys):
+    testobj = testee.EditorHelper(MockEditor())
+
+def _test_editorhelper_copy(monkeypatch, capsys):
+    testobj = testee.EditorHelper(MockEditor())
+
+def _test_editorhelper_paste(monkeypatch, capsys):
+    testobj = testee.EditorHelper(MockEditor())
+
+def _test_editorhelper_insert(monkeypatch, capsys):
+    testobj = testee.EditorHelper(MockEditor())
+
+def _test_editorhelper_add_text(monkeypatch, capsys):
+    testobj = testee.EditorHelper(MockEditor())
+
 
 #-- SearchHelper ---------------------
 def test_searchhelper_init(monkeypatch, capsys):
@@ -1267,7 +1300,7 @@ def test_searchhelper_init(monkeypatch, capsys):
     assert capsys.readouterr().out == 'called EditorGui.__init__\ncalled Editor.__init__()\n'
 
 
-def test_helper_search_from(monkeypatch, capsys):
+def test_searchhelper_search_from(monkeypatch, capsys):
     def mock_flatten(self, *args):
         return (('top', 'filenaam', {}), ('ele', '<> html', {}))
     def mock_next(self, *args):
@@ -1301,7 +1334,7 @@ def test_helper_search_from(monkeypatch, capsys):
                                        'No (more) results`\n')
 
 
-def test_helper_search_next(monkeypatch, capsys):
+def test_searchhelper_search_next(monkeypatch, capsys):
     def mock_flatten(self, *args):
         return (('top', 'filenaam', {}), ('ele', '<> html', {}))
     def mock_next(self, *args):
@@ -1327,7 +1360,7 @@ def test_helper_search_next(monkeypatch, capsys):
                                        'No (more) results`\n')
 
 
-def test_helper_replace_from(monkeypatch, capsys):
+def test_searchhelper_replace_from(monkeypatch, capsys):
     def mock_flatten(self, *args):
         return (('top', 'filenaam', {}), ('ele', '<> html', {}))
     def mock_next(self, *args):
@@ -1368,7 +1401,7 @@ def test_helper_replace_from(monkeypatch, capsys):
                                        'No (more) results`\n')
 
 
-def test_helper_replace_next(monkeypatch, capsys):
+def test_searchhelper_replace_next(monkeypatch, capsys):
     def mock_replace(*args):
         print('called search.replace_and_find() with args `{}`, `{}`'.format(args[0], args[1]))
     testobj = testee.SearchHelper(MockEditor())
@@ -1383,7 +1416,7 @@ def test_helper_replace_next(monkeypatch, capsys):
     assert capsys.readouterr().out == 'called search.replace_and_find() with args `1`, `True`\n'
 
 
-def test_replace_and_find(monkeypatch, capsys):
+def test_searchhelper_replace_and_find(monkeypatch, capsys):
     def mock_element(self, *args):
         print('called search.replace_element()')
     def mock_attr(self, *args):
@@ -1424,7 +1457,7 @@ def test_replace_and_find(monkeypatch, capsys):
                                        'No (more) results`\n')
 
 
-def test_find_next(monkeypatch, capsys):
+def test_searchhelper_find_next(monkeypatch, capsys):
     treedata = [('ele1', '<> html', {}),
                 ('ele2', '<> div', {}),
                 ('ele3', '<> div', {'id': '1'}),
@@ -1450,7 +1483,7 @@ def test_find_next(monkeypatch, capsys):
     assert testobj.find_next(treedata, ('div', '', '', 'ome'), True) == (2, 'text')
 
 
-def test_flatten_tree_1(monkeypatch, capsys):
+def test_searchhelper_flatten_tree_1(monkeypatch, capsys):
     "no children"
     testobj = testee.SearchHelper(MockEditor())
     data = testobj.flatten_tree('top')
@@ -1458,7 +1491,7 @@ def test_flatten_tree_1(monkeypatch, capsys):
     assert capsys.readouterr().out == 'called EditorGui.__init__\ncalled Editor.__init__()\n'
 
 
-def test_flatten_tree_2(monkeypatch, capsys):
+def test_searchhelper_flatten_tree_2(monkeypatch, capsys):
     "regular"
     def mock_element_text(self, node):
         self.textcounter += 1
@@ -1476,7 +1509,7 @@ def test_flatten_tree_2(monkeypatch, capsys):
     assert capsys.readouterr().out == 'called EditorGui.__init__\ncalled Editor.__init__()\n'
 
 
-def test_flatten_tree_3(monkeypatch, capsys):
+def test_searchhelper_flatten_tree_3(monkeypatch, capsys):
     "commented"
     def mock_element_text(self, node):
         self.textcounter += 1
@@ -1494,7 +1527,7 @@ def test_flatten_tree_3(monkeypatch, capsys):
     assert capsys.readouterr().out == 'called EditorGui.__init__\ncalled Editor.__init__()\n'
 
 
-def test_replace_element(monkeypatch, capsys):
+def test_searchhelper_replace_element(monkeypatch, capsys):
     def mock_element_text(self, node):
         self.textcounter += 1
         data = ['', '<> html', '<> div id="1"', '<!> <> hr', '<!> <> p class="centered"']
@@ -1514,7 +1547,7 @@ def test_replace_element(monkeypatch, capsys):
                                        'class="centered"`\n')
 
 
-def test_replace_attr(monkeypatch, capsys):
+def test_searchhelper_replace_attr(monkeypatch, capsys):
     def mock_element_data(self, node):
         return {"id": "1"}
     def mock_element_text(self, node):
@@ -1561,7 +1594,7 @@ def test_replace_attr(monkeypatch, capsys):
             'called EditorGui.set_element_text for `el4` to `<> p id="z"`\n')
 
 
-def test_replace_text(monkeypatch, capsys):
+def test_searchhelper_replace_text(monkeypatch, capsys):
     def mock_element_text(self, node):
         return 'some text'
     monkeypatch.setattr(MockEditorGui, 'get_element_text', mock_element_text)
