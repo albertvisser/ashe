@@ -39,12 +39,14 @@ def analyze_element(tag, attrs):
         for attr, value in attrs.items():
             if attr == 'styledata':
                 old_styledata = value
-                continue
+                break
             elif tag == 'link' and attr == 'rel' and value == 'stylesheet':
                 is_stylesheet = True
+                break
             elif attr == 'style':
                 has_style = True
                 old_styledata = value
+                break
     if tag == 'style':  # is_style_tag:
         text = '&Edit styles'
     elif is_stylesheet:
