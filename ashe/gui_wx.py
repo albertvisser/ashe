@@ -20,7 +20,7 @@ class VisualTree(treemix.DragAndDrop, wx.TreeCtrl):
         super().__init__(parent)  # , size=size)
         self.Bind(wx.EVT_LEFT_DCLICK, self.on_leftdclick)
         self.Bind(wx.EVT_RIGHT_DOWN, self.on_rightdown)
-        # self.Bind(wx.EVT_CONTEXT_MENU, self.onContextMenu)
+        self.Bind(wx.EVT_KEY_DOWN, self.on_key)
         ## drag-n-drop - nog niet geactiveerd
         # self.setAcceptDrops(True)
         # self.setDragEnabled(True)
@@ -52,6 +52,14 @@ class VisualTree(treemix.DragAndDrop, wx.TreeCtrl):
         if item and item != self._parent.top:
             self._parent.contextmenu(item)
         evt.Skip()
+
+    def on_key(self, event):
+        # we are only interested in the menu button(s)
+        keycode = event.GetKeyCode()
+        if keycode == wx.WXK_MENU:
+            print("System (left) Menu key pressed")
+            self._parent.contextmenu()
+        event.Skip()
 
     def OnDrop(self, dropitem, dragitem):
         """reimplemented from treemix.DragAndDrop
@@ -321,7 +329,8 @@ class EditorGui(wx.Frame):
 
     def contextmenu(self, arg=None):
         'build/show context menu'
-        print('in contextmenU: itemtext is ', self.get_element_text(self.get_selected_item()))
+        rect = self.tree.GetBoundingRect(self.get_selected_item(), textOnly=True)
+        menupos = (rect[0] + rect[2] + 2, rect[1] + rect[3] + 2)
         popup_menu = menu = wx.Menu()
         for itemtype, item in self.contextmenu_items:
             if itemtype == 'A':
@@ -333,13 +342,8 @@ class EditorGui(wx.Frame):
                 popup_menu.AppendSubMenu(menu, item)
             else:
                 popup_menu.AppendSeparator()
-        self.PopupMenu(popup_menu)
+        self.PopupMenu(popup_menu, pos=menupos)
         popup_menu.Destroy()
-
-    # TODO: hier moet nog iets komen om erin te voorzien dat de menu knop (rechter Windows key)
-    # gebruikt wordt, maar die heb ik niet op mijn huidige toetesenbord
-    # in de qt versie is dat een keyrelease event
-    # of is dat EVT_CONTEXTMENU die ik al wel in de tree klasse heb voorzien?
 
     @staticmethod
     def ask_how_to_continue(title, text):
