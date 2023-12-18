@@ -237,13 +237,12 @@ class TextDialog(qtw.QDialog):
             self.comment_button = qtw.QCheckBox('&Comment(ed)', self)
             if text is None:
                 text = ''
-            else:
-                if text.startswith(CMSTART):
-                    self.comment_button.toggle()
-                    try:
-                        dummy, text = text.split(None, 1)
-                    except ValueError:
-                        text = ""
+            elif text.startswith(CMSTART):
+                self.comment_button.toggle()
+                try:
+                    dummy, text = text.split(None, 1)
+                except ValueError:
+                    text = ""
             hbox.addWidget(self.comment_button)
             vbox.addLayout(hbox)
 
@@ -459,7 +458,7 @@ class DtdDialog(qtw.QDialog):
                 button_groups.append(grp)
                 first = False
             radio = qtw.QRadioButton(x[0], self)
-            if idx == 4:
+            if self._parent.editor.dtdlist[idx][0] == 'HTML 5':
                 radio.setChecked(True)
             self.dtd_list.append((x[0], x[1], radio))
             grp.addButton(radio)
@@ -1065,12 +1064,12 @@ class ListDialog(qtw.QDialog):
         sel = self.type_select.currentText()
         numcols = self.list_table.columnCount()
         hdr = self.list_table.horizontalHeader()
-        if sel[0] == "d" and numcols == 1:
+        if sel[0] == "d" and numcols == len(['one_column']):
             self.list_table.insertColumn(0)
             self.list_table.setHorizontalHeaderLabels(['term', 'description'])
             hdr.resizeSection(0, 102)
             hdr.resizeSection(1, 152)
-        elif sel[0] != "d" and numcols == 2:
+        elif sel[0] != "d" and numcols == len(['two', 'columns']):
             self.list_table.removeColumn(0)
             self.list_table.setHorizontalHeaderLabels(['list item'])
             hdr.resizeSection(0, 254)

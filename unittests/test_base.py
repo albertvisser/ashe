@@ -42,7 +42,7 @@ class MockEditorGui:
     def get_selected_item(self):
         print('called EditorGui.get_selected_item')
     def set_selected_item(self, *args):
-        print('called EditorGui.set_selected_item(`{}`)'.format(args[0]))
+        print(f'called EditorGui.set_selected_item(`{args[0]}`)')
     def meld(self, msg):
         print(f'called EditorGui.meld with arg `{msg}`')
     def show_statusbar_message(self, msg):
@@ -52,11 +52,11 @@ class MockEditorGui:
     def get_element_text(self, node):
         return ''
     def set_element_text(self, node, data):
-        print('called EditorGui.set_element_text for `{}` to `{}`'.format(node, data))
+        print(f'called EditorGui.set_element_text for `{node}` to `{data}`')
     def get_element_data(self, node):
         return {}
     def set_element_data(self, node, data):
-        print('called EditorGui.set_element_data for `{}` to `{}`'.format(node, data))
+        print(f'called EditorGui.set_element_data for `{node}` to `{data}`')
     def get_screen_title(self):
         return 'screen title'
     def set_screen_title(self, text):
@@ -454,7 +454,14 @@ def test_soup2data(monkeypatch, capsys):
                                        "called.Editor.mark_dirty with value `False`\n")
 
 def _test_add_node_to_tree(monkeypatch, capsys):
+    monkeypatch.setattr(testee, 'getelname', '')
+    monkeypatch.setattr(testee.bs, 'BeautifulSoup', '')
     testobj = setup_editor(monkeypatch, capsys)
+    tag = testee.bs.Tag()
+    dtd = testee.bs.Doctype()
+    comment = testee.bs.Comment()
+    other = 'other'
+    testobj.add_node_to_tree('item', types.SimpeNamespace(contents=[tag, dtd, comment, other]))
 
 def test_data2soup(monkeypatch, capsys):
     def mock_expandnode(self, *args):
@@ -658,7 +665,6 @@ def test_in_body(monkeypatch, capsys):
         return f'{testee.ELSTART} body'
     def mock_get_parent(self, node):
         print(f'called EditorGui.get_element_parent for `{node}`')
-        return None
     def mock_get_parent_2(self, node):
         print(f'called EditorGui.get_element_parent for `{node}`')
         return 'x'
@@ -788,7 +794,7 @@ def test_savexml(monkeypatch, capsys):
     def mock_soup2file(self, *args, **kwargs):
         print('called Editor.soup2file with args', args, kwargs)
     def mock_soup2file_2(self, *args, **kwargs):
-        raise IOError('Error')
+        raise OSError('Error')
     monkeypatch.setattr(testee.Editor, 'savexmlas', mock_savexmlas)
     monkeypatch.setattr(testee.Editor, 'data2soup', mock_data2soup)
     monkeypatch.setattr(testee.Editor, 'soup2file', mock_soup2file)
@@ -815,7 +821,7 @@ def test_savexmlas(monkeypatch, capsys):
     def mock_soup2file(self, *args, **kwargs):
         print('called Editor.soup2file with args', args, kwargs)
     def mock_soup2file_2(self, *args, **kwargs):
-        raise IOError('Error')
+        raise OSError('Error')
     monkeypatch.setattr(MockEditorGui, 'ask_for_save_filename', lambda *x: '')
     monkeypatch.setattr(testee.Editor, 'data2soup', mock_data2soup)
     monkeypatch.setattr(testee.Editor, 'soup2file', mock_soup2file)
@@ -1232,14 +1238,15 @@ def _test_validate(monkeypatch, capsys):
     testobj = setup_editor(monkeypatch, capsys)
 
 def test_do_validate(monkeypatch, capsys):
-    def mock_run(*args):
-        print("call subprocess.run with args", args)
+    def mock_run(*args, **kwargs):
+        print("call subprocess.run with args", args, kwargs)
         pathlib.Path('/tmp/ashe_check').write_text('ashe_check')
     monkeypatch.setattr(testee.subprocess, 'run', mock_run)
     testobj = setup_editor(monkeypatch, capsys)
     assert testobj.do_validate('test.html') == 'ashe_check'
     assert capsys.readouterr().out == ("call subprocess.run with args"
-                                       " (['tidy', '-e', '-f', '/tmp/ashe_check', 'test.html'],)\n")
+                                       " (['tidy', '-e', '-f', '/tmp/ashe_check', 'test.html'],)"
+                                       " {'check': False}\n")
 
 def test_view_code(monkeypatch, capsys):
     def mock_data2soup(self, *args, **kwargs):
@@ -1304,27 +1311,27 @@ def test_searchhelper_search_from(monkeypatch, capsys):
     def mock_flatten(self, *args):
         return (('top', 'filenaam', {}), ('ele', '<> html', {}))
     def mock_next(self, *args):
-        print('called search.find_next() with args `{}`'.format(args))
+        print('called search.find_next() with args', args)
         return 'pos', 1
     testobj = testee.SearchHelper(MockEditor())
     monkeypatch.setattr(testobj, 'flatten_tree', mock_flatten)
     monkeypatch.setattr(testobj, 'find_next', mock_next)
     testobj.search_from('top')
     assert capsys.readouterr().out == ('called EditorGui.__init__\ncalled Editor.__init__()\n'
-                                       "called search.find_next() with args `(('x', 'y', 'z', 'a')"
-                                       ", False)`\n"
+                                       "called search.find_next() with args (('x', 'y', 'z', 'a')"
+                                       ", False)\n"
                                        'called EditorGui.set_selected_item(`1`)\n')
     testobj.search_from('top', True)
-    assert capsys.readouterr().out == ("called search.find_next() with args `(('x', 'y', 'z', 'a')"
-                                       ", True)`\n"
+    assert capsys.readouterr().out == ("called search.find_next() with args (('x', 'y', 'z', 'a')"
+                                       ", True)\n"
                                        'called EditorGui.set_selected_item(`1`)\n')
     testobj.search_from('ele')
-    assert capsys.readouterr().out == ("called search.find_next() with args `(('x', 'y', 'z', 'a')"
-                                       ", False, (1, 'ele'))`\n"
+    assert capsys.readouterr().out == ("called search.find_next() with args (('x', 'y', 'z', 'a')"
+                                       ", False, (1, 'ele'))\n"
                                        'called EditorGui.set_selected_item(`1`)\n')
     testobj.search_from('ele', True)
-    assert capsys.readouterr().out == ("called search.find_next() with args `(('x', 'y', 'z', 'a')"
-                                       ", True, (1, 'ele'))`\n"
+    assert capsys.readouterr().out == ("called search.find_next() with args (('x', 'y', 'z', 'a')"
+                                       ", True, (1, 'ele'))\n"
                                        'called EditorGui.set_selected_item(`1`)\n')
     def mock_next(self, *args):
         return None
@@ -1338,7 +1345,7 @@ def test_searchhelper_search_next(monkeypatch, capsys):
     def mock_flatten(self, *args):
         return (('top', 'filenaam', {}), ('ele', '<> html', {}))
     def mock_next(self, *args):
-        print('called search.find_next() with args `{}`'.format(args))
+        print('called search.find_next() with args', args)
         return 'pos', 1
     testobj = testee.SearchHelper(MockEditor())
     monkeypatch.setattr(testobj, 'flatten_tree', mock_flatten)
@@ -1348,8 +1355,8 @@ def test_searchhelper_search_next(monkeypatch, capsys):
     testobj.search_args = ('x', 'y', 'z', 'a')
     testobj.search_pos = (1, 'ele')
     testobj.search_next()
-    assert capsys.readouterr().out == ("called search.find_next() with args `(('x', 'y', 'z', 'a')"
-                                       ", False, (1, 'ele'))`\n"
+    assert capsys.readouterr().out == ("called search.find_next() with args (('x', 'y', 'z', 'a')"
+                                       ", False, (1, 'ele'))\n"
                                        'called EditorGui.set_selected_item(`1`)\n')
     def mock_next(self, *args):
         return None
@@ -1364,33 +1371,33 @@ def test_searchhelper_replace_from(monkeypatch, capsys):
     def mock_flatten(self, *args):
         return (('top', 'filenaam', {}), ('ele', '<> html', {}))
     def mock_next(self, *args):
-        print('called search.find_next() with args `{}`'.format(args))
+        print('called search.find_next() with args', args)
         return 'pos', 1
     def mock_replace(*args):
-        print('called search.replace_and_find() with args `{}`, `{}`'.format(args[0], args[1]))
+        print(f'called search.replace_and_find() with args `{args[0]}`, `{args[1]}`')
     testobj = testee.SearchHelper(MockEditor())
     monkeypatch.setattr(testobj, 'flatten_tree', mock_flatten)
     monkeypatch.setattr(testobj, 'find_next', mock_next)
     monkeypatch.setattr(testobj, 'replace_and_find', mock_replace)
     testobj.replace_from('top')
     assert capsys.readouterr().out == ('called EditorGui.__init__\ncalled Editor.__init__()\n'
-                                       "called search.find_next() with args `(('x', 'y', 'z', 'a')"
-                                       ", False)`\n"
+                                       "called search.find_next() with args (('x', 'y', 'z', 'a')"
+                                       ", False)\n"
                                        "called search.replace_and_find() with args `('pos', 1)`,"
                                        ' `False`\n')
     testobj.replace_from('top', True)
-    assert capsys.readouterr().out == ("called search.find_next() with args `(('x', 'y', 'z', 'a')"
-                                       ", True)`\n"
+    assert capsys.readouterr().out == ("called search.find_next() with args (('x', 'y', 'z', 'a')"
+                                       ", True)\n"
                                        "called search.replace_and_find() with args `('pos', 1)`,"
                                        ' `True`\n')
     testobj.replace_from('ele')
-    assert capsys.readouterr().out == ("called search.find_next() with args `(('x', 'y', 'z', 'a')"
-                                       ", False, (1, 'ele'))`\n"
+    assert capsys.readouterr().out == ("called search.find_next() with args (('x', 'y', 'z', 'a')"
+                                       ", False, (1, 'ele'))\n"
                                        "called search.replace_and_find() with args `('pos', 1)`,"
                                        ' `False`\n')
     testobj.replace_from('ele', True)
-    assert capsys.readouterr().out == ("called search.find_next() with args `(('x', 'y', 'z', 'a')"
-                                       ", True, (1, 'ele'))`\n"
+    assert capsys.readouterr().out == ("called search.find_next() with args (('x', 'y', 'z', 'a')"
+                                       ", True, (1, 'ele'))\n"
                                        "called search.replace_and_find() with args `('pos', 1)`,"
                                        ' `True`\n')
     def mock_next(self, *args):
@@ -1403,7 +1410,7 @@ def test_searchhelper_replace_from(monkeypatch, capsys):
 
 def test_searchhelper_replace_next(monkeypatch, capsys):
     def mock_replace(*args):
-        print('called search.replace_and_find() with args `{}`, `{}`'.format(args[0], args[1]))
+        print(f'called search.replace_and_find() with args `{args[0]}`, `{args[1]}`')
     testobj = testee.SearchHelper(MockEditor())
     monkeypatch.setattr(testobj, 'replace_and_find', mock_replace)
     testobj.replace_next()
@@ -1426,7 +1433,7 @@ def test_searchhelper_replace_and_find(monkeypatch, capsys):
     def mock_flatten(self, *args):
         return (('top', 'filenaam', {}), ('ele', '<> html', {}))
     def mock_next(self, *args):
-        print('called search.find_next() with args `{}`'.format(args))
+        print('called search.find_next() with args', args)
         return 'pos', 1
     testobj = testee.SearchHelper(MockEditor())
     monkeypatch.setattr(testobj, 'replace_element', mock_element)
@@ -1442,8 +1449,8 @@ def test_searchhelper_replace_and_find(monkeypatch, capsys):
                                        'called search.replace_element()\n'
                                        'called search.replace_attr()\n'
                                        'called search.replace_text()\n'
-                                       "called search.find_next() with args `(('x', 'y', 'z', 'a')"
-                                       ", False, (1, 'ele'))`\n"
+                                       "called search.find_next() with args (('x', 'y', 'z', 'a')"
+                                       ", False, (1, 'ele'))\n"
                                        'called EditorGui.set_selected_item(`1`)\n')
     def mock_next(self, *args):
         return None

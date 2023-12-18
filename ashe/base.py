@@ -8,11 +8,12 @@ import os
 import shutil
 import pathlib
 import subprocess
+import contextlib
 import bs4 as bs  # BeautifulSoup as bs
 
 from ashe.gui import gui, toolkit
 from ashe.shared import ICO, TITEL, CMSTART, ELSTART, DTDSTART, IFSTART, BL
-CMELSTART = ' '.join((CMSTART, ELSTART))
+CMELSTART = f'{CMSTART} {ELSTART}'
 csed = None  # reference to the csseditor import
 ABOUT = """\
             Tree-based HTML editor with simultaneous preview
@@ -65,10 +66,8 @@ def getelname(tag, attrs=None, comment=False):
     if attrs is None:
         attrs = {}
     naam = f"<> {tag}{expand('id')}{expand('name')}"
-    try:
+    with contextlib.suppress(KeyError):
         naam += expand(tagattdict[tag])
-    except KeyError:
-        pass
     if comment:
         naam = "<!> " + naam
     return naam
@@ -105,9 +104,8 @@ class CssManager:
     def __init__(self, parent):
         self._parent = parent
         self.cssedit_available = check_for_csseditor()
-        if self.cssedit_available:
-            if toolkit == 'wx':
-                self.cssedit_available = False
+        if self.cssedit_available and toolkit == 'wx':
+            self.cssedit_available = False
 
     def call_editor(self, master, tag):  # , styledata):  # , app=None):
         """call external css editor from the edit element dialog
@@ -156,28 +154,26 @@ class CssManager:
                     pass
             except OSError as e:
                 mld = str(e)
-        if not mld and fname.startswith('/'):
-            if not os.path.exists(fname):
-                mld = "Cannot determine file system location of stylesheet file"
+        if not mld and fname.startswith('/') and not os.path.exists(fname):
+            mld = "Cannot determine file system location of stylesheet file"
         if mld:
             pass
         elif not self.cssedit_available:
             mld = 'No CSS editor support; please edit external stylesheet separately'
-        else:
-            if fname.startswith('http'):
-                # h_fname = os.path.join('/tmp', 'ashe_{}'.format(os.path.basename(fname)))
-                # subprocess.run(['wget', fname, '-O', h_fname])
-                # fname = h_fname
-                mld = 'Editing of possibly off-site stylesheets (http-links) is disabled'
-            elif fname:      # fname can be empty here !?
-                h_fname = fname
-                xmlfn_path = pathlib.Path(self._parent.xmlfn).parent
+        elif fname.startswith('http'):
+            # h_fname = os.path.join('/tmp', 'ashe_{}'.format(os.path.basename(fname)))
+            # subprocess.run(['wget', fname, '-O', h_fname])
+            # fname = h_fname
+            mld = 'Editing of possibly off-site stylesheets (http-links) is disabled'
+        elif fname:      # or can fname be empty here !?
+            h_fname = fname
+            xmlfn_path = pathlib.Path(self._parent.xmlfn).parent
+            print('xmlfn_path, h_fname is', xmlfn_path, h_fname)
+            while h_fname.startswith('../'):
+                h_fname = h_fname[3:]
+                xmlfn_path = xmlfn_path.parent
                 print('xmlfn_path, h_fname is', xmlfn_path, h_fname)
-                while h_fname.startswith('../'):
-                    h_fname = h_fname[3:]
-                    xmlfn_path = xmlfn_path.parent
-                    print('xmlfn_path, h_fname is', xmlfn_path, h_fname)
-                fname = str(xmlfn_path / h_fname)
+            fname = str(xmlfn_path / h_fname)
         if not mld:
             # try:
             #     css = csed.MainWindow(app=self._parent.gui.app)
@@ -202,9 +198,8 @@ class CssManager:
             mld = 'No CSS editor support; please edit external stylesheet separately'
         if not mld and fname.startswith('http'):
             mld = 'Editing of possibly off-site stylesheets (http-links) is disabled'
-        if not mld and fname.startswith('/'):
-            if not os.path.exists(fname):
-                mld = "Cannot determine file system location of stylesheet file"
+        if not mld and fname.startswith('/') and not os.path.exists(fname):
+            mld = "Cannot determine file system location of stylesheet file"
             # als het pad wel bestaat is het eigenlijk ook niet goed
         if not mld:
             if not fname:
@@ -367,17 +362,15 @@ class Editor:
                     except ValueError:
                         print('IE conditional genegeerd:', test)
                     else:
-                        newitem = self.gui.addtreeitem(item, ' '.join((IFSTART, cond)), '')
+                        newitem = self.gui.addtreeitem(item, '{IFSTART} {cond}', '')
                         # newnode = bs.BeautifulSoup(data, 'lxml').contents[0].contents[0]
                         newnode = bs.BeautifulSoup(data, 'lxml').contents[0]
                         self.add_node_to_tree(newitem, newnode)
                 else:
                     newnode = bs.BeautifulSoup(test, 'lxml')
-                    try:
+                    with contextlib.suppress(IndexError):
                         # correct BS wrapping this in <html><body>
                         newnode = newnode.find_all('body')[0]
-                    except IndexError:
-                        pass
                     self.add_node_to_tree(item, newnode, commented=True)
             else:
                 newitem = self.gui.addtreeitem(item, getshortname(str(subnode), commented),
@@ -408,7 +401,7 @@ class Editor:
         for elm in self.gui.get_element_children(node):
             text = self.gui.get_element_text(elm)
             data = self.gui.get_element_data(elm)
-            if text.startswith(ELSTART) or text.startswith(CMELSTART):
+            if text.startswith((ELSTART, CMELSTART)):
                 # data is een dict: leeg of een mapping van data op attributen
                 if text.startswith(CMSTART):
                     text = text.split(None, 1)[1]
@@ -461,9 +454,8 @@ class Editor:
 
     def soup2file(self, saveas=False):
         "write HTML to file"
-        if not saveas:                     # maakt het uit of saveas aan of uit staat?
-            if os.path.exists(self.xmlfn):
-                shutil.copyfile(self.xmlfn, self.xmlfn + '.bak')
+        if not saveas and os.path.exists(self.xmlfn):  # maakt het uit of saveas aan of uit staat?
+            shutil.copyfile(self.xmlfn, self.xmlfn + '.bak')
         with open(self.xmlfn, "w") as f_out:
             f_out.write(str(self.soup))
         self.mark_dirty(False)
@@ -585,11 +577,11 @@ class Editor:
         """determine if node is for stylesheet definition
         """
         test = self.gui.get_element_text(node)
-        if test == ' '.join((ELSTART, 'link')):
+        if test == f'{ELSTART} link':
             attrdict = self.gui.get_element_data(node)
             if attrdict.get('rel', '') == 'stylesheet':
                 return True
-        elif test == ' '.join((ELSTART, 'style')):
+        elif test == f'{ELSTART} style':
             return True
         return False
 
@@ -601,9 +593,9 @@ class Editor:
             """
             test = self.gui.get_element_text(node)
             parent = self.gui.get_element_parent(node)
-            if test == ' '.join((ELSTART, 'body')):
+            if test == f'{ELSTART} body':
                 return True
-            if test == ' '.join((ELSTART, 'head')):
+            if test == f'{ELSTART} head':
                 return False
             if parent is None:  # only for <html> tag - do we need this?
                 return False
@@ -643,7 +635,7 @@ class Editor:
             self.data2soup()
             try:
                 self.soup2file()
-            except IOError as err:
+            except OSError as err:
                 self.gui.meld(str(err))
                 return
             self.gui.show_statusbar_message(f"saved {self.xmlfn}")
@@ -657,7 +649,7 @@ class Editor:
             self.data2soup()
             try:
                 self.soup2file(saveas=True)
-            except IOError as err:
+            except OSError as err:
                 self.gui.meld(str(err))
                 return
             self.gui.set_element_text(self.gui.top, self.xmlfn)
@@ -730,7 +722,7 @@ class Editor:
             parent, pos = self.gui.get_element_parentpos(self.item)
             self.cut()    # moet dit niet self._cut() --> self.edhlp.cut() zijn?
             # add the conditional in its place
-            new_item = self.gui.addtreeitem(parent, ' '.join((IFSTART, cond)), None, pos)
+            new_item = self.gui.addtreeitem(parent, '{IFSTART} {cond}', None, pos)
             # put the current element back ("insert under")
             self.gui.set_selected_item(new_item)
             self.paste()  # moet dit niet self._paste() --> self.edhlp.paste() zijn?
@@ -922,9 +914,9 @@ class Editor:
         # determine the place to put the stylesheet
         self.item = None
         for item in self.gui.get_element_children(self.gui.top):
-            if self.gui.get_element_text(item) == ' '.join((ELSTART, 'html')):
+            if self.gui.get_element_text(item) == f'{ELSTART} html':
                 for sub in self.gui.get_element_children(item):
-                    if self.gui.get_element_text(sub) == ' '.join((ELSTART, 'head')):
+                    if self.gui.get_element_text(sub) == f'{ELSTART} head':
                         self.item = sub
         if not self.item:
             self.gui.meld("Error: no <head> element")
@@ -967,10 +959,7 @@ class Editor:
             nice_link = link
         else:
             link = os.path.abspath(link)
-            if root:
-                whereami = os.path.dirname(root)          # os.path.abspath(self._parent.xmlfn)
-            else:
-                whereami = os.getcwd()                    # os.path.join(os.getcwd(), 'index.html')
+            whereami = os.path.dirname(root) if root else os.getcwd()
             nice_link = os.path.relpath(link, whereami)   # getrelativepath(link, whereami)
         if not nice_link:
             raise ValueError('Unable to make this local link relative')
@@ -1083,7 +1072,7 @@ class Editor:
         """get validated html
         """
         output = '/tmp/ashe_check'
-        subprocess.run(['tidy', '-e', '-f', output, htmlfile])
+        subprocess.run(['tidy', '-e', '-f', output, htmlfile], check=False)
         data = ""
         with open(output) as f_in:
             data = f_in.read()
@@ -1143,7 +1132,7 @@ class EditorHelper:
         under_comment = self.gui.get_element_text(
             self.gui.get_element_parent(self.item)).startswith(CMELSTART)
         modified = False
-        if text.startswith(ELSTART) or text.startswith(CMELSTART):
+        if text.startswith((ELSTART, CMELSTART)):
             oldtag = get_tag_from_elname(text)
             attrdict = self.gui.get_element_data(self.item)
             print('in edit voor ophalen styledata, attrdict is', attrdict)
@@ -1183,7 +1172,7 @@ class EditorHelper:
             txt = CMSTART + " " if text.startswith(CMSTART) else ""
             data = self.gui.get_element_data(self.item)
             test = self.gui.get_element_text(self.gui.get_element_parent(self.item))
-            if test in (' '.join((ELSTART, 'style')), ' '.join((CMELSTART, 'style'))):
+            if test in (f'{ELSTART} style', f'{CMELSTART} style'):
                 self.gui.meld("Please edit style through parent tag")
                 return
             ok, dialog_data = self.gui.do_edit_textvalue(txt + data)
@@ -1228,10 +1217,9 @@ class EditorHelper:
             txt = self.gui.get_element_text(subnode)
             if commented:
                 if not txt.startswith(CMSTART):
-                    new_text = " ".join((CMSTART, txt))
-            else:
-                if txt.startswith(CMSTART):
-                    new_text = txt.split(None, 1)[1]
+                    new_text = f"{CMSTART} {txt}"
+            elif txt.startswith(CMSTART):
+                new_text = txt.split(None, 1)[1]
             self.gui.set_element_text(subnode, new_text)
             self.comment_out(subnode, commented)
 
@@ -1451,7 +1439,7 @@ class SearchHelper:
         ok, dialog_data = self.gui.get_search_args()
         if ok:
             self.search_args, self.search_specs = dialog_data[:2]
-        if reverse or ok:
+        # if reverse or ok:
             if item == self.gui.top:
                 found = self.find_next(self.flatten_tree(self.gui.top), self.search_args, reverse)
             else:
@@ -1524,13 +1512,15 @@ class SearchHelper:
         """
         wanted_ele, wanted_attr, wanted_value, wanted_text = search_args
         if pos is None:
-            pos = (0, None)
+            oldpos, found_earlier = 0, None
             if reverse:
-                pos = (len(data), None)
+                oldpos, found_earlier = len(data), None
+        else:
+            oldpos, found_earlier = pos
         if reverse:
             data.reverse()
-        if pos[0]:
-            start = len(data) - pos[0] - 1 if reverse else pos[0]
+        if oldpos:
+            start = len(data) - oldpos - 1 if reverse else oldpos
             data = data[start + 1:]
 
         itemfound = None
@@ -1567,16 +1557,16 @@ class SearchHelper:
                 itemfound = item
                 break
 
-        # linter: kan newpos hier ongedefinieerd zijn? Als `data` leeg is?
+        # linter: kan newpos hier ongedefinieerd zijn? Als `data` leeg is, kan dat?
         if itemfound:
             factor = 1
             if reverse:
                 newpos *= - 1
                 factor = -1
-            if pos[0]:
-                pos = newpos + pos[0] + factor
-            else:
-                pos = newpos + pos[0]
+            # pos = newpos + oldpos + factor if oldpos else newpos + oldpos
+            pos = newpos + oldpos
+            if oldpos:
+                pos += factor
             return pos, itemfound
         return None
 
@@ -1585,7 +1575,7 @@ class SearchHelper:
         probably nicer as a generator function
         """
         name = self.gui.get_element_text(node)
-        count = 0
+        count = 0    # number of spaces to split on
         if name.startswith(ELSTART):
             count = 2
         elif name.startswith(CMELSTART):
@@ -1598,7 +1588,7 @@ class SearchHelper:
         subel_list = []
         for subitem in self.gui.get_element_children(node):
             text = self.gui.get_element_text(subitem)
-            if text.startswith(ELSTART) or text.startswith(CMELSTART):
+            if text.startswith((ELSTART, CMELSTART)):
                 subel_list = self.flatten_tree(subitem, top=False)
                 elem_list.extend(subel_list)
             else:

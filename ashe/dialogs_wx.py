@@ -194,11 +194,12 @@ class ElementDialog(wx.Dialog):
             except AttributeError:
                 wx.MessageBox('Press enter on this item first', add_title, wx.ICON_ERROR)
                 return False, ()
+            if name in attrs:
+                wx.MessageBox('Duplicate attributes, please merge', add_title, wx.ICON_ERROR)
+                return False, ()
             if name not in ('styledata', 'style'):
                 attrs[name] = value
-        if tuple([x for x in attrs.keys()]) != list([x for x in attrs.keys()]):
-            wx.MessageBox('Duplicate attributes, please merge', add_title, wx.ICON_ERROR)
-            return False, ()
+        # if tuple(attrs.keys()) != list(attrs.keys()):
         # if self.styledata != self.old_styledata:
         attrname = 'styledata' if self.is_style_tag else 'style' if self.has_style else ''
         if attrname:
@@ -221,13 +222,12 @@ class TextDialog(wx.Dialog):
             self.comment_button = wx.CheckBox(self, label='&Comment(ed)')
             if text is None:
                 text = ''
-            else:
-                if text.startswith(CMSTART):
-                    self.comment_button.SetValue(True)
-                    try:
-                        dummy, text = text.split(None, 1)
-                    except ValueError:
-                        text = ""
+            elif text.startswith(CMSTART):
+                self.comment_button.SetValue(True)
+                try:
+                    dummy, text = text.split(None, 1)
+                except ValueError:
+                    text = ""
             hbox.Add(self.comment_button, 0, wx.EXPAND | wx.ALL, 1)
             vbox.Add(hbox, 0, wx.EXPAND | wx.LEFT | wx.RIGHT | wx.TOP, 20)
 
@@ -405,7 +405,7 @@ class DtdDialog(wx.Dialog):
                 first = False
             else:
                 radio = wx.RadioButton(self, -1, x[0])
-            if idx == 4:
+            if self._parent.editor.dtdlist[idx][0] == 'HTML 5':
                 radio.SetValue(True)
             vbox2.Add(radio, 0, wx.ALL, 2)
             self.dtd_list.append((x[0], x[1], radio))
@@ -941,13 +941,13 @@ class ListDialog(wx.Dialog):
         "geselecteerde list type toepassen"
         sel = self.type_select.GetValue()
         numcols = self.list_table.GetNumberCols()
-        if sel[0] == "d" and numcols == 1:
+        if sel[0] == "d" and numcols == len(['one_column']):
             self.list_table.InsertCols(0, 1)
             self.list_table.SetColLabelValue(0, 'term')
             self.list_table.SetColSize(0, 80)
             self.list_table.SetColLabelValue(1, 'description')
             self.list_table.SetColSize(1, 160)
-        elif sel[0] != "d" and numcols == 2:
+        elif sel[0] != "d" and numcols == len(['two', 'columns']):
             self.list_table.DeleteCols(0)
             self.list_table.SetColLabelValue(0, 'list item')
             self.list_table.SetColSize(0, 240)

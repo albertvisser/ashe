@@ -42,7 +42,7 @@ class HtmlView(wx.Frame):
         """start viewer with filename
         """
         fullpath = os.path.abspath(pathname)
-        self.SetTitle("View HTML: {}".format(fullpath))
+        self.SetTitle("View HTML: {fullpath}")
         self.html.LoadURL('file://' + fullpath)
 
     def show_html_from_url(self, url):

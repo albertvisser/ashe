@@ -37,9 +37,8 @@ class VisualTree(treemix.DragAndDrop, wx.TreeCtrl):
             else:
                 data = self.GetItemText(item)
                 edit = True
-                if data.startswith(ELSTART):
-                    if self.GetChildrenCount(item):
-                        edit = False
+                if data.startswith(ELSTART) and self.GetChildrenCount(item):
+                    edit = False
         if edit:
             self._parent.edit()
         evt.Skip()
@@ -84,14 +83,11 @@ class VisualTree(treemix.DragAndDrop, wx.TreeCtrl):
 
         def zetzeronder(node, eltree, pos=-1):  # uit paste functie
             "paste copy buffer into tree"
-            if len(eltree) == 3:
+            if len(eltree) == len(['text', 'data', 'subtree']):
                 text, data, subtree = eltree
             else:
                 text, data, subtree = eltree, '', []
-            if pos == -1:
-                newnode = self.AppendItem(node, text)
-            else:
-                newnode = self.InsertItem(node, pos, text)
+            newnode = self.AppendItem(node, text) if pos == -1 else self.InsertItem(node, pos, text)
             # data is ofwel leeg, ofwel een string, ofwel een dictionary
             self.SetItemData(newnode, data)
             for item in subtree:
@@ -124,8 +120,9 @@ class EditorGui(wx.Frame):
         self.editor = editor
         self.app = wx.App()
         dsp = wx.Display().GetClientArea()
-        high = dsp.height if dsp.height < 900 else 900
-        wide = dsp.width if dsp.width < 1020 else 1020
+        minheight, minwidth = 900, 1020
+        high = dsp.height if dsp.height < minheight else minheight
+        wide = dsp.width if dsp.width < minwidth else minwidth
         super().__init__(parent, title=self.editor.title, size=(wide, high),
                          style=wx.DEFAULT_FRAME_STYLE | wx.NO_FULL_REPAINT_ON_RESIZE)
         if err:
@@ -200,13 +197,13 @@ class EditorGui(wx.Frame):
                     continue
                 menuitem_text, hotkey, modifiers, status_text, callback = item[:5]
                 if 'A' in modifiers:
-                    hotkey = "+".join(("Alt", hotkey))
+                    hotkey = f"Alt+{hotkey}"
                 if 'C' in modifiers:
-                    hotkey = "+".join(("Ctrl", hotkey))
+                    hotkey = f"Ctrl+{hotkey}"
                 if 'S' in modifiers:
-                    hotkey = "+".join(("Shift", hotkey))
+                    hotkey = f"Shift+{hotkey}"
                 menuid = wx.NewId()
-                caption = "\t".join((menuitem_text, hotkey)) if hotkey else menuitem_text
+                caption = f"{menuitem_text}\t{hotkey}" if hotkey else menuitem_text
                 if menuitem_text.startswith('Advance selection'):
                     self.adv_menu = wx.MenuItem(menu, menuid, caption, status_text, wx.ITEM_CHECK)
                     mnu = self.adv_menu
@@ -360,13 +357,13 @@ class EditorGui(wx.Frame):
         """build mask for FileDialog
         """
         text, filetypes = masks['all']
-        all_mask = "{0} ({1})|{1}".format(text, filetypes[0])
+        all_mask = f"{text} ({filetypes[0]})|{filetypes[0]}"
         text, filetypes = masks[ftype]
         filetypes_text = ",".join(filetypes)
         if os.name == 'posix':
-            filetypes_text = ','.join((filetypes_text, filetypes_text.upper()))
+            filetypes_text = f'{filetypes_text},{filetypes_text.upper()}'
         extensions_text = filetypes_text.replace(',', ';')
-        return "{} ({})|{}".format(text, filetypes_text, extensions_text) + '|' + all_mask
+        return f"{text} ({filetypes_text})|{extensions_text}" + '|' + all_mask
 
     def ask_for_filename(self, message, style):
         """open een dialoog om te vragen met welk file iets gedaan moet worden
@@ -458,7 +455,7 @@ class EditorGui(wx.Frame):
 
     def do_add_element(self, where):
         """show dialog for new element"""
-        obj = ElementDialog(self, title="New element (insert {0})".format(where))
+        obj = ElementDialog(self, title=f"New element (insert {where})")
         return self.call_dialog(obj)
 
     def do_edit_textvalue(self, textdata):

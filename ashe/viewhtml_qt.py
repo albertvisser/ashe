@@ -36,7 +36,7 @@ class HtmlView(qtw.QMainWindow):
         """
         with open(pathname, encoding="utf-8") as _in:
             html = _in.read()
-        self.setWindowTitle("View HTML: {}".format(pathname))
+        self.setWindowTitle("View HTML: {}pathname")
         self.html.setHtml(html)
 
     def show_html_from_url(self, url):

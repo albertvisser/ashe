@@ -30,11 +30,11 @@ class VisualTree(qtw.QTreeWidget):
     def mouseDoubleClickEvent(self, event):
         "reimplemented event handler"
         item = self.itemAt(event.x(), event.y())
-        if item and item != self._parent.top:
-            if str(item.text(0)).startswith(self._parent.editor.constants['ELSTART']) and \
-                    item.childCount() == 0:
-                self._parent.editor.edit()
-                return
+        if (item and item != self._parent.to and
+                str(item.text(0)).startswith(self._parent.editor.constants['ELSTART']) and
+                item.childCount() == 0):
+            self._parent.editor.edit()
+            return
         super().mouseDoubleClickEvent(event)
 
     def mouseReleaseEvent(self, event):
@@ -126,11 +126,11 @@ class EditorGui(qtw.QMainWindow):
                     continue
                 menuitem_text, hotkey, modifiers, status_text, callback = item[:5]
                 if 'A' in modifiers:
-                    hotkey = "+".join(("Alt", hotkey))
+                    hotkey = f"Alt+{hotkey}"
                 if 'C' in modifiers:
-                    hotkey = "+".join(("Ctrl", hotkey))
+                    hotkey = f"Ctrl+{hotkey}"
                 if 'S' in modifiers:
-                    hotkey = "+".join(("Shift", hotkey))
+                    hotkey = f"Shift+{hotkey}"
                 act = qtw.QAction(menuitem_text, self)
                 menu.addAction(act)
                 act.setStatusTip(status_text)
@@ -286,10 +286,9 @@ class EditorGui(qtw.QMainWindow):
         ky = ev.key()
         item = self.tree.currentItem()
         skip = False
-        if item and item != self.top:
-            if ky == core.Qt.Key_Menu:
-                self.popup_menu(item)
-                skip = True
+        if item and item != self.top and ky == core.Qt.Key_Menu:
+            self.popup_menu(item)
+            skip = True
         return skip
 
     def ask_how_to_continue(self, title, text):
@@ -309,12 +308,12 @@ class EditorGui(qtw.QMainWindow):
         """build mask for FileDialog
         """
         text, filetypes = masks['all']
-        all_mask = "{} ({})".format(text, filetypes[0])
+        all_mask = f"{text} ({filetypes[0]})"
         text, filetypes = masks[ftype]
         filetypes_text = " ".join(filetypes)
         if os.name == 'posix':
-            filetypes_text = ' '.join((filetypes_text, filetypes_text.upper()))
-        return "{0} ({1})".format(text, filetypes_text) + ';;' + all_mask
+            filetypes_text = f'{filetypes_text} {filetypes_text.upper()}'
+        return f"{text} ({filetypes_text})" + ';;' + all_mask
 
     def ask_for_open_filename(self):
         """open een dialoog om te vragen welk file geladen moet worden
@@ -395,7 +394,7 @@ class EditorGui(qtw.QMainWindow):
 
     def do_add_element(self, where):
         """show dialog for new element"""
-        obj = ElementDialog(self, title="New element (insert {0})".format(where))
+        obj = ElementDialog(self, title=f"New element (insert {where})")
         return self.call_dialog(obj)
 
     def do_edit_textvalue(self, textdata):

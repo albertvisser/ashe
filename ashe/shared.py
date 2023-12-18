@@ -9,11 +9,10 @@ ELSTART = '<>'
 DTDSTART = "DOCTYPE"
 IFSTART = '!IF'
 BL = "&nbsp;"
-VAL_MESSAGE = "\n".join(("Validation results are for the file on disk",
-                         "some errors/warnings may already have been corrected by "
-                         "BeautifulSoup",
-                         "(you'll know when they don't show up in the tree or text view",
-                         " or when you save the file in memory back to disk)"))
+VAL_MESSAGE = ("Validation results are for the file on disk\n"
+               "some errors/warnings may already have been corrected by BeautifulSoup\n"
+               "(you'll know when they don't show up in the tree or text view\n"
+               " or when you save the file in memory back to disk)\n")
 masks = {'all': ('All files', ('*.*',)),
          'html': ('HTML files', ('*.htm', '*.html')),
          'css': ('CSS files', ('*.css',)),
