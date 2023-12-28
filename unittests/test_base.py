@@ -134,29 +134,29 @@ class MockEditor:
         print('called Editor.__init__()')
 
 
-def test_check_for_csseditor_fail(monkeypatch, capsys):
-    "patch import to fail for cssedit"
-    def mock_import(name, *args):
-        if name == 'cssedit':
-            raise ModuleNotFoundError
-        return orig_import(name, *args)
-    orig_import = __import__  # Store original __import__
-    import builtins
-    monkeypatch.setattr(builtins, '__import__', mock_import)
-    assert not testee.check_for_csseditor()
-
-
-# wat te denken geeft is dat als ik deze testmethode verplaats naar vóór de vorige
-# dat de vorige dan failt
-def test_check_for_csseditor(monkeypatch, capsys):
-    """if cssedit not found on system, create fake package in user install ('.local')
-    don't forget to remove it after test!
-    """
-    # fake_cssedit_path = ... / 'cssedit'
-    # fake_cssedit_path.mkdir()
-    # (fake_cssedit_path / 'editor').mkdir()
-    # (fake_cssedit_path / 'editor' / 'main.py').touch()
-    assert testee.check_for_csseditor()
+# def test_check_for_csseditor_fail(monkeypatch, capsys):
+#     "patch import to fail for cssedit"
+#     def mock_import(name, *args):
+#         if name == 'cssedit':
+#             raise ModuleNotFoundError
+#         return orig_import(name, *args)
+#     orig_import = __import__  # Store original __import__
+#     import builtins
+#     monkeypatch.setattr(builtins, '__import__', mock_import)
+#     assert not testee.check_for_csseditor()
+#
+#
+# # wat te denken geeft is dat als ik deze testmethode verplaats naar vóór de vorige
+# # dat de vorige dan failt
+# def test_check_for_csseditor(monkeypatch, capsys):
+#     """if cssedit not found on system, create fake package in user install ('.local')
+#     don't forget to remove it after test!
+#     """
+#     # fake_cssedit_path = ... / 'cssedit'
+#     # fake_cssedit_path.mkdir()
+#     # (fake_cssedit_path / 'editor').mkdir()
+#     # (fake_cssedit_path / 'editor' / 'main.py').touch()
+#     assert testee.check_for_csseditor()
 
 
 def test_getelname(monkeypatch, capsys):
@@ -190,11 +190,11 @@ def test_get_shortname():
 #-- CssManager -----------------------
 def test_cssmanager_init(monkeypatch, capsys):
     monkeypatch.setattr(testee, 'toolkit', 'qt')
-    monkeypatch.setattr(testee, 'check_for_csseditor', lambda: False)
+    monkeypatch.setattr(testee, 'CSSEDIT_AVAIL', False)
     testobj = testee.CssManager('parent')
     assert testobj._parent == 'parent'
     assert not testobj.cssedit_available
-    monkeypatch.setattr(testee, 'check_for_csseditor', lambda: True)
+    monkeypatch.setattr(testee, 'CSSEDIT_AVAIL', True)
     testobj = testee.CssManager('parent')
     assert testobj._parent == 'parent'
     assert testobj.cssedit_available
@@ -202,11 +202,10 @@ def test_cssmanager_init(monkeypatch, capsys):
     testobj = testee.CssManager('parent')
     assert testobj._parent == 'parent'
     assert not testobj.cssedit_available
-    monkeypatch.setattr(testee, 'check_for_csseditor', lambda: False)
+    monkeypatch.setattr(testee, 'CSSEDIT_AVAIL', False)
     testobj = testee.CssManager('parent')
     assert testobj._parent == 'parent'
     assert not testobj.cssedit_available
-    monkeypatch.setattr(testee, 'check_for_csseditor', lambda: False)
 
 def mock_cssman_init(self, *args):
     print('called CssManager.__init__ with args', args)

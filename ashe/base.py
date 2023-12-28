@@ -13,35 +13,19 @@ import bs4 as bs  # BeautifulSoup as bs
 
 from ashe.gui import gui, toolkit
 from ashe.shared import ICO, TITEL, CMSTART, ELSTART, DTDSTART, IFSTART, BL
+# check if we can use a separate editor for the parts dealing with style
+try:
+    import cssedit.editor.main as csed
+except ModuleNotFoundError:
+    csed = None
+CSSEDIT_AVAIL = csed is not None
+
 CMELSTART = f'{CMSTART} {ELSTART}'
-csed = None  # reference to the csseditor import
 ABOUT = """\
             Tree-based HTML editor with simultaneous preview
 
             Started in 2007 by Albert Visser
             Versions for PC and PDA available"""
-
-
-def check_for_csseditor():
-    """check if we can use a separate editor for the parts dealing with style
-    """
-    global csed
-    # try:
-    #     from .toolkit import toolkit
-    #     if toolkit == 'qt':
-    #         import cssedit.editor.csseditor_qt as csed
-    #     elif toolkit == 'wx':
-    #         import cssedit.editor.csseditor_wx as csed
-    #     else:
-    #         import cssedit.editor.csseditor_txt as csed
-    #     return True
-    # except ImportError:
-    #     return False
-    try:
-        import cssedit.editor.main as csed
-    except ModuleNotFoundError:
-        return False
-    return True
 
 
 def getelname(tag, attrs=None, comment=False):
@@ -103,7 +87,7 @@ class CssManager:
     """
     def __init__(self, parent):
         self._parent = parent
-        self.cssedit_available = check_for_csseditor()
+        self.cssedit_available = CSSEDIT_AVAIL
         if self.cssedit_available and toolkit == 'wx':
             self.cssedit_available = False
 
