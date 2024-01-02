@@ -1,4 +1,3 @@
-import pytest
 import ashe.shared as testee
 
 def test_analyze_element(monkeypatch, capsys):
