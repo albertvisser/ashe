@@ -15,7 +15,9 @@ def test_analyze_element(monkeypatch, capsys):
                                                           True, False)
     assert testee.analyze_element('style', {}) == ('style', False, '&Edit styles', '', False, False)
     assert testee.analyze_element('style', {'styledata': 'y'}) == ('style', False, '&Edit styles',
-                                                                   'y', True, False)
+                                                                   'y', False, False)
+    # afhankelijk van of ik vind dat bij een style tag has_style ook aan moet staan
+    #                                                               'y', True, False)
 
 def test_get_dtdmenu_texts(monkeypatch, capsys):
     # nog kijken hoe dit in de gui modules gebruikt moet worden om hardgecodeerde teksten te

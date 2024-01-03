@@ -34,6 +34,10 @@ def analyze_element(tag, attrs):
         if x[0] == ELSTART:
             x = x[1].split(None, 1)
         tag = x[0]
+        # afhankelijk van of ik vind dat bij een style tag has_style ook aan moet staan
+        # if tag == 'style':
+        #     has_style = True
+        #     old_styledata = tag.text -- niet nodig, style(s) zit in pseudo element styledata
     if attrs:
         for attr, value in attrs.items():
             if attr == 'styledata':

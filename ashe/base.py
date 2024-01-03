@@ -1226,7 +1226,7 @@ class EditorHelper:
             return
         text = self.gui.get_element_text(self.item)
         if ifcheck and text.startswith(IFSTART):
-            self.gui.meld("Can't do thisJ on a conditional (use menu option to delete)")
+            self.gui.meld("Can't do this on a conditional (use menu option to delete)")
             return
         data = self.gui.get_element_data(self.item)
         if str(text).startswith(DTDSTART):
