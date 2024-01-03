@@ -405,12 +405,13 @@ class EditorGui(qtw.QMainWindow):
         """show dialog for new text"""
         return self.call_dialog(TextDialog(self, title="New Text"))
 
-    def ask_for_condition(self):
-        "zet een IE conditie om het element heen"
-        cond, ok = qtw.QInputDialog.getText(self, self.title, 'Enter the condition', text='')
-        if ok:
-            return cond
-        return ''
+    # IE support misschien kan dit een keer echt weg
+    # def ask_for_condition(self):
+    #     "zet een IE conditie om het element heen"
+    #     cond, ok = qtw.QInputDialog.getText(self, self.title, 'Enter the condition', text='')
+    #     if ok:
+    #         return cond
+    #     return ''
 
     def do_delete_item(self, item):
         """remove element from tree

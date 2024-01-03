@@ -466,12 +466,13 @@ class EditorGui(wx.Frame):
         """show dialog for new text"""
         return self.call_dialog(TextDialog(self, title="New Text"))
 
-    def ask_for_condition(self):
-        "zet een IE conditie om het element heen"
-        with wx.TextEntryDialog(self, 'Enter the condition', self.editor.title) as dlg:
-            if dlg.ShowModal() == wx.ID_OK:
-                return dlg.GetValue()
-        return ''
+    # IE support misschien kan dit een keer echt weg
+    # def ask_for_condition(self):
+    #     "zet een IE conditie om het element heen"
+    #     with wx.TextEntryDialog(self, 'Enter the condition', self.editor.title) as dlg:
+    #         if dlg.ShowModal() == wx.ID_OK:
+    #             return dlg.GetValue()
+    #     return ''
 
     def do_delete_item(self, item):
         """remove element from tree

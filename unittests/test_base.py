@@ -534,8 +534,8 @@ def test_soup2file(monkeypatch, capsys, tmp_path):
 
 
 def test_get_menulist(monkeypatch, capsys):
-    menuitems_per_menu = (7, 6, 18, 9, 13 ,1)
-    sep_locations = ((0, 5), (1, 2), (1, 4), (2, 4), (2, 10), (3, 4), (4, 2), (4, 7), (4, 10))
+    menuitems_per_menu = (7, 6, 16, 9, 13 ,1)
+    sep_locations = ((0, 5), (1, 2), (1, 4), (2, 2), (2, 8), (3, 4), (4, 2), (4, 7), (4, 10))
     with_indicator = ((1, 0), (1, 1))
     testobj = setup_editor(monkeypatch, capsys)
     data = testobj.get_menulist()

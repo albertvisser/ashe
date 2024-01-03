@@ -7,7 +7,7 @@ TITEL = "Albert's Simple HTML-editor"
 CMSTART = "<!>"
 ELSTART = '<>'
 DTDSTART = "DOCTYPE"
-IFSTART = '!IF'
+# IFSTART = '!IF'     # IE support misschien kan dit een keer echt weg
 BL = "&nbsp;"
 VAL_MESSAGE = ("Validation results are for the file on disk\n"
                "some errors/warnings may already have been corrected by BeautifulSoup\n"
