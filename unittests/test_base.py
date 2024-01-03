@@ -1096,7 +1096,49 @@ def test_check_if_adding_ok(monkeypatch, capsys):
     assert testobj.check_if_adding_ok()
 
 def _test_convert_link(monkeypatch, capsys):
+    def mock_exists_no(arg):
+        print(f'called os.path.exists with arg `{arg}`')
+        return False
+    def mock_exists_yes(arg):
+        print(f'called os.path.exists with arg `{arg}`')
+        return True
+    orig_abspath = testee.os.path.abspath
+    def mock_abspath(arg):
+        print(f'called os.path.abspath with arg `{arg}`')
+        orig_abspath(arg)
+    orig_getcwd = testee.os.getcwd
+    def mock_getcwd():
+        print('called os.getcwd')
+        return orig_getcwd()
+    orig_relpath = testee.os.path.relpath
+    def mock_relpath(*args):
+        print(f'called os.path.relpath with args', args)
+        orig_relpath(*args)
     testobj = setup_editor(monkeypatch, capsys)
+    with pytest.raises(ValueError) as exc:
+        testobj.convert_link('', 'anything')
+    assert str(exc.value) == 'link opgeven of cancel kiezen s.v.p'
+    monkeypatch.setattr(testee.os, 'getcwd', mock_getcwd)
+    monkeypatch.setattr(testee.os.path, 'abspath', mock_abspath)
+    monkeypatch.setattr(testee.os.path, 'exists', mock_exists_no)
+    assert testobj.convert_link('something', 'anything') == 'something'
+    assert capsys.readouterr().out == 'called os.path.exists with arg `something`\n'
+    monkeypatch.setattr(testee.os.path, 'exists', mock_exists_yes)
+    assert testobj.convert_link('something', 'anything') == 'something'
+    assert capsys.readouterr().out == 'called os.path.exists with arg `something`\n'
+    assert testobj.convert_link('/', 'anything') == '/'
+    assert capsys.readouterr().out == 'called os.path.exists with arg `/`\n'
+    assert testobj.convert_link('http://here', 'anything') == 'http://here'
+    assert capsys.readouterr().out == 'called os.path.exists with arg `http://here`\n'
+    assert testobj.convert_link('./here', 'anything') == './here'
+    assert capsys.readouterr().out == 'called os.path.exists with arg `./here`\n'
+    assert testobj.convert_link('../here', 'anything') == '../here'
+    assert capsys.readouterr().out == 'called os.path.exists with arg `../here`\n'
+    assert testobj.convert_link('this/file', 'this') == 'file'
+    assert capsys.readouterr().out == 'called os.path.exists with arg `this/file`\n'
+    return
+    assert testobj.convert_link('this/other/file', 'this/here') == '../other/file'
+    assert capsys.readouterr().out == 'called os.path.exists with arg `this/other/file`\n'
 
 def test_add_link(monkeypatch, capsys):
     def mock_get_link_data():

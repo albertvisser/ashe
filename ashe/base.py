@@ -932,21 +932,19 @@ class Editor:
     @staticmethod
     def convert_link(link, root):
         """attempt to turn the link into one relative to the document
+
+        if it doesn't succeed, os.path.relpath throws a fit which should be dealt with in the caller
         """
-        nice_link = '', ''
-        test = link.split('/', 1)
         if not link:
             raise ValueError("link opgeven of cancel kiezen s.v.p")
         if not os.path.exists(link):
             nice_link = link
-        elif link == '/' or len(test) == 1 or test[0] in ('http://', './', '../'):
+        elif link == '/' or len(test) == 1 or link.startswith(('http://', './', '../')):
             nice_link = link
         else:
             link = os.path.abspath(link)
             whereami = os.path.dirname(root) if root else os.getcwd()
-            nice_link = os.path.relpath(link, whereami)   # getrelativepath(link, whereami)
-        if not nice_link:
-            raise ValueError('Unable to make this local link relative')
+            nice_link = os.path.relpath(link, whereami)
         return nice_link
 
     def add_link(self, event=None):
