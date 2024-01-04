@@ -619,8 +619,7 @@ class CssDialog(qtw.QDialog):
         try:
             link = self._parent.editor.convert_link(link, self._parent.editor.xmlfn)
         except ValueError as msg:
-            self._parent.meld(msg)
-            # qtw.QMessageBox.information(self, self._parent.title, msg)
+            self._parent.meld(str(msg))
             return
         self._parent.dialog_data = {"rel": 'stylesheet', "href": link, "type": 'text/css'}
         test = str(self.text_text.text())
@@ -723,7 +722,7 @@ class LinkDialog(qtw.QDialog):
             link = self._parent.editor.convert_link(self.link_text.text(),
                                                     self._parent.editor.xmlfn)
         except ValueError as msg:
-            qtw.QMessageBox.information(self, self._parent.title, msg)
+            self._parent.meld(str(msg))
             return
         self._parent.dialog_data = [txt, {"href": link,
                                           "title": str(self.title_text.text())}]
@@ -816,7 +815,7 @@ class ImageDialog(qtw.QDialog):
             link = self._parent.editor.convert_link(self.link_text.text(),
                                                     self._parent.editor.xmlfn)
         except ValueError as msg:
-            qtw.QMessageBox.information(self, self._parent.title, msg)
+            self._parent.meld(str(msg))
             return
         self._parent.dialog_data = {"src": link,
                                     "alt": str(self.alt_text.text()),
@@ -919,7 +918,7 @@ class VideoDialog(qtw.QDialog):
             link = self._parent.editor.ed.convert_link(self.link_text.text(),
                                                        self._parent.editor.xmlfn)
         except ValueError as msg:
-            qtw.QMessageBox.information(self, self._parent.title, msg)
+            self._parent.meld(str(msg))
             return
         self._parent.dialog_data = {"src": link,
                                     "height": str(self.hig_text.text()),
@@ -989,7 +988,7 @@ class AudioDialog(qtw.QDialog):
             link = self._parent.editor.convert_link(self.link_text.text(),
                                                     self._parent.editor.xmlfn)
         except ValueError as msg:
-            qtw.QMessageBox.information(self, self._parent.title, msg)
+            self._parent.meld(str(msg))
             return
         self._parent.dialog_data = {"src": link}
         super().accept()

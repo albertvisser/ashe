@@ -545,7 +545,7 @@ class CssDialog(wx.Dialog):
             try:
                 link = self._parent.editor.convert_link(link, self._parent.editor.xmlfn)
             except ValueError as msg:
-                self._parent.meld(msg)
+                self._parent.meld(str(msg))
                 return False, {}
             dialog_data = {"rel": 'stylesheet', "href": link}
         dialog_data["type"] = 'text/css'
@@ -635,7 +635,7 @@ class LinkDialog(wx.Dialog):
             link = self._parent.editor.convert_link(self.link_text.GetValue(),
                                                     self._parent.editor.xmlfn)
         except ValueError as msg:
-            self.parent.meld(msg)
+            self.parent.meld(str(msg))
             return False, ()
         return True, (txt, {"href": link, "title": self.title_text.GetValue()})
 
@@ -722,7 +722,7 @@ class ImageDialog(wx.Dialog):
             link = self._parent.editor.convert_link(self.link_text.GetValue(),
                                                     self._parent.editor.xmlfn)
         except ValueError as msg:
-            self._parent.meld(msg)
+            self._parent.meld(str(msg))
             return False, {}
         return True, {"src": link, "alt": str(self.alt_text.GetValue()),
                       "title": str(self.title_text.GetValue())}
@@ -811,7 +811,7 @@ class VideoDialog(wx.Dialog):
             link = self._parent.editor.convert_link(self.link_text.GetValue(),
                                                     self._parent.editor.xmlfn)
         except ValueError as msg:
-            self._parent.meld(msg)
+            self._parent.meld(str(msg))
             return False, {}
         return True, {"src": link,
                       "height": str(self.hig_text.GetValue()),
@@ -874,7 +874,7 @@ class AudioDialog(wx.Dialog):
             link = self._parent.editor.convert_link(self.link_text.GetValue(),
                                                     self._parent.editor.xmlfn)
         except ValueError as msg:
-            self._parent.meld(msg)
+            self._parent.meld(str(msg))
             return False, {}
         return True, {"src": link}
 
