@@ -255,7 +255,7 @@ class EditorGui(wx.Frame):
         return parent, pos
 
     def get_element_data(self, node):
-        "return attributes stored with this element"
+        "return attributes or inline text stored with this element"
         return self.tree.GetItemData(node)
 
     def get_element_children(self, node):
@@ -272,7 +272,7 @@ class EditorGui(wx.Frame):
         self.tree.SetItemText(node, text)
 
     def set_element_data(self, node, data):
-        "change stored attrs for this element"""
+        "change stored attrs or inline text for this element"""
         self.tree.SetItemData(node, data)
 
     def addtreeitem(self, node, naam, data, index=-1):

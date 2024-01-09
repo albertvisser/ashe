@@ -182,7 +182,7 @@ class EditorGui(qtw.QMainWindow):
 
     @staticmethod
     def get_element_data(node):
-        "return attributes stored with this element"
+        "return attributes or inline text stored with this element"
         return node.data(0, core.Qt.UserRole)
 
     @staticmethod
@@ -199,7 +199,7 @@ class EditorGui(qtw.QMainWindow):
 
     @staticmethod
     def set_element_data(node, data):
-        "change stored attrs for this element"""
+        "change stored attrs or inline text for this element"""
         node.setData(0, core.Qt.UserRole, data)
 
     @staticmethod
