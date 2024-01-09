@@ -7,12 +7,13 @@ import os
 # import sys
 import shutil
 import pathlib
+import tempfile
 import subprocess
 import contextlib
 import bs4 as bs  # BeautifulSoup as bs
 
 from ashe.gui import gui, toolkit
-from ashe.shared import ICO, TITEL, CMSTART, ELSTART, DTDSTART, BL  # , IFSTART   # IE support
+from ashe.shared import ICO, TITEL, CMSTART, ELSTART, DTDSTART, BL
 # check if we can use a separate editor for the parts dealing with style
 try:
     import cssedit.editor.main as csed
@@ -322,15 +323,19 @@ class Editor:
         for subnode in list(node.contents):
             if isinstance(subnode, bs.Tag):
                 data = subnode.attrs
-                dic = dict(data)
-                for key, value in dic.items():
+                # dic = dict(data)
+                # for key, value in dic.items():
+                for key, value in data.items():
                     if '%SOUP-ENCODING%' in value:
-                        dic[key] = value.replace('%SOUP-ENCODING%',
-                                                 self.root.originalEncoding)
+                        # dic[key] = value.replace('%SOUP-ENCODING%', self.root.originalEncoding)
+                        data[key] = value.replace('%SOUP-ENCODING%', self.root.originalEncoding)
                     elif isinstance(value, list):  # hack i.v.m. nieuwe versie
-                        dic[key] = ' '.join(value)
-                naam = getelname(subnode.name, dic, commented)
-                newitem = self.gui.addtreeitem(item, naam, dic)
+                        # dic[key] = ' '.join(value)
+                        data[key] = ' '.join(value)
+                # naam = getelname(subnode.name, dic, commented)
+                naam = getelname(subnode.name, data, commented)
+                # newitem = self.gui.addtreeitem(item, naam, dic)
+                newitem = self.gui.addtreeitem(item, naam, data)
                 self.add_node_to_tree(newitem, subnode, commented)
             elif isinstance(subnode, bs.Doctype):  # Declaration):
                 dtdtext = ' '.join((DTDSTART, str(subnode)))
@@ -338,20 +343,6 @@ class Editor:
                 newitem = self.gui.addtreeitem(item, getshortname(dtdtext), subnode)
             elif isinstance(subnode, bs.Comment):
                 test = subnode.string
-                # IE conditional support misschien kan dit een keer weg
-                # if test.lower().startswith('[if'):
-                #     cond, data = test.split(']>', 1)
-                #     cond = cond[3:].strip()
-                #     try:
-                #         data, _ = data.rsplit('<![', 1)
-                #     except ValueError:
-                #         print('IE conditional genegeerd:', test)
-                #     else:
-                #         newitem = self.gui.addtreeitem(item, '{IFSTART} {cond}', '')
-                #         # newnode = bs.BeautifulSoup(data, 'lxml').contents[0].contents[0]
-                #         newnode = bs.BeautifulSoup(data, 'lxml').contents[0]
-                #         self.add_node_to_tree(newitem, newnode)
-                # else:
                 newnode = bs.BeautifulSoup(test, 'lxml')
                 with contextlib.suppress(IndexError):
                     # correct BS wrapping this in <html><body>
@@ -378,11 +369,12 @@ class Editor:
 
     def expandnode(self, node, root, data, commented=False):
         "tree item (node) met inhoud (data) toevoegen aan BS node (root)"
-        try:
+        # try:
+        with contextlib.suppress(TypeError):
             for att in data:
-                root[str(att)] = str(data[att])
-        except TypeError:
-            pass
+                root[str(att)] = str(data[att])  # make sure key and value are strings
+        # except TypeError:                      # even though they probably already are
+        #     pass
         for elm in self.gui.get_element_children(node):
             text = self.gui.get_element_text(elm)
             data = self.gui.get_element_data(elm)
@@ -392,6 +384,7 @@ class Editor:
                     text = text.split(None, 1)[1]
                     if not commented:
                         is_comment = True
+                        # breakpoint()
                         soup = bs.BeautifulSoup('', 'lxml')
                         sub = soup.new_tag(text.split()[1])
                         self.expandnode(elm, sub, data, is_comment)
@@ -409,33 +402,11 @@ class Editor:
                 text = text.split(None, 1)[1]
                 sub = bs.Doctype(data)
                 root.append(sub)
-            # IE conditional support misschien kan dit een keer echt weg
-            # elif text.startswith(IFSTART):
-            #     # onthou conditie
-            #     cond = text.split(None, 1)[1]
-            #     text = ''
-            #     # onderliggende elementen langslopen
-            #     for subel in self.gui.get_element_children(elm):
-            #         subtext = self.gui.get_element_text(subel)
-            #         data = self.gui.get_element_data(subel)
-            #         if subtext.startswith(ELSTART):
-            #             # element in tekst omzetten en deze aan text toevoegen
-            #             onthou = self.soup
-            #             self.soup = bs.BeautifulSoup('', 'lxml')
-            #             tag = self.soup.new_tag(subtext.split()[1])
-            #             self.expandnode(subel, tag, data)
-            #             text += str(tag)
-            #             self.soup = onthou
-            #         else:
-            #             # tekst aan text toevoegen
-            #             text += str(data)
-            #     # complete tekst als commentaar element aan de soup toevoegen
-            #     sub = bs.Comment(f'[if {cond}]>{text}<![endif]')
-            #     root.append(sub)
             else:
                 sub = bs.NavigableString(str(data))  # .decode("utf-8")) niet voor Py3
                 if text.startswith(CMSTART) and not commented:
                     sub = bs.Comment(data)  # .decode("utf-8")) niet voor Py3
+                # breakpoint()
                 root.append(sub)  # data.decode("latin-1")) # insert(0,sub)
 
     def soup2file(self, saveas=False):
@@ -472,11 +443,6 @@ class Editor:
                             self.edit),
                            ('Comment/Uncomment', '#', 'C', 'Comment (out) the current item and '
                             'everything below', self.comment),
-                           # IE support misschien kan dit een keer helemaal weg
-                           # ('Add condition', '', '', 'Put a condition on showing the current '
-                           #  'item', self.make_conditional),
-                           # ('Remove condition', '', '', 'Remove this condition from the '
-                           #  'elements below it', self.remove_condition),
                            ('sep1', ),
                            ('Cut', 'X', 'C', 'Copy and delete the current element', self.cut),
                            ('Copy', 'C', 'C', 'Copy the current element', self.copy),
@@ -517,7 +483,8 @@ class Editor:
                               self.replace_and_next),
                              ("Replace This", 'F3', 'CS', 'Replace and search back',
                               self.replace_and_prev))),
-                ("&HTML", (('Add &DTD', '', '', 'Add a document type description', self.add_dtd),
+                ("&HTML", (('Add &DTD', '', '', 'Add a document type description',
+                            self.add_or_remove_dtd),
                            ('Add &Stylesheet', '', '', 'Add a stylesheet', self.add_css),
                            ('sep1', ),
                            ('Create &link (under)', '', '', 'Add a document reference',
@@ -694,47 +661,6 @@ class Editor:
             return
         self.edhlp.comment()
 
-    # IE support misschien kan dit een keer echt weg
-    # def make_conditional(self, event=None):
-    #     "zet een IE conditie om het element heen"
-    #     if not self.checkselection():
-    #         return
-    #     text = self.gui.get_element_text(self.item)
-    #     if text.startswith(IFSTART):
-    #         self.gui.meld("This is already a conditional")
-    #         return
-    #     # ask for the condition
-    #     cond = self.gui.ask_for_condition()
-    #     if cond:
-    #         # remember and remove the current element (use "cut"?)
-    #         parent, pos = self.gui.get_element_parentpos(self.item)
-    #         self.cut()    # moet dit niet self._cut() --> self.edhlp.cut() zijn?
-    #         # add the conditional in its place
-    #         new_item = self.gui.addtreeitem(parent, '{IFSTART} {cond}', None, pos)
-    #         # put the current element back ("insert under")
-    #         self.gui.set_selected_item(new_item)
-    #         self.paste()  # moet dit niet self._paste() --> self.edhlp.paste() zijn?
-
-    # def remove_condition(self, event=None):
-    #     "haal de IE conditie om het element weg"
-    #     if not self.checkselection():
-    #         return
-    #     text = self.gui.get_element_text(self.item)
-    #     if not text.startswith(IFSTART):
-    #         self.gui.meld("This is not a conditional")
-    #         return
-    #     # for all elements below this one:
-    #     for item in self.gui.get_element_children(self.item):
-    #         # remember and remove it (use "cut"?)
-    #         self.gui.set_selected_item(item)
-    #         self.copy()    # moet dit niet self._copy() --> self.edhlp.copy() zijn?
-    #         # "insert" after the conditional or under its parent
-    #         self.gui.set_selected_item(self.item)
-    #         self.paste()  # moet dit niet self._paste() --> self.edhlp.paste() zijn?
-    #     # remove the conditional
-    #     self.gui.set_selected_item(self.item)
-    #     self.edhlp.copy(cut=True, retain=False, ifcheck=False)
-
     def cut(self, event=None):
         "cut = copy with removing item from tree"
         self.edhlp.copy(cut=True)
@@ -784,8 +710,9 @@ class Editor:
         self.edhlp.add_text(below=True)
 
     @staticmethod
-    def build_search_spec(ele, attr_name, attr_val, text, attr, replacements=None):
-        "build text describing search action"
+    def build_search_spec(ele, attr_name, attr_val, text, replacements=None):
+        "build text describing search/replace action"
+        attr = ''
         if ele:
             ele = f' an element named `{ele}`'
         if attr_name or attr_val:
@@ -815,16 +742,24 @@ class Editor:
             out += '\nand replace '
             replace = ''
             if replacements[0]:
+                if not ele:
+                    return 'error: element replacement without element search'
                 replace = f'element name with `{replacements[0]}`'
             if replacements[1]:
+                if not attr_name:
+                    return 'error: attribute replacement without attribute search'
                 if replace:
                     replace += ', '
                 replace += f'attribute name with `{replacements[1]}`'
             if replacements[2]:
+                if not attr_val:
+                    return 'error: attribute value replacement without attribute value search'
                 if replace:
                     replace += ', '
                 replace += f'attribute value with `{replacements[2]}`'
             if replacements[3]:
+                if not text:
+                    return 'error: text replacement without text search'
                 if replace:
                     replace += ', '
                 replace += f'text with `{replacements[3]}`'
@@ -873,7 +808,7 @@ class Editor:
         "replace and find prev"
         self.srchhlp.replace_next(reverse=True)
 
-    def add_dtd(self, event=None):
+    def add_or_remove_dtd(self, event=None):
         "start toevoegen dtd m.b.v. dialoog"
         if self.has_dtd:
             self.gui.do_delete_item(self.gui.get_element_children(self.gui.top)[0])
@@ -893,9 +828,9 @@ class Editor:
 
     def add_css(self, event=None):
         "start toevoegen stylesheet m.b.v. dialoog"
-        print('in editor.add_css')
+        # print('in editor.add_css')
         ok, dialog_data = self.gui.get_css_data()
-        print('in editor.add_css, ok is', ok)
+        # print('in editor.add_css, ok is', ok)
         if not ok:
             return
         data = dialog_data
@@ -907,14 +842,14 @@ class Editor:
                     if self.gui.get_element_text(sub) == f'{ELSTART} head':
                         self.item = sub
         if not self.item:
-            self.gui.meld("Error: no <head> element")
+            self.gui.meld("Error: no <html> and/or no <head> element")
             return
         # create the stylesheet node
         if 'href' in data:
             text = getelname('link', data)
         else:
             text = getelname('style', data)
-            print(data)
+            # print(data)
             cssdata = data.pop('cssdata')
             # cssdata = data.pop('styledata')
         node = self.gui.addtreeitem(self.item, text, data, -1)
@@ -939,16 +874,22 @@ class Editor:
 
         if it doesn't succeed, os.path.relpath throws a fit which should be dealt with in the caller
         """
+        nice_link = ''
+        test = link.split('/', 1)
         if not link:
             raise ValueError("link opgeven of cancel kiezen s.v.p")
-        if not os.path.exists(link):
-            nice_link = link
-        elif link == '/' or len(test) == 1 or link.startswith(('http://', './', '../')):
+        # if not os.path.exists(link):
+        #     nice_link = link
+        # elif link == '/' or len(test) == 1 or link.startswith(('http://', './', '../')):
+        if (link == '/' or len(test) == 1 or link.startswith(('http://', './', '../')) or
+                not os.path.exists(link)):
             nice_link = link
         else:
             link = os.path.abspath(link)
             whereami = os.path.dirname(root) if root else os.getcwd()
             nice_link = os.path.relpath(link, whereami)
+        if not nice_link:  # fallback, probably not necessary
+            raise ValueError('Unable to make this local link relative')
         return nice_link
 
     def add_link(self, event=None):
@@ -1043,11 +984,12 @@ class Editor:
         """validate HTML source
         """
         if self.tree_dirty or not self.xmlfn:
-            htmlfile = '/tmp/ashe_check.html'
+            tempdir = tempfile.mkdtemp()
+            htmlfile = pathlib.Path(tempdir) / 'ashe_check.html'
             fromdisk = False
             self.data2soup()
-            with open(htmlfile, 'w') as f_out:
-                f_out.write(self.soup.prettify())
+            htmlfile.write_text(self.soup.prettify())
+            htmlfile = str(htmlfile)
         else:
             htmlfile = self.xmlfn
             fromdisk = True
@@ -1106,16 +1048,6 @@ class EditorHelper:
                 text = 'doctype cannot be determined'
             self.gui.meld(text)
             return
-        # IE support - eens een keer echt weghalen?
-        # if text.startswith(IFSTART):
-        #     self.gui.meld("About to edit this conditional")
-        #     # start dialog to edit condition
-        #     cond, ok = self.gui.ask_for_text(text)
-        #     # if confirmed: change element
-        #     if ok:
-        #         self.gui.meld("changing to " + str(cond))
-        #         # nou nog echt doen (of gebeurt dat in de dialoog? dacht het niet)
-        #     return
         under_comment = self.gui.get_element_text(
             self.gui.get_element_parent(self.item)).startswith(CMELSTART)
         modified = False
@@ -1181,14 +1113,14 @@ class EditorHelper:
         attrs = self.gui.get_element_data(self.item)
         commented = tag.startswith(CMSTART)
         if commented:
-            _, tag = tag.split(None, 1)  # CMSTART eraf halen
-        under_comment = self.gui.get_element_text(
-            self.gui.get_element_parent(self.item)).startswith(CMELSTART)
+            tag = tag.split(None, 1)[1]  # CMSTART eraf halen
+        element_above = self.gui.get_element_parent(self.item)
+        under_comment = self.gui.get_element_text(element_above).startswith(CMELSTART)
         commented = not commented  # het (un)commenten uitvoeren
         if under_comment:
             commented = True
         if tag.startswith(ELSTART):
-            _, tag = tag.split(None, 1)  # ELSTART eraf halen
+            tag = tag.split(None, 1)[1]  # ELSTART eraf halen
             self.gui.set_element_text(self.item, getelname(tag, attrs, commented))
             self.gui.set_element_data(self.item, attrs)
             self.comment_out(self.item, commented)
@@ -1230,10 +1162,6 @@ class EditorHelper:
             self.gui.meld(f"Can't {txt} the root")
             return
         text = self.gui.get_element_text(self.item)
-        # IE conditional support - eens een keer definitief weghalen
-        # if ifcheck and text.startswith(IFSTART):
-        #     self.gui.meld("Can't do this on a conditional (use menu option to delete)")
-        #     return
         data = self.gui.get_element_data(self.item)
         if str(text).startswith(DTDSTART):
             self.gui.meld("Please use the HTML menu's DTD option to remove the DTD")
@@ -1269,7 +1197,7 @@ class EditorHelper:
             if text.startswith(CMSTART):
                 self.gui.meld("Can't paste below comment")
                 return
-            if not text.startswith(ELSTART):  #  and not text.startswith(IFSTART):  IE cond support
+            if not text.startswith(ELSTART):
                 self.gui.meld("Can't paste below text")
                 return
         if self.item == self.editor.root:

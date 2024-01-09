@@ -70,14 +70,24 @@ class MockEditorGui:
         return 'node'
     def adjust_dtd_menu(self):
         print('called EditorGui.adjust_dtd_menu')
+    def do_delete_item(self, arg):
+        print(f'called EditorGui.do_delete_item with arg `{arg}`')
     def init_tree(self, *args):
         print('called EditorGui.init_tree with args', args)
+    def ensure_item_visible(self, arg):
+        print(f'called EditorGui.ensure_item_visible with arg `{arg}`')
     def ask_for_open_filename(self):
-        pass
+        return True, 'x'
     def ask_for_save_filename(self):
-        pass
+        return True, 'x'
     def ask_how_to_continue(self):
-        pass
+        return True, 'x'
+    def get_dtd(self):
+        return True, 'x'
+    def get_css_data(self):
+        return True, 'x'
+    def validate(self, *args):
+        print('called EditorGui.validate with args', args)
 
 
 class MockManager:
@@ -452,15 +462,51 @@ def test_soup2data(monkeypatch, capsys):
                                        "called EditorGui.init_tree with args ('',)\n"
                                        "called.Editor.mark_dirty with value `False`\n")
 
-def _test_add_node_to_tree(monkeypatch, capsys):
-    monkeypatch.setattr(testee, 'getelname', '')
-    monkeypatch.setattr(testee.bs, 'BeautifulSoup', '')
+def test_add_node_to_tree(monkeypatch, capsys):
+    def mock_find(*args):
+        print('called Tag.find_all with args', args)
+        return [types.SimpleNamespace(contents=['first body'])]
+    class MockBS:
+        def BeautifulSoup(*args):
+            print('called BeautifulSoup with args', args)
+            return types.SimpleNamespace(find_all=mock_find)
+        class Tag:
+            def __init__(self):
+                self.name = 'tagname'
+                self.attrs = {'x': '%SOUP-ENCODING%', 'y': 'qqq', 'z': ['a', 'b']}
+                self.contents = []
+        class Doctype:
+            def __str__(self):
+                return 'A doctype'
+        class Comment:
+            def __init__(self):
+                self.string = 'a comment'
+
+    def mock_getelname(*args):
+        print('called getelname with args', args)
+    def mock_getshortname(*args):
+        print('called getshortname with args', args)
+    def mock_additem(*args):
+        print('called EditorGui.addtreeitem with args', args)
+    monkeypatch.setattr(testee, 'getelname', mock_getelname)
+    monkeypatch.setattr(testee, 'getshortname', mock_getshortname)
+    monkeypatch.setattr(testee, 'bs', MockBS)
     testobj = setup_editor(monkeypatch, capsys)
-    tag = testee.bs.Tag()
-    dtd = testee.bs.Doctype()
-    comment = testee.bs.Comment()
-    other = 'other'
-    testobj.add_node_to_tree('item', types.SimpeNamespace(contents=[tag, dtd, comment, other]))
+    testobj.root = types.SimpleNamespace(originalEncoding='original')
+    monkeypatch.setattr(testobj.gui, 'addtreeitem', mock_additem)
+    dt = testee.bs.Doctype()
+    node = types.SimpleNamespace(contents=[testee.bs.Tag(), dt, testee.bs.Comment()])
+    testobj.add_node_to_tree('item', node)
+    assert capsys.readouterr().out == (
+        "called getelname with args ('tagname', {'x': 'original', 'y': 'qqq', 'z': 'a b'}, False)\n"
+        "called EditorGui.addtreeitem with args"
+        " ('item', None, {'x': 'original', 'y': 'qqq', 'z': 'a b'})\n"
+        "called getshortname with args ('DOCTYPE A doctype',)\n"
+        f"called EditorGui.addtreeitem with args ('item', None, {dt!r})\n"
+        "called BeautifulSoup with args ('a comment', 'lxml')\n"
+        "called Tag.find_all with args ('body',)\n"
+        "called getshortname with args ('first body', True)\n"
+        "called EditorGui.addtreeitem with args ('item', None, 'first body')\n")
 
 def test_data2soup(monkeypatch, capsys):
     def mock_expandnode(self, *args):
@@ -499,8 +545,119 @@ def test_data2soup(monkeypatch, capsys):
             "called BeautifulSoup.new_tag with arg element\n"
             "called Editor.expandnode with args (['other'], 'element', 'elementdata')\n")
 
-def _test_expandnode(monkeypatch, capsys):
+def test_expandnode(monkeypatch, capsys):
+    def mock_newtag(*args):
+        print('called BeautifulSoup.new_tag with args', args)
+        retval = MockBS.Tag('hola')
+        retval.append('first body')
+        return retval
+    class MockBS:
+        def BeautifulSoup(*args):
+            print('called BeautifulSoup with args', args)
+            return types.SimpleNamespace(new_tag=mock_newtag)
+        class Tag:
+            def __init__(self, name, attrs=None):
+                self.name = name
+                self.attrs = attrs if attrs else {}
+                self.contents = []
+            def __str__(self):
+                return f'element {self.name}'
+            def append(self, arg):
+                print('called Tag.append with arg', arg)
+                self.contents.append(arg)
+        class Doctype:
+            def __init__(self, arg):
+                self.string = f'doctype {arg}'
+            def __str__(self):
+                return self.string
+        class Comment:
+            def __init__(self, arg):
+                self.string = f'commented {arg}'
+            def __str__(self):
+                return self.string
+        class NavigableString:
+            def __init__(self, arg):
+                self.string = f'plain {arg}'
+            def __str__(self):
+                return self.string
+    def mock_get_children(self, arg):
+        print('called EditorGui.get_element_children with arg', arg)
+        self.textcounter += 1
+        if self.textcounter == 1:
+            return ['element', 'commented element', f'{testee.DTDSTART} dtd', 'other']
+        return ['other']
+    def mock_get_text(self, arg):
+        print('called EditorGui.get_element_text with arg', arg)
+        if arg == 'element':
+            text = '<> this'
+        elif arg == 'commented element':
+            text = '<!> <> that'
+        elif arg == 'dtd':
+            text = '<doctype>'
+        else:  # 'other'
+            text = arg
+        return text
+    def mock_get_data(self, arg):
+        print('called EditorGui.get_element_data with arg', arg)
+        if arg == 'element':
+            data = {'x': 'xx', 'y': 'yy'}
+        elif arg == 'commented element':
+            data = {'x': 'xx', 'y': 'yy'}
+        elif arg == 'dtd':
+            data = 'doctype'
+        else:  # 'other'
+            data = 'other text'
+        return data
+    monkeypatch.setattr(MockEditorGui, 'get_element_children', mock_get_children)
+    monkeypatch.setattr(MockEditorGui, 'get_element_text', mock_get_text)
+    monkeypatch.setattr(MockEditorGui, 'get_element_data', mock_get_data)
+    monkeypatch.setattr(testee, 'bs', MockBS)
     testobj = setup_editor(monkeypatch, capsys)
+    testobj.soup = testee.bs.BeautifulSoup('', 'lxml')
+    assert capsys.readouterr().out == "called BeautifulSoup with args ('', 'lxml')\n"
+    # NB node is een BS Tag object em root ook namelijk direct daaronder
+    # daarom kent deze zowel een dict attribuut als een append methode
+    node = testee.bs.Tag('element', {'attrname': 'attrvalue'})
+    origroot = testee.bs.Tag('subelement', {'xx': 'yyyy'})
+    root = origroot
+    # breakpoint()
+    testobj.expandnode(node, root, {})
+    assert root == origroot
+    assert capsys.readouterr().out == (
+            "called EditorGui.get_element_children with arg element element\n"
+            "called EditorGui.get_element_text with arg element\n"
+            "called EditorGui.get_element_data with arg element\n"
+            "called BeautifulSoup.new_tag with args ('this',)\n"
+            "called Tag.append with arg first body\n"
+            "called Tag.append with arg element hola\n"
+            "called EditorGui.get_element_children with arg element\n"
+            "called EditorGui.get_element_text with arg other\n"
+            "called EditorGui.get_element_data with arg other\n"
+            "called Tag.append with arg plain other text\n"
+            "called EditorGui.get_element_text with arg commented element\n"
+            "called EditorGui.get_element_data with arg commented element\n"
+            "called BeautifulSoup with args ('', 'lxml')\n"
+            "called BeautifulSoup.new_tag with args ('that',)\n"
+            "called Tag.append with arg first body\n"
+            "called EditorGui.get_element_children with arg commented element\n"
+            "called EditorGui.get_element_text with arg other\n"
+            "called EditorGui.get_element_data with arg other\n"
+            "called Tag.append with arg plain other text\n"
+            "called Tag.append with arg commented element hola\n"
+            "called EditorGui.get_element_text with arg DOCTYPE dtd\n"
+            "called EditorGui.get_element_data with arg DOCTYPE dtd\n"
+            "called Tag.append with arg doctype other text\n"
+            "called EditorGui.get_element_text with arg other\n"
+            "called EditorGui.get_element_data with arg other\n"
+            "called Tag.append with arg plain other text\n")
+    root = origroot
+    testobj.expandnode(node, root, {}, commented=True)
+    assert root == origroot
+    assert capsys.readouterr().out == (
+            "called EditorGui.get_element_children with arg element element\n"
+            "called EditorGui.get_element_text with arg other\n"
+            "called EditorGui.get_element_data with arg other\n"
+            "called Tag.append with arg plain other text\n")
 
 def test_soup2file(monkeypatch, capsys, tmp_path):
     monkeypatch.setattr(testee.Editor, '__init__', mock_init_editor)
@@ -532,7 +689,6 @@ def test_soup2file(monkeypatch, capsys, tmp_path):
     testobj.soup = 12
     testobj.soup2file(saveas=True)
 
-
 def test_get_menulist(monkeypatch, capsys):
     menuitems_per_menu = (7, 6, 16, 9, 13 ,1)
     sep_locations = ((0, 5), (1, 2), (1, 4), (2, 2), (2, 8), (3, 4), (4, 2), (4, 7), (4, 10))
@@ -550,7 +706,6 @@ def test_get_menulist(monkeypatch, capsys):
                 assert len(menuitem) == 6
             else:
                 assert len(menuitem) == 5
-
 
 def test_mark_dirty(monkeypatch, capsys):
     testobj = setup_editor(monkeypatch, capsys)
@@ -570,7 +725,6 @@ def test_mark_dirty(monkeypatch, capsys):
     assert not testobj.tree_dirty
     assert capsys.readouterr().out == 'called EditorGui.set_screen_title with arg `* some text`\n'
     # waarom verdwijnt het sterretje niet?
-
 
 def test_check_tree_state(monkeypatch, capsys):
     def mock_savexml(self):
@@ -596,7 +750,6 @@ def test_check_tree_state(monkeypatch, capsys):
     assert capsys.readouterr().out == ("called EditorGui.ask_how_to_continue with args ('title', "
                                        "'HTML data has been modified - save before continuing?')\n"
                                        'called Editor.savexml\n')
-
 
 def test_is_stylesheet_node(monkeypatch, capsys):
     def mock_get_text(self, node):
@@ -958,11 +1111,11 @@ def test_comment(monkeypatch, capsys):
     testobj.comment()
     assert capsys.readouterr().out == ''
 
-def _test_make_conditional(monkeypatch, capsys):
-    testobj = setup_editor(monkeypatch, capsys)
+# def _test_make_conditional(monkeypatch, capsys):
+#     testobj = setup_editor(monkeypatch, capsys)
 
-def _test_remove_condition(monkeypatch, capsys):
-    testobj = setup_editor(monkeypatch, capsys)
+# def _test_remove_condition(monkeypatch, capsys):
+#     testobj = setup_editor(monkeypatch, capsys)
 
 def test_cut(monkeypatch, capsys):
     testobj = setup_editor(monkeypatch, capsys)
@@ -1025,8 +1178,60 @@ def test_add_textchild(monkeypatch, capsys):
     testobj.add_textchild()
     assert capsys.readouterr().out == "called EditorHelper.add_text with args {'below': True}\n"
 
-def _test_build_search_spec(monkeypatch, capsys):
+def test_build_search_spec(monkeypatch, capsys):
     testobj = setup_editor(monkeypatch, capsys)
+    assert testobj.build_search_spec('', '', '', '') == ''
+    assert testobj.build_search_spec('x', '', '', '') == 'search for an element named `x`'
+    assert testobj.build_search_spec('', 'x', '', '') == 'search for an attribute named `x`'
+    assert testobj.build_search_spec('', '', 'x', '') == 'search for an attribute that has value `x`'
+    assert testobj.build_search_spec('', '', '', 'x') == 'search for text'
+    assert testobj.build_search_spec('x', 'y', '', '') == ('search for an element named `x`'
+                                                           ' with an attribute named `y`')
+    assert testobj.build_search_spec('x', '', 'y', '') == ('search for an element named `x`'
+                                                           ' with an attribute that has value `y`')
+    assert testobj.build_search_spec('x', '', '', 'y') == 'search for text under an element named `x`'
+    assert testobj.build_search_spec('', 'x', 'y', '') == ('search for an attribute named `x`'
+                                                           ' that has value `y`')
+    assert testobj.build_search_spec('', 'x', '', 'y') == ('search for text under an element'
+                                                           ' with an attribute named `x`')
+    assert testobj.build_search_spec('', '', 'x', 'y') == ('search for text under an element'
+                                                           ' with an attribute that has value `x`')
+    assert testobj.build_search_spec('x', 'y', 'z', '') == ('search for an element named `x`'
+                                                            ' with an attribute named `y`'
+                                                            ' that has value `z`')
+    assert testobj.build_search_spec('x', 'y', '', 'z') == ('search for text'
+                                                            ' under an element named `x`'
+                                                            ' with an attribute named `y`')
+    assert testobj.build_search_spec('x', '', 'y', 'z') == ('search for text'
+                                                            ' under an element named `x`'
+                                                            ' with an attribute that has value `y`')
+    assert testobj.build_search_spec('', 'x', 'y', 'z') == ('search for text under an element'
+                                                            ' with an attribute named `x`'
+                                                            ' that has value `y`')
+    assert testobj.build_search_spec('x', 'y', 'z', 'a', ()) == ('search for text'
+                                                                 ' under an element named `x`'
+                                                                 ' with an attribute named `y`'
+                                                                 ' that has value `z`')
+    assert testobj.build_search_spec('', '', '', '', ('x')) == (
+            'error: element replacement without element search')
+    assert testobj.build_search_spec('', '', '', '', ('', 'x')) == (
+            'error: attribute replacement without attribute search')
+    assert testobj.build_search_spec('', '', '', '', ('', '', 'x')) == (
+            'error: attribute value replacement without attribute value search')
+    assert testobj.build_search_spec('', '', '', '', ('', '', '', 'x')) == (
+            'error: text replacement without text search')
+    assert testobj.build_search_spec('x', '', '', '', ('y', '', '', '')) == (
+            'search for an element named `x`\nand replace element name with `y`')
+    assert testobj.build_search_spec('', 'x', '', '', ('', 'y', '', '')) == (
+            'search for an attribute named `x`\nand replace attribute name with `y`')
+    assert testobj.build_search_spec('', '', 'x', '', ('', '', 'y', '')) == (
+            'search for an attribute that has value `x`\nand replace attribute value with `y`')
+    assert testobj.build_search_spec('', '', '', 'x', ('', '', '', 'y')) == (
+            'search for text\nand replace text with `y`')
+    assert testobj.build_search_spec('x', 'y', 'z', 'a', ('xx', 'yy', 'zz', 'aa')) == (
+            'search for text under an element named `x` with an attribute named `y`'
+            ' that has value `z`\nand replace element name with `xx`, attribute name with `yy`,'
+            ' attribute value with `zz`, text with `aa`')
 
 def test_search(monkeypatch, capsys):
     testobj = setup_editor(monkeypatch, capsys)
@@ -1076,11 +1281,138 @@ def test_replace_and_prev(monkeypatch, capsys):
     testobj.replace_and_prev()
     assert capsys.readouterr().out == "called SearchHelper.replace_next with args {'reverse': True}\n"
 
-def _test_add_dtd(monkeypatch, capsys):
+def test_add_dtd(monkeypatch, capsys):
+    def mock_get_children(arg):
+        print(f'called EditorGui.get_element_children with arg `{arg}`')
+        return ['first child']
+    def mock_get_dtd():
+        print('called EditorGui.get_dtd')
+        return True, 'A doctype'
+    def mock_get_dtd_no():
+        print('called EditorGui.get_dtd')
+        return False, ''
+    monkeypatch.setattr(testee.Editor, 'mark_dirty', mock_mark_dirty)
+    monkeypatch.setattr(testee.Editor, 'refresh_preview', mock_refresh)
     testobj = setup_editor(monkeypatch, capsys)
+    testobj.has_dtd = True
+    testobj.gui.top = 'gui.top'
+    monkeypatch.setattr(testobj.gui, 'get_element_children', mock_get_children)
+    monkeypatch.setattr(testobj.gui, 'get_dtd', mock_get_dtd)
+    testobj.add_or_remove_dtd()
+    assert not testobj.has_dtd
+    assert capsys.readouterr().out == ('called EditorGui.get_element_children with arg `gui.top`\n'
+                                       'called EditorGui.do_delete_item with arg `first child`\n'
+                                       'called EditorGui.adjust_dtd_menu\n'
+                                       'called.Editor.mark_dirty with value `True`\n'
+                                       'called Editor.refresh_preview\n'
+                                       'called EditorGui.get_element_children with arg `gui.top`\n'
+                                       'called EditorGui.ensure_item_visible with arg'
+                                       ' `first child`\n')
+    testobj.has_dtd = False
+    testobj.add_or_remove_dtd()
+    assert testobj.has_dtd
+    assert capsys.readouterr().out == ("called EditorGui.get_dtd\n"
+                                       "called EditorGui.addtreeitem with args"
+                                       " ('gui.top', 'DOCTYPE A doctype', 'A doctype', 0)\n"
+                                       "called EditorGui.adjust_dtd_menu\n"
+                                       "called.Editor.mark_dirty with value `True`\n"
+                                       "called Editor.refresh_preview\n"
+                                       "called EditorGui.get_element_children with arg `gui.top`\n"
+                                       "called EditorGui.ensure_item_visible with arg"
+                                       " `first child`\n")
+    testobj.has_dtd = False
+    monkeypatch.setattr(testobj.gui, 'get_dtd', mock_get_dtd_no)
+    testobj.add_or_remove_dtd()
+    assert not testobj.has_dtd
+    assert capsys.readouterr().out == "called EditorGui.get_dtd\n"
 
-def _test_add_css(monkeypatch, capsys):
+def test_add_css(monkeypatch, capsys):
+    def mock_get_css_no():
+        print('called EditorGui.get_css_data')
+        return False, ''
+    def mock_get_css_external():
+        print('called EditorGui.get_css_data')
+        return True, {'href': 'some_stylesheet'}
+    def mock_get_css_internal():
+        print('called EditorGui.get_css_data')
+        return True, {'other': 'xxx', 'cssdata': 'yyy'}
+    def mock_get_children_nohtml(arg):
+        print(f'called EditorGui.get_element_children with arg `{arg}`')
+        return ['x']
+    counter = 0
+    def mock_get_children_nohead(arg):
+        nonlocal counter
+        print(f'called EditorGui.get_element_children with arg `{arg}`')
+        counter += 1
+        if counter == 1:
+            return [f'{testee.ELSTART} html']
+        return ['first child']
+    def mock_get_children(arg):
+        nonlocal counter
+        print(f'called EditorGui.get_element_children with arg `{arg}`')
+        counter += 1
+        if counter == 1:
+            return [f'{testee.ELSTART} html']
+        if counter == 2:
+            return [f'{testee.ELSTART} head']
+        return ['first child']
+    def mock_get_text(arg):
+        print(f'called EditorGui.get_element_text with arg `{arg}`')
+        return arg
+    monkeypatch.setattr(testee.Editor, 'mark_dirty', mock_mark_dirty)
+    monkeypatch.setattr(testee.Editor, 'refresh_preview', mock_refresh)
     testobj = setup_editor(monkeypatch, capsys)
+    monkeypatch.setattr(testobj.gui, 'get_element_children', mock_get_children)
+    monkeypatch.setattr(testobj.gui, 'get_element_text', mock_get_text)
+    monkeypatch.setattr(testobj.gui, 'get_css_data', mock_get_css_no)
+    testobj.gui.top = 'gui.top'
+    testobj.add_css()
+    assert capsys.readouterr().out == "called EditorGui.get_css_data\n"
+    monkeypatch.setattr(testobj.gui, 'get_css_data', mock_get_css_external)
+    monkeypatch.setattr(testobj.gui, 'get_element_children', mock_get_children_nohtml)
+    testobj.add_css()
+    assert capsys.readouterr().out == ("called EditorGui.get_css_data\n"
+                                       "called EditorGui.get_element_children with arg `gui.top`\n"
+                                       "called EditorGui.get_element_text with arg `x`\n"
+                                       "called EditorGui.meld with arg"
+                                       " `Error: no <html> and/or no <head> element`\n")
+    monkeypatch.setattr(testobj.gui, 'get_element_children', mock_get_children_nohead)
+    testobj.add_css()
+    assert capsys.readouterr().out == ("called EditorGui.get_css_data\n"
+                                       "called EditorGui.get_element_children with arg `gui.top`\n"
+                                       "called EditorGui.get_element_text with arg `<> html`\n"
+                                       "called EditorGui.get_element_children with arg `<> html`\n"
+                                       "called EditorGui.get_element_text with arg `first child`\n"
+                                       "called EditorGui.meld with arg"
+                                       " `Error: no <html> and/or no <head> element`\n")
+    monkeypatch.setattr(testobj.gui, 'get_element_children', mock_get_children)
+    counter = 0
+    testobj.add_css()
+    assert capsys.readouterr().out == ("called EditorGui.get_css_data\n"
+                                       "called EditorGui.get_element_children with arg `gui.top`\n"
+                                       "called EditorGui.get_element_text with arg `<> html`\n"
+                                       "called EditorGui.get_element_children with arg `<> html`\n"
+                                       "called EditorGui.get_element_text with arg `<> head`\n"
+                                       "called EditorGui.addtreeitem with args ('<> head',"
+                                       " '<> link', {'href': 'some_stylesheet'}, -1)\n"
+                                       "called.Editor.mark_dirty with value `True`\n"
+                                       "called Editor.refresh_preview\n")
+    monkeypatch.setattr(testobj.gui, 'get_css_data', mock_get_css_internal)
+    monkeypatch.setattr(testobj.gui, 'get_element_children', mock_get_children)
+    counter = 0
+    testobj.add_css()
+    assert capsys.readouterr().out == ("called EditorGui.get_css_data\n"
+                                       "called EditorGui.get_element_children with arg `gui.top`\n"
+                                       "called EditorGui.get_element_text with arg `<> html`\n"
+                                       "called EditorGui.get_element_children with arg `<> html`\n"
+                                       "called EditorGui.get_element_text with arg `<> head`\n"
+                                       "called EditorGui.addtreeitem with args ('<> head',"
+                                       " '<> style', {'other': 'xxx'}, -1)\n"
+                                       "called EditorGui.addtreeitem with args ('node',"
+                                       " 'yyy', 'yyy', -1)\n"
+                                       "called.Editor.mark_dirty with value `True`\n"
+                                       "called Editor.refresh_preview\n")
+
 
 def test_check_if_adding_ok(monkeypatch, capsys):
     monkeypatch.setattr(MockEditorGui, 'get_element_text',lambda *x: 'text')
@@ -1095,50 +1427,52 @@ def test_check_if_adding_ok(monkeypatch, capsys):
     testobj.item = 'x'
     assert testobj.check_if_adding_ok()
 
-def _test_convert_link(monkeypatch, capsys):
-    def mock_exists_no(arg):
-        print(f'called os.path.exists with arg `{arg}`')
-        return False
-    def mock_exists_yes(arg):
-        print(f'called os.path.exists with arg `{arg}`')
-        return True
-    orig_abspath = testee.os.path.abspath
-    def mock_abspath(arg):
-        print(f'called os.path.abspath with arg `{arg}`')
-        orig_abspath(arg)
-    orig_getcwd = testee.os.getcwd
-    def mock_getcwd():
-        print('called os.getcwd')
-        return orig_getcwd()
-    orig_relpath = testee.os.path.relpath
+def test_convert_link(monkeypatch, capsys, tmp_path):
+    # orig_abspath = testee.os.path.abspath
+    # def mock_abspath(arg):
+    #     print(f'called os.path.abspath with arg `{arg}`')
+    #     orig_abspath(arg)
+    # def mock_getcwd():
+    #     print('called os.getcwd')
+    #     return os.path.dirname(__path__)
     def mock_relpath(*args):
-        print(f'called os.path.relpath with args', args)
-        orig_relpath(*args)
+         print(f'called os.path.relpath with args', args)
+         raise ValueError('os.path.relpath failed')
+    def mock_relpath_2(*args):
+         print(f'called os.path.relpath with args', args)
+         return ''
     testobj = setup_editor(monkeypatch, capsys)
     with pytest.raises(ValueError) as exc:
         testobj.convert_link('', 'anything')
     assert str(exc.value) == 'link opgeven of cancel kiezen s.v.p'
-    monkeypatch.setattr(testee.os, 'getcwd', mock_getcwd)
-    monkeypatch.setattr(testee.os.path, 'abspath', mock_abspath)
-    monkeypatch.setattr(testee.os.path, 'exists', mock_exists_no)
-    assert testobj.convert_link('something', 'anything') == 'something'
-    assert capsys.readouterr().out == 'called os.path.exists with arg `something`\n'
-    monkeypatch.setattr(testee.os.path, 'exists', mock_exists_yes)
-    assert testobj.convert_link('something', 'anything') == 'something'
-    assert capsys.readouterr().out == 'called os.path.exists with arg `something`\n'
+    # monkeypatch.setattr(testee.os, 'getcwd', mock_getcwd)
+    # monkeypatch.setattr(testee.os.path, 'abspath', mock_abspath)
+    mock_link = tmp_path / 'htmledit' / 'test.html'
+    mock_root = tmp_path / 'htmledit'
+    # neither path exists at this time
+    assert testobj.convert_link(str(mock_link), '') == str(mock_link)
+    mock_root.mkdir()
+    mock_link.touch()
+    # now they do
+    assert testobj.convert_link(str(mock_link), '') == '../../../..' + str(mock_link)
+    assert testobj.convert_link(str(mock_link), mock_root) == 'htmledit/test.html'
     assert testobj.convert_link('/', 'anything') == '/'
-    assert capsys.readouterr().out == 'called os.path.exists with arg `/`\n'
     assert testobj.convert_link('http://here', 'anything') == 'http://here'
-    assert capsys.readouterr().out == 'called os.path.exists with arg `http://here`\n'
     assert testobj.convert_link('./here', 'anything') == './here'
-    assert capsys.readouterr().out == 'called os.path.exists with arg `./here`\n'
     assert testobj.convert_link('../here', 'anything') == '../here'
-    assert capsys.readouterr().out == 'called os.path.exists with arg `../here`\n'
-    assert testobj.convert_link('this/file', 'this') == 'file'
-    assert capsys.readouterr().out == 'called os.path.exists with arg `this/file`\n'
-    return
-    assert testobj.convert_link('this/other/file', 'this/here') == '../other/file'
-    assert capsys.readouterr().out == 'called os.path.exists with arg `this/other/file`\n'
+    assert testobj.convert_link('file', 'this') == 'file'
+    monkeypatch.setattr(testee.os.path, 'relpath', mock_relpath)
+    with pytest.raises(ValueError) as exc:
+        testobj.convert_link(str(mock_link), '')
+    assert str(exc.value) == 'os.path.relpath failed'
+    assert capsys.readouterr().out == ('called os.path.relpath with args'
+                                       f" ('{mock_link}', '{testee.os.getcwd()}')\n")
+    monkeypatch.setattr(testee.os.path, 'relpath', mock_relpath_2)
+    with pytest.raises(ValueError) as exc:
+        testobj.convert_link(str(mock_link), '')
+    assert str(exc.value) == 'Unable to make this local link relative'
+    assert capsys.readouterr().out == ('called os.path.relpath with args'
+                                       f" ('{mock_link}', '{testee.os.getcwd()}')\n")
 
 def test_add_link(monkeypatch, capsys):
     def mock_get_link_data():
@@ -1205,7 +1539,6 @@ def test_add_image(monkeypatch, capsys):
     testobj.add_image()
     assert capsys.readouterr().out == ''
 
-
 def test_add_audio(monkeypatch, capsys):
     def mock_get_audio_data():
         print('called EditorGui.get_audio_data')
@@ -1269,14 +1602,208 @@ def test_add_video(monkeypatch, capsys):
     testobj.add_video()
     assert capsys.readouterr().out == ''
 
-def _test_add_list(monkeypatch, capsys):
+def test_add_list(monkeypatch, capsys):
+    def mock_getelname(*args):
+        print('called getelname with args', args)
+        return args[0] or 'elname'
+    def mock_getshortname(*args):
+        print('called getshortname with args', args)
+        return args[0] or 'shortname'
+    def mock_get_no_list_data():
+        print('called EditorGui.get_list_data')
+        return False, ('', '')
+    def mock_get_list_data():
+        print('called EditorGui.get_list_data')
+        return True, ('', '')
+    def mock_get_list_data_dl():
+        print('called EditorGui.get_list_data')
+        return True, ('dl', [('name', 'text')])
+    def mock_get_list_data_other():
+        print('called EditorGui.get_list_data')
+        return True, ('x', [('itemtext', '')])
+    monkeypatch.setattr(testee, 'getelname', mock_getelname)
+    monkeypatch.setattr(testee, 'getshortname', mock_getshortname)
+    monkeypatch.setattr(testee.Editor, 'mark_dirty', mock_mark_dirty)
+    monkeypatch.setattr(testee.Editor, 'refresh_preview', mock_refresh)
     testobj = setup_editor(monkeypatch, capsys)
+    monkeypatch.setattr(testee.Editor, 'check_if_adding_ok', lambda *x: False)
+    testobj.gui.get_list_data = mock_get_no_list_data
+    testobj.add_list()
+    assert capsys.readouterr().out == ''
+    monkeypatch.setattr(testee.Editor, 'check_if_adding_ok', lambda *x: True)
+    testobj.add_list()
+    assert capsys.readouterr().out == 'called EditorGui.get_list_data\n'
+    testobj.gui.get_list_data = mock_get_list_data
+    testobj.item = 'testobjitem'
+    testobj.add_list()
+    assert capsys.readouterr().out == (
+            'called EditorGui.get_list_data\n'
+            "called getelname with args ('',)\n"
+            "called EditorGui.addtreeitem with args ('testobjitem', 'elname', None, -1)\n"
+            "called.Editor.mark_dirty with value `True`\n"
+            "called Editor.refresh_preview\n")
+    testobj.gui.get_list_data = mock_get_list_data_dl
+    testobj.item = 'testobjitem'
+    testobj.add_list()
+    assert capsys.readouterr().out == (
+            "called EditorGui.get_list_data\n"
+            "called getelname with args ('dl',)\n"
+            "called EditorGui.addtreeitem with args ('testobjitem', 'dl', None, -1)\n"
+            "called getelname with args ('dt',)\n"
+            "called EditorGui.addtreeitem with args ('node', 'dt', None, -1)\n"
+            "called getshortname with args ('name',)\n"
+            "called EditorGui.addtreeitem with args ('node', 'name', 'name', -1)\n"
+            "called getelname with args ('dd',)\n"
+            "called EditorGui.addtreeitem with args ('node', 'dd', None, -1)\n"
+            "called getshortname with args ('text',)\n"
+            "called EditorGui.addtreeitem with args ('node', 'text', 'text', -1)\n"
+            "called.Editor.mark_dirty with value `True`\n"
+            "called Editor.refresh_preview\n")
+    testobj.gui.get_list_data = mock_get_list_data_other
+    testobj.item = 'testobjitem'
+    testobj.add_list()
+    assert capsys.readouterr().out == (
+            "called EditorGui.get_list_data\n"
+            "called getelname with args ('x',)\n"
+            "called EditorGui.addtreeitem with args ('testobjitem', 'x', None, -1)\n"
+            "called getelname with args ('li',)\n"
+            "called EditorGui.addtreeitem with args ('node', 'li', None, -1)\n"
+            "called getshortname with args ('itemtext',)\n"
+            "called EditorGui.addtreeitem with args ('node', 'itemtext', 'itemtext', -1)\n"
+            "called.Editor.mark_dirty with value `True`\n"
+            "called Editor.refresh_preview\n")
 
-def _test_add_table(monkeypatch, capsys):
+def test_add_table(monkeypatch, capsys):
+    def mock_getelname(*args):
+        print('called getelname with args', args)
+    def mock_getshortname(*args):
+        print('called getshortname with args', args)
+    def mock_get_no_table_data():
+        print('called EditorGui.get_table_data')
+        return False, ('', '')
+    def mock_get_table_data():
+        print('called EditorGui.get_table_data')
+        return True, ('empty table', False, '', [])
+    def mock_get_table_data_headers():
+        print('called EditorGui.get_table_data')
+        return True, ('table with headers but no items', True, ['x', 'y'], [])
+    def mock_get_table_data_items():
+        print('called EditorGui.get_table_data')
+        return True, ('table with items and empty headers', True, ['', ''], [('x', 'y')])
+    monkeypatch.setattr(testee, 'getelname', mock_getelname)
+    monkeypatch.setattr(testee, 'getshortname', mock_getshortname)
+    monkeypatch.setattr(testee.Editor, 'mark_dirty', mock_mark_dirty)
+    monkeypatch.setattr(testee.Editor, 'refresh_preview', mock_refresh)
     testobj = setup_editor(monkeypatch, capsys)
+    monkeypatch.setattr(testee.Editor, 'check_if_adding_ok', lambda *x: False)
+    testobj.gui.get_table_data = mock_get_no_table_data
+    testobj.add_table()
+    assert capsys.readouterr().out == ''
+    monkeypatch.setattr(testee.Editor, 'check_if_adding_ok', lambda *x: True)
+    testobj.add_table()
+    assert capsys.readouterr().out == 'called EditorGui.get_table_data\n'
+    testobj.gui.get_table_data = mock_get_table_data
+    testobj.item = 'testobjitem'
+    testobj.add_table()
+    assert capsys.readouterr().out == (
+            'called EditorGui.get_table_data\n'
+            "called getelname with args ('table', {'summary': 'empty table'})\n"
+            "called EditorGui.addtreeitem with args"
+            " ('testobjitem', None, {'summary': 'empty table'}, -1)\n"
+            "called.Editor.mark_dirty with value `True`\n"
+            "called Editor.refresh_preview\n")
+    testobj.gui.get_table_data = mock_get_table_data_headers
+    testobj.item = 'testobjitem'
+    testobj.add_table()
+    assert capsys.readouterr().out == (
+            'called EditorGui.get_table_data\n'
+            "called getelname with args ('table', {'summary': 'table with headers but no items'})\n"
+            "called EditorGui.addtreeitem with args"
+            " ('testobjitem', None, {'summary': 'table with headers but no items'}, -1)\n"
+            "called getelname with args ('tr',)\n"
+            "called EditorGui.addtreeitem with args ('node', None, None, -1)\n"
+            "called getelname with args ('th',)\n"
+            "called EditorGui.addtreeitem with args ('node', None, None, -1)\n"
+            "called getshortname with args ('x',)\n"
+            "called EditorGui.addtreeitem with args ('node', None, 'x', -1)\n"
+            "called getelname with args ('th',)\n"
+            "called EditorGui.addtreeitem with args ('node', None, None, -1)\n"
+            "called getshortname with args ('y',)\n"
+            "called EditorGui.addtreeitem with args ('node', None, 'y', -1)\n"
+            "called.Editor.mark_dirty with value `True`\n"
+            "called Editor.refresh_preview\n")
+    testobj.gui.get_table_data = mock_get_table_data_items
+    testobj.item = 'testobjitem'
+    testobj.add_table()
+    assert capsys.readouterr().out == (
+            'called EditorGui.get_table_data\n'
+            "called getelname with args "
+            "('table', {'summary': 'table with items and empty headers'})\n"
+            "called EditorGui.addtreeitem with args"
+            " ('testobjitem', None, {'summary': 'table with items and empty headers'}, -1)\n"
+            "called getelname with args ('tr',)\n"
+            "called EditorGui.addtreeitem with args ('node', None, None, -1)\n"
+            "called getelname with args ('th',)\n"
+            "called EditorGui.addtreeitem with args ('node', None, None, -1)\n"
+            "called getshortname with args ('&nbsp;',)\n"
+            "called EditorGui.addtreeitem with args ('node', None, '&nbsp;', -1)\n"
+            "called getelname with args ('th',)\n"
+            "called EditorGui.addtreeitem with args ('node', None, None, -1)\n"
+            "called getshortname with args ('&nbsp;',)\n"
+            "called EditorGui.addtreeitem with args ('node', None, '&nbsp;', -1)\n"
+            "called getelname with args ('tr',)\n"
+            "called EditorGui.addtreeitem with args ('node', None, None, -1)\n"
+            "called getelname with args ('td',)\n"
+            "called EditorGui.addtreeitem with args ('node', None, None, -1)\n"
+            "called getshortname with args ('x',)\n"
+            "called EditorGui.addtreeitem with args ('node', None, 'x', -1)\n"
+            "called getelname with args ('td',)\n"
+            "called EditorGui.addtreeitem with args ('node', None, None, -1)\n"
+            "called getshortname with args ('y',)\n"
+            "called EditorGui.addtreeitem with args ('node', None, 'y', -1)\n"
+            "called.Editor.mark_dirty with value `True`\n"
+            "called Editor.refresh_preview\n")
 
-def _test_validate(monkeypatch, capsys):
+def test_validate(monkeypatch, capsys):
+    def mock_mkdtemp():
+        print('called tempfile.mkdtemp')
+        return 'tempdir'
+    def mock_prettify():
+        print('called Editor.soup.prettify')
+        return 'prettified soup'
+    def mock_data2soup(self):
+        print('called Editor.data2soup')
+        self.soup = types.SimpleNamespace(prettify=mock_prettify)
+    def mock_write(*args):
+        print('called path.write_text with args', args)
+    monkeypatch.setattr(testee.tempfile, 'mkdtemp', mock_mkdtemp)
+    monkeypatch.setattr(testee.pathlib.Path, 'write_text', mock_write)
+    monkeypatch.setattr(testee.Editor, 'data2soup', mock_data2soup)
     testobj = setup_editor(monkeypatch, capsys)
+    testobj.tree_dirty = False
+    testobj.xmlfn = 'test.html'
+    testobj.validate()
+    assert capsys.readouterr().out == "called EditorGui.validate with args ('test.html', True)\n"
+    testobj.tree_dirty = True
+    testobj.validate()
+    assert capsys.readouterr().out == ("called tempfile.mkdtemp\n"
+                                       "called Editor.data2soup\n"
+                                       "called Editor.soup.prettify\n"
+                                       "called path.write_text with args"
+                                       " (PosixPath('tempdir/ashe_check.html'), 'prettified soup')\n"
+                                       "called EditorGui.validate with args"
+                                       " ('tempdir/ashe_check.html', False)\n")
+    testobj.tree_dirty = False
+    testobj.xmlfn = ''
+    testobj.validate()
+    assert capsys.readouterr().out == ("called tempfile.mkdtemp\n"
+                                       "called Editor.data2soup\n"
+                                       "called Editor.soup.prettify\n"
+                                       "called path.write_text with args"
+                                       " (PosixPath('tempdir/ashe_check.html'), 'prettified soup')\n"
+                                       "called EditorGui.validate with args"
+                                       " ('tempdir/ashe_check.html', False)\n")
+
 
 def test_do_validate(monkeypatch, capsys):
     def mock_run(*args, **kwargs):
