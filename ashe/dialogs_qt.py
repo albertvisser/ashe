@@ -389,7 +389,7 @@ class SearchDialog(qtw.QDialog):
         out = self._parent.editor.build_search_spec(self.txt_element.text(),
                                                     self.txt_attr_name.text(),
                                                     self.txt_attr_val.text(),
-                                                    self.txt_text.text(), '', replace)
+                                                    self.txt_text.text(), replace)
         self.lbl_search.setText(out)
         self.search_specs = out
 
