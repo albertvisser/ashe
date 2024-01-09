@@ -1125,7 +1125,8 @@ class EditorHelper:
             self.gui.set_element_data(self.item, attrs)
             self.comment_out(self.item, commented)
         else:
-            self.gui.set_element_text(self.item, commented)
+            # self.gui.set_element_text(self.item, commented)
+            self.gui.set_element_text(self.item, getshortname(tag, commented))
             self.gui.set_element_data(self.item, tag)
         self.editor.refresh_preview()
 
