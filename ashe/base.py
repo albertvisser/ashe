@@ -40,8 +40,7 @@ def getelname(tag, attrs=None, comment=False):
             hlp = attrs[att]
         except KeyError:
             return ''
-        else:
-            return f' {att}="{hlp}"'
+        return f' {att}="{hlp}"'
     tagattdict = {'div': 'class',
                   'span': 'class',
                   'a': 'title',
@@ -58,9 +57,17 @@ def getelname(tag, attrs=None, comment=False):
     return naam
 
 
-def get_tag_from_elname(elname):
+def get_tag_from_elname_old(elname):
     "get first part of node name"
     return elname.strip().split()[1]
+
+
+def get_tag_from_elname(elname):
+    "get first part of node name"
+    try:
+        return elname.split(ELSTART)[1].split()[0]
+    except IndexError:  # no second part, so not a valid element text
+        return ''
 
 
 def getshortname(text, comment=False):
@@ -127,52 +134,6 @@ class CssManager:
         else:
             attrs = {'style': self.old_styledata}
         return self.styledata, attrs
-
-    def call_editor_for_stylesheet_old(self, fname, new_ok=False):
-        """call external css editor from the edit element dialog
-        no need for checking data
-        """
-        mld = ''
-        if new_ok:
-            try:
-                with open(fname, 'w'):
-                    pass
-            except OSError as e:
-                mld = str(e)
-        if not mld and fname.startswith('/') and not os.path.exists(fname):
-            mld = "Cannot determine file system location of stylesheet file"
-        if mld:
-            pass
-        elif not self.cssedit_available:
-            mld = 'No CSS editor support; please edit external stylesheet separately'
-        elif fname.startswith('http'):
-            # h_fname = os.path.join('/tmp', 'ashe_{}'.format(os.path.basename(fname)))
-            # subprocess.run(['wget', fname, '-O', h_fname])
-            # fname = h_fname
-            mld = 'Editing of possibly off-site stylesheets (http-links) is disabled'
-        elif fname:      # or can fname be empty here !?
-            h_fname = fname
-            xmlfn_path = pathlib.Path(self._parent.xmlfn).parent
-            print('xmlfn_path, h_fname is', xmlfn_path, h_fname)
-            while h_fname.startswith('../'):
-                h_fname = h_fname[3:]
-                xmlfn_path = xmlfn_path.parent
-                print('xmlfn_path, h_fname is', xmlfn_path, h_fname)
-            fname = str(xmlfn_path / h_fname)
-        if not mld:
-            # try:
-            #     css = csed.MainWindow(app=self._parent.gui.app)
-            #     css.open(filename=fname)
-            # except Exception as e:
-            #     mld = str(e)
-            # else:
-            #     css.show_from_external()
-            print('in htmledit.call_editor, app is', self._parent.gui.app)
-            css = csed.Editor(app=self._parent.gui.app)  # no need for master here
-            css.open(filename=fname)
-            css.show_from_external()
-        if mld:
-            self._parent.gui.meld(mld)
 
     def call_editor_for_stylesheet(self, fname, new_ok=False):
         """call external css editor from the edit element dialog
@@ -881,8 +842,8 @@ class Editor:
         # if not os.path.exists(link):
         #     nice_link = link
         # elif link == '/' or len(test) == 1 or link.startswith(('http://', './', '../')):
-        if (link == '/' or len(test) == 1 or link.startswith(('http://', './', '../')) or
-                not os.path.exists(link)):
+        if (link == '/' or len(test) == 1 or link.startswith(('http://', './', '../')) or not
+                os.path.exists(link)):
             nice_link = link
         else:
             link = os.path.abspath(link)
@@ -1027,73 +988,84 @@ class EditorHelper:
     # self in het vervolg verwijst naar de aanroepende editor class
     # kijken of ik verwijzingen naar gui class eruit kan krijgen?
     def edit(self):
-        "do the heavy lifting"
+        "edit and element or an text node"
         self.item = self.editor.item
         text = self.gui.get_element_text(self.item)
-        test = self.gui.get_element_children(self.item)
-        print('in edit, tag + data is', text, '+', self.gui.get_element_data(self.item))
-        for item in test:
-            print('  child: tag + data is', self.gui.get_element_text(item), '+',
-                  self.gui.get_element_data(item))
-        style_item = test[0] if test else None
         if text.startswith(DTDSTART):
-            data = self.gui.get_element_data(self.item)
-            prefix = 'HTML PUBLIC "-//W3C//DTD'
-            if data.upper().startswith(prefix):
-                data = data.upper().replace(prefix, '')
-                text = 'doctype is ' + data.split('//EN')[0].strip()
-            elif data.strip().lower() == 'html':
-                text = 'doctype is HTML 5'
-            else:
-                text = 'doctype cannot be determined'
-            self.gui.meld(text)
+            self.show_dtd_info()
             return
+        if text.startswith((ELSTART, CMELSTART)):
+            modified = self.process_element_dialog(text)
+        else:
+            modified = self.process_text_dialog(text)
+        if modified:
+            self.editor.mark_dirty(True)
+            self.editor.refresh_preview()
+
+    def show_dtd_info(self):
+        "show dtd info and exit"
+        data = self.gui.get_element_data(self.item)
+        prefix = 'HTML PUBLIC "-//W3C//DTD'
+        if data.upper().startswith(prefix):
+            data = data.upper().replace(prefix, '')
+            text = 'doctype is ' + data.split('//EN')[0].strip()
+        elif data.strip().lower() == 'html':
+            text = 'doctype is HTML 5'
+        else:
+            text = 'doctype cannot be determined'
+        self.gui.meld(text)
+
+    def process_element_dialog(self, text):
+        """edit element
+
+        inline style is for the document is stored differently from inline style of an element.
+        to edit them in a similar way we need to convert the style text under a style element to an
+        attribute - like the style for a regular element - and convert it back
+        """
+        modified = False
+        oldtag = get_tag_from_elname(text)
+        attrdict = self.gui.get_element_data(self.item)
+        test = self.gui.get_element_children(self.item) if oldtag == 'style' else []
+        oldstyledata = self.gui.get_element_data(test[0]) if test else ''
+        attrdict['styledata'] = oldstyledata
+        was_commented = text.startswith(CMSTART)
         under_comment = self.gui.get_element_text(
             self.gui.get_element_parent(self.item)).startswith(CMELSTART)
+        ok, dialog_data = self.gui.do_edit_element(text, attrdict)
+        if ok:
+            modified = True
+            tag, attrs, commented = dialog_data
+            if under_comment:
+                commented = True
+            if tag == 'style':
+                # style data zit in attrs['styledata'] en moet naar tekst element onder tag
+                newstyledata = str(attrs.pop('styledata', ''))  # en daarna moet deze hier weg
+                if not oldstyledata:
+                    # dit is voor rekening houden met element wijzigen in style element
+                    self.gui.addtreeitem(self.item, newstyledata, {}, -1)
+                elif newstyledata != oldstyledata:
+                    self.gui.set_element_text(newstyledata, getshortname(newstyledata))
+                    self.gui.set_element_data(newstyledata, newstyledata)
+            if 'style' in attrs and not attrs['style']:
+                attrs.pop('style')
+            if tag != oldtag or attrs != attrdict:
+                self.gui.set_element_text(self.item, getelname(tag, attrs, commented))
+            self.gui.set_element_data(self.item, attrs)
+            if commented != was_commented:
+                self.comment_out(self.item, commented)
+        attrdict.pop('styledata', '')
+        return modified
+
+    def process_text_dialog(self, text):
+        "edit text"
         modified = False
-        if text.startswith((ELSTART, CMELSTART)):
-            oldtag = get_tag_from_elname(text)
-            attrdict = self.gui.get_element_data(self.item)
-            print('in edit voor ophalen styledata, attrdict is', attrdict)
-            if oldtag == 'style':
-                if style_item:
-                    attrdict['styledata'] = self.gui.get_element_data(style_item)
-                else:
-                    attrdict['styledata'] = ''
-            print('in edit na   ophalen styledata, attrdict is', attrdict)
-            was_commented = text.startswith(CMSTART)
-            ok, dialog_data = self.gui.do_edit_element(text, attrdict)
-            if ok:
-                modified = True
-                tag, attrs, commented = dialog_data
-                print('in base.edit, terug uit dialoog, data is', tag, attrs, commented)
-                if under_comment:
-                    commented = True
-                if tag == 'style':
-                    # style data zit in attrs['styledata'] en moet naar tekst element onder tag
-                    newtext = str(attrs.pop('styledata', ''))  # en daarna moet deze hier weg
-                    if style_item:
-                        self.gui.get_element_data(style_item)
-                        self.gui.set_element_text(style_item, getshortname(newtext))
-                        self.gui.set_element_data(style_item, newtext)
-                    else:
-                        self.gui.addtreeitem(self.item, newtext, {}, -1)
-                attrdict.pop('styledata', '')
-                if 'style' in attrs and not attrs['style']:
-                    attrs.pop('style')
-                if tag != oldtag or attrs != attrdict:
-                    self.gui.set_element_text(self.item, getelname(tag, attrs, commented))
-                self.gui.set_element_data(self.item, attrs)
-                if commented != was_commented:
-                    self.comment_out(self.item, commented)
-            attrdict.pop('styledata', '')
+        txt = CMSTART + " " if text.startswith(CMSTART) else ""
+        data = self.gui.get_element_data(self.item)
+        test = self.gui.get_element_text(self.gui.get_element_parent(self.item))
+        under_comment = test.startswith(CMELSTART)
+        if test in (f'{ELSTART} style', f'{CMELSTART} style'):
+            self.gui.meld("Please edit style through parent tag")
         else:
-            txt = CMSTART + " " if text.startswith(CMSTART) else ""
-            data = self.gui.get_element_data(self.item)
-            test = self.gui.get_element_text(self.gui.get_element_parent(self.item))
-            if test in (f'{ELSTART} style', f'{CMELSTART} style'):
-                self.gui.meld("Please edit style through parent tag")
-                return
             ok, dialog_data = self.gui.do_edit_textvalue(txt + data)
             if ok:
                 modified = True
@@ -1102,9 +1074,7 @@ class EditorHelper:
                     commented = True
                 self.gui.set_element_text(self.item, getshortname(txt, commented))
                 self.gui.set_element_data(self.item, txt)
-        if modified:
-            self.editor.mark_dirty(True)
-            self.editor.refresh_preview()
+        return modified
 
     def comment(self):
         "do the heavy lifting"
@@ -1132,29 +1102,20 @@ class EditorHelper:
 
     def comment_out(self, node, commented):
         "subitem(s) (ook) op commentaar zetten"
-        self.item = self.editor.item
+        # self.item = self.editor.item  -- lijkt overbodig gezien waar dit aangeroepen wordt
         for subnode in self.gui.get_element_children(node):
             txt = self.gui.get_element_text(subnode)
+            new_text = ''
             if commented:
                 if not txt.startswith(CMSTART):
                     new_text = f"{CMSTART} {txt}"
             elif txt.startswith(CMSTART):
                 new_text = txt.split(None, 1)[1]
-            self.gui.set_element_text(subnode, new_text)
+            self.gui.set_element_text(subnode, new_text or txt)
             self.comment_out(subnode, commented)
 
-    def copy(self, cut=False, retain=True, ifcheck=True):
+    def copy(self, cut=False, retain=True):    # , ifcheck=True):
         "start copy/cut/delete actie"
-        def push_el(elm, result):
-            "subitem(s) toevoegen aan copy buffer"
-            text = self.gui.get_element_text(elm)
-            data = self.gui.get_element_data(elm)
-            atrlist = []
-            if text.startswith(ELSTART):
-                for node in self.gui.get_element_children(elm):
-                    push_el(node, atrlist)
-            result.append((text, data, atrlist))
-            return result
         if not self.editor.checkselection():
             return
         self.item = self.editor.item
@@ -1170,7 +1131,7 @@ class EditorHelper:
         if retain:
             if text.startswith(ELSTART):
                 self.editor.cut_el = []
-                self.editor.cut_el = push_el(self.item, self.editor.cut_el)
+                self.editor.cut_el = self.push_el(self.item, self.editor.cut_el)
                 self.editor.cut_txt = None
             else:
                 self.editor.cut_el = None
@@ -1181,14 +1142,19 @@ class EditorHelper:
             self.gui.set_selected_item(prev_item)
             self.editor.refresh_preview()
 
+    def push_el(self, elm, result):
+        "subitem(s) toevoegen aan copy buffer"
+        text = self.gui.get_element_text(elm)
+        data = self.gui.get_element_data(elm)
+        atrlist = []
+        if text.startswith(ELSTART):
+            for node in self.gui.get_element_children(elm):
+                self.push_el(node, atrlist)
+        result.append((text, data, atrlist))
+        return result
+
     def paste(self, before=True, below=False):
         "start paste actie"
-        def zetzeronder(node, elm, pos=-1):
-            "paste copy buffer into tree"
-            subnode = self.gui.addtreeitem(node, elm[0], elm[1], pos)
-            for item in elm[2]:
-                zetzeronder(subnode, item)
-            return subnode
         if not self.editor.checkselection():
             return
         self.item = self.editor.item
@@ -1213,7 +1179,7 @@ class EditorHelper:
             if below:
                 node = self.gui.addtreeitem(self.item, item, data, -1)
             else:
-                add_to, idx = self.gui.get_item_parentpos(self.item)
+                add_to, idx = self.gui.get_element_parentpos(self.item)
                 if not before:
                     idx += 1
                 node = self.gui.addtreeitem(add_to, self.item, data, idx)
@@ -1229,11 +1195,18 @@ class EditorHelper:
                     idx += 1
                 if idx == len(self.gui.get_element_children(add_to)):
                     idx = -1
-            new_item = zetzeronder(add_to, self.editor.cut_el[0], idx)
+            new_item = self.zetzeronder(add_to, self.editor.cut_el[0], idx)
             if self.editor.advance_selection_on_add:
                 self.gui.set_selected_item(new_item)
         self.editor.mark_dirty(True)
         self.editor.refresh_preview()
+
+    def zetzeronder(self, node, elm, pos=-1):
+        "paste copy buffer into tree"
+        subnode = self.gui.addtreeitem(node, elm[0], elm[1], pos)
+        for item in elm[2]:
+            self.zetzeronder(subnode, item)
+            return subnode
 
     def insert(self, before=True, below=False):
         "start invoeg actie"
@@ -1257,7 +1230,7 @@ class EditorHelper:
         ok, dialog_data = self.gui.do_add_element(where)
         if ok:
             tag, attrs, commented = dialog_data
-            print('in base.insert, terug uit dialoog, data is', tag, attrs, commented)
+            # print('in base.insert, terug uit dialoog, data is', tag, attrs, commented)
             item = self.item if below else self.gui.get_element_parent(self.item)
             under_comment = self.gui.get_element_text(item).startswith(CMSTART)
             text = getelname(tag, attrs, commented or under_comment)
@@ -1273,12 +1246,11 @@ class EditorHelper:
             if tag == 'style':
                 # style data zit in attrs['styledata'] en moet naar tekst element onder tag
                 newtext = str(attrs.pop('styledata', ''))  # en daarna moet deze hier weg
-                print('  na poppen styledata, newtext, attrs is', newtext, attrs)
-                new_subitem = self.gui.addtreeitem(new_item, getshortname(newtext, False),
-                                                   newtext, -1)
-                print('  nog even kijken of het klopt:')
-                print('  text:', self.gui.get_element_text(new_subitem))
-                print('  data:', self.gui.get_element_data(new_subitem))
+                # print('  na poppen styledata, newtext, attrs is', newtext, attrs)
+                self.gui.addtreeitem(new_item, getshortname(newtext, False), newtext, -1)
+                # print('  nog even kijken of het klopt:')
+                # print('  text:', self.gui.get_element_text(new_subitem))
+                # print('  data:', self.gui.get_element_data(new_subitem))
             if self.editor.advance_selection_on_add:
                 self.gui.set_selected_item(new_item)
             self.editor.mark_dirty(True)
@@ -1303,7 +1275,7 @@ class EditorHelper:
                 new_item = self.gui.addtreeitem(self.item, text, txt, -1)
             else:
                 parent, pos = self.gui.get_element_parentpos(self.item)
-                if not before:
+                if not before:  # waarom ook weer invoegen van een <br> ?
                     pos += 1
                     br = 'br'
                     brs = getelname('br', {}, commented or under_comment)
@@ -1332,31 +1304,12 @@ class SearchHelper:
         self.gui = self.editor.gui
         self.search_args, self.replace_args = [], []
 
-    # self in het vervolg verwijst naar de aanroepende editor class
-    # kijken of ik verwijzingen naar gui class eruit kan krijgen?
-    def search(self, reverse=False, pos=None):  # obsolete
-        "start search after asking for options"
-        self._search_pos = pos
-        ok = False
-        if not reverse or not self.search_args:
-            ok, dialog_data = self.gui.get_search_args()
-            if ok:
-                self.search_args, self.search_specs = dialog_data
-        if reverse or ok:
-            found = self.find_next(self.flatten_tree(self.gui.top), self.search_args, reverse)
-            if found:
-                self.gui.set_selected_item(found[1])
-                self._search_pos = found
-            else:
-                self.gui.meld(self.search_specs + '\n\nNo (more) results')
-
     def search_from(self, item, reverse=False):
         "start search after asking for options"
         ok = False
         ok, dialog_data = self.gui.get_search_args()
         if ok:
             self.search_args, self.search_specs = dialog_data[:2]
-        # if reverse or ok:
             if item == self.gui.top:
                 found = self.find_next(self.flatten_tree(self.gui.top), self.search_args, reverse)
             else:
@@ -1445,7 +1398,6 @@ class SearchHelper:
         for newpos, data_item in enumerate(data):
             item, element_name, attr_data = data_item
             # itemtext = self.gui.get_element_text(item)
-
             if element_name.startswith(ELSTART):
                 ele_ok = attr_name_ok = attr_value_ok = attr_ok = text_ok = False
                 if not wanted_ele or wanted_ele in element_name.replace(ELSTART, ''):
@@ -1475,6 +1427,8 @@ class SearchHelper:
                 break
 
         # linter: kan newpos hier ongedefinieerd zijn? Als `data` leeg is, kan dat?
+        # newpos komt uit de loop hiervóór en kan dus niet bestaan als er geen data is
+        # maar het is de vraag of deze methode dan wordt aangeroepen
         if itemfound:
             factor = 1
             if reverse:
