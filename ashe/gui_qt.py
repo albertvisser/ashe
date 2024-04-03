@@ -199,7 +199,7 @@ class EditorGui(qtw.QMainWindow):
 
     @staticmethod
     def set_element_data(node, data):
-        "change stored attrs or inline text for this element"""
+        "change stored attrs or inline text for this element"
         node.setData(0, core.Qt.UserRole, data)
 
     @staticmethod
