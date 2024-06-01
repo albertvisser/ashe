@@ -436,13 +436,13 @@ class Editor:
                              ("Find &Previous", 'F3', 'S', 'Find previous occurrence of search '
                               'argument', self.search_prev),
                              ('sep1', ),
-                             ("&Replace", 'H', 'C', 'Search and replace from first occurence',
+                             ("&Replace", 'H', 'C', 'Search and replace starting at first occurence',
                               self.replace),
-                             ("&Replace From End", 'H', 'CS', 'Search and replace from last'
+                             ("Replace From &End", 'H', 'CS', 'Search and replace starting at last'
                               ' occurence', self.replace_last),
-                             ("Replace This", 'F3', 'C', 'Replace and search forward',
+                             ("Replace and Ne&xt", 'F3', 'C', 'Replace and search forward',
                               self.replace_and_next),
-                             ("Replace This", 'F3', 'CS', 'Replace and search back',
+                             ("Replace and Pre&vious", 'F3', 'CS', 'Replace and search back',
                               self.replace_and_prev))),
                 ("&HTML", (('Add &DTD', '', '', 'Add a document type description',
                             self.add_or_remove_dtd),
