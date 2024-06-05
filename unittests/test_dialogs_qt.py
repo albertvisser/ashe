@@ -571,6 +571,7 @@ class TestScrolledTextDialog:
         """unittest for ScrolledTextDialog.__init__
         """
         testobj = testee.ScrolledTextDialog(parent, title='', data='', htmlfile='', fromdisk=False,
+                                            size=(600, 400))
         assert capsys.readouterr().out == ("")
 
     def _test_show_source(self, monkeypatch, capsys):
