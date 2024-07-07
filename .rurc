@@ -2,9 +2,18 @@
 unittests/
 
 [testscripts]
-base: test_base.py
-shared: test_shared.py
+base = test_base.py
+shared = test_shared.py
+wxgui = test_wxgui.py
+qtgui = test_qtgui.py
+qtdial = test_dialogs_qt.py
+wxdial = test_dialogs_wx.py
 
 [testees]
-base: ashe/base.py
-shared: ashe/shared.py
+base = ashe/base.py
+shared = ashe/shared.py
+wxgui = ashe/gui_wx.py
+qtgui = ashe/gui_qt.py
+qtdial = ashe/dialogs_qt.py
+wxdial = ashe/dialogs_wx.py
+
