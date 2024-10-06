@@ -1,10 +1,10 @@
 """simple program to show html page without opening a web browser - PyQt5 version
 """
 import sys
-import PyQt5.QtWidgets as qtw
-## import PyQt5.QtGui as gui
-import PyQt5.QtCore as core
-import PyQt5.QtWebEngineWidgets as webeng
+import PyQt6.QtWidgets as qtw
+## import PyQt6.QtGui as gui
+import PyQt6.QtCore as core
+import PyQt6.QtWebEngineWidgets as webeng
 
 
 class HtmlView(qtw.QMainWindow):
@@ -15,7 +15,7 @@ class HtmlView(qtw.QMainWindow):
         self.resize(1020, 900)
         self.html = webeng.QWebEngineView(self)
         self.setCentralWidget(self.html)
-        closeaction = qtw.QAction('close', self)
+        closeaction = gui.QAction('close', self)
         closeaction.setShortcuts(['Ctrl+Q', 'Escape'])
         closeaction.triggered.connect(self.close)
         self.addAction(closeaction)
@@ -23,7 +23,7 @@ class HtmlView(qtw.QMainWindow):
     def keyPressEvent(self, event):
         """event handler voor toetsaanslagen
         """
-        if event.key() == core.Qt.Key_Escape:
+        if event.key() == core.Qt.Key.Key_Escape:
             self.close()
 
     def show_html(self, data):
@@ -51,4 +51,4 @@ def main(path):
     frm = HtmlView()
     frm.show_html_from_path(path)
     frm.show()
-    sys.exit(app.exec_())
+    sys.exit(app.exec())
