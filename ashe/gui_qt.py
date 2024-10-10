@@ -30,9 +30,9 @@ class VisualTree(qtw.QTreeWidget):
     def mouseDoubleClickEvent(self, event):
         "reimplemented event handler"
         item = self.itemAt(event.x(), event.y())
-        if (item and item != self._parent.to and
-                str(item.text(0)).startswith(self._parent.editor.constants['ELSTART']) and
-                item.childCount() == 0):
+        if (item and item != self._parent.top
+                and item.text(0).startswith(self._parent.editor.constants['ELSTART'])
+                and item.childCount() == 0):
             self._parent.editor.edit()
             return
         super().mouseDoubleClickEvent(event)
@@ -145,10 +145,14 @@ class EditorGui(qtw.QMainWindow):
                     self.dtd_menu = act
                 elif menuitem_text == 'Add &Stylesheet':
                     self.css_menu = act
-                if menu_text in ('&Edit', '&Search', '&HTML'):
-                    self.contextmenu_items.append(('M', menu))
+                # if menu_text in ('&Edit', '&Search', '&HTML'):
+                #     self.contextmenu_items.append(('M', menu))
+                # moet bovenstaande IF niet ook uitgesprongen?
+                # nu krijg je voor elke action het hele menu geappend, hoeft toch maar één keer?
             if menu_text == '&View':
                 self.contextmenu_items.append(('', ''))
+            elif menu_text in ('&Edit', '&Search', '&HTML'):
+                self.contextmenu_items.append(('M', menu))
             menu_bar.addMenu(menu)
 
     # def setfilenametooltip((self):
@@ -258,6 +262,8 @@ class EditorGui(qtw.QMainWindow):
 
     def popup_menu(self, arg=None):
         'build/show context menu'
+        if arg is None:
+            return
         # get type of node
         menu = qtw.QMenu()
         for itemtype, item in self.contextmenu_items:
@@ -267,9 +273,11 @@ class EditorGui(qtw.QMainWindow):
                 menu.addMenu(item)
             else:
                 menu.addSeparator()
-        y = self.tree.visualItemRect(arg).bottom()
-        x = self.tree.visualItemRect(arg).left()
-        popup_location = core.QPoint(int(x) + 200, y)
+        # determine location of popup
+        # y = self.tree.visualItemRect(arg).bottom()
+        # x = self.tree.visualItemRect(arg).left()
+        # popup_location = core.QPoint(int(x) + 200, y)
+        popup_location = self.tree.visualItemRect(arg).bottomRight()
         self.in_contextmenu = True
         menu.exec_(self.tree.mapToGlobal(popup_location))
         self.in_contextmenu = False
@@ -281,7 +289,7 @@ class EditorGui(qtw.QMainWindow):
         if not skip:
             super().keyReleaseEvent(event)
 
-    def on_keyup(self, ev=None):
+    def on_keyup(self, ev):
         "determine if key event needs to be skipped"
         ky = ev.key()
         item = self.tree.currentItem()
@@ -298,8 +306,8 @@ class EditorGui(qtw.QMainWindow):
         """
         retval = dict(zip((qtw.QMessageBox.Yes, qtw.QMessageBox.No, qtw.QMessageBox.Cancel),
                           (1, 0, -1)))
-        hlp = qtw.QMessageBox.question(self, title, text, qtw.QMessageBox.Yes |
-                                       qtw.QMessageBox.No | qtw.QMessageBox.Cancel,
+        hlp = qtw.QMessageBox.question(self, title, text, qtw.QMessageBox.Yes
+                                       | qtw.QMessageBox.No | qtw.QMessageBox.Cancel,
                                        defaultButton=qtw.QMessageBox.Yes)
         return retval[hlp]
 
@@ -375,7 +383,7 @@ class EditorGui(qtw.QMainWindow):
 
     def refresh_preview(self, soup):
         "toolkit specifieke implementatie van gelijknamige editor methode"
-        print(os.path.abspath(self.editor.xmlfn))
+        # print(os.path.abspath(self.editor.xmlfn))
         self.html.setHtml(str(soup).replace('%SOUP-ENCODING%', 'utf-8'),
                           baseUrl=core.QUrl.fromLocalFile(os.path.abspath(self.editor.xmlfn)))
         self.tree.setFocus()
@@ -438,31 +446,31 @@ class EditorGui(qtw.QMainWindow):
         self.in_dialog = True
         qtw.QMessageBox.information(self, self.editor.title, text)
 
-    def meld_fout(self, text, abort=False):
-        """notify about an error"""
-        self.in_dialog = True
-        qtw.QMessageBox.critical(self, self.title, text)
-        if abort:
-            self.quit()
+    # def meld_fout(self, text, abort=False):
+    #     """notify about an error"""
+    #     self.in_dialog = True
+    #     qtw.QMessageBox.critical(self, self.title, text)
+    #     if abort:
+    #         self.quit()
 
-    def ask_yesnocancel(self, prompt):
-        """stelt een vraag en retourneert het antwoord
-        1 = Yes, 0 = No, -1 = Cancel
-        """
-        retval = dict(zip((qtw.QMessageBox.Yes, qtw.QMessageBox.No,
-                           qtw.QMessageBox.Cancel), (1, 0, -1)))
-        self.in_dialog = True
-        h = qtw.QMessageBox.question(
-            self, self.title, prompt,
-            qtw.QMessageBox.Yes | qtw.QMessageBox.No | qtw.QMessageBox.Cancel,
-            defaultButton=qtw.QMessageBox.Yes)
-        return retval[h]
+    # def ask_yesnocancel(self, prompt):
+    #     """stelt een vraag en retourneert het antwoord
+    #     1 = Yes, 0 = No, -1 = Cancel
+    #     """
+    #     retval = dict(zip((qtw.QMessageBox.Yes, qtw.QMessageBox.No,
+    #                        qtw.QMessageBox.Cancel), (1, 0, -1)))
+    #     self.in_dialog = True
+    #     h = qtw.QMessageBox.question(
+    #         self, self.title, prompt,
+    #         qtw.QMessageBox.Yes | qtw.QMessageBox.No | qtw.QMessageBox.Cancel,
+    #         defaultButton=qtw.QMessageBox.Yes)
+    #     return retval[h]
 
-    def ask_for_text(self, prompt):
-        """vraagt om tekst en retourneert het antwoord"""
-        self.in_dialog = True
-        data, ok = qtw.QInputDialog.getText(self, self.title, prompt, qtw.QLineEdit.Normal, "")
-        return data, ok
+    # def ask_for_text(self, prompt):
+    #     """vraagt om tekst en retourneert het antwoord"""
+    #     self.in_dialog = True
+    #     data, ok = qtw.QInputDialog.getText(self, self.title, prompt, qtw.QLineEdit.Normal, "")
+    #     return data, ok
 
     def ensure_item_visible(self, item):
         """make sure we can see the item
