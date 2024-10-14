@@ -12,7 +12,7 @@ BL = "&nbsp;"
 VAL_MESSAGE = ("Validation results are for the file on disk\n"
                "some errors/warnings may already have been corrected by BeautifulSoup\n"
                "(you'll know when they don't show up in the tree or text view\n"
-               " or when you save the file in memory back to disk)\n")
+               " or when you save the file in memory back to disk)")
 masks = {'all': ('All files', ('*.*',)),
          'html': ('HTML files', ('*.htm', '*.html')),
          'css': ('CSS files', ('*.css',)),
@@ -43,10 +43,10 @@ def analyze_element(tag, attrs):
             if attr == 'styledata':
                 old_styledata = value
                 break
-            elif tag == 'link' and attr == 'rel' and value == 'stylesheet':
+            if tag == 'link' and attr == 'rel' and value == 'stylesheet':
                 is_stylesheet = True
                 break
-            elif attr == 'style':
+            if attr == 'style':
                 has_style = True
                 old_styledata = value
                 break

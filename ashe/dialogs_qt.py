@@ -136,9 +136,8 @@ class ElementDialog(qtw.QDialog):
             self.check_changes = False
             self.style_button.setText(self.style_text)
             return
-        else:
-            self.check_changes = True
-            self.style_button.setText('Chec&k Changes')
+        self.check_changes = True
+        self.style_button.setText('Chec&k Changes')
         tag = self.tag_text.text()
         fname = ''
         test = self.attr_table.findItems('href', core.Qt.MatchFixedString)
@@ -160,11 +159,13 @@ class ElementDialog(qtw.QDialog):
             return
         self.is_style_tag = self.tag_text.text() == 'style'
         attrname = 'styledata' if self.is_style_tag else 'style'
+        self.has_style = not self.is_style_tag
+        # klopt de voorgaande regel wel? Is wel equivalent met hoe het eerder stond volgens mij
+        # maar zet has_style ook aan als we een nieuwe (lege) style definiëren
+        # in on_del wordt has_style uitgezet als de style regel wordt verwijderd dus lijkt te kloppen
         for row in range(self.attr_table.rowCount()):
             # if self.attr_table.item(row, 0).text() in ('style', 'styledata'):
             if self.attr_table.item(row, 0).text() == attrname:
-                if attrname == 'style':
-                    self.has_style = True
                 self.attr_table.item(row, 1).setText(str(self.styledata))
                 break
         else:
@@ -177,8 +178,6 @@ class ElementDialog(qtw.QDialog):
             self.attr_table.setItem(row, 1, item)
             item.setFlags(item.flags() & (not core.Qt.ItemIsEditable))
             self.style_button.setText(analyze_element('', {attrname: ''})[2])
-            if attrname == 'style':
-                self.has_style = True
         self.old_styledata = self.styledata
 
     def reject(self):
@@ -193,7 +192,7 @@ class ElementDialog(qtw.QDialog):
         "controle bij OK aanklikken"
         self.refresh()
         add_title = 'Add an element'
-        tag = str(self.tag_text.text())
+        tag = self.tag_text.text()
         test = string.ascii_letters + string.digits
         for letter in tag:
             if letter not in test:
@@ -203,8 +202,8 @@ class ElementDialog(qtw.QDialog):
         attrs = {}
         for i in range(self.attr_table.rowCount()):
             try:
-                name = str(self.attr_table.item(i, 0).text())
-                value = str(self.attr_table.item(i, 1).text())
+                name = self.attr_table.item(i, 0).text()
+                value = self.attr_table.item(i, 1).text()
             except AttributeError:
                 qtw.QMessageBox.information(self, add_title, 'Press enter on this item first')
                 return
@@ -269,7 +268,7 @@ class TextDialog(qtw.QDialog):
     def accept(self):
         "pass changed data to parent"
         commented = self.comment_button.checkState() if self.show_commented else False
-        self._parent.dialog_data = (str(self.data_text.toPlainText()), commented)
+        self._parent.dialog_data = (self.data_text.toPlainText(), commented)
         super().accept()
 
 
@@ -497,7 +496,7 @@ class CssDialog(qtw.QDialog):
     """dialoog om een stylesheet toe te voegen
     """
     def __init__(self, parent):
-        print('in CssDialog.__init__')
+        # print('in CssDialog.__init__')
         self._parent = parent
         self.styledata = ''
         self.cssfilename = ''  # can be set from csseditor
@@ -554,7 +553,7 @@ class CssDialog(qtw.QDialog):
         self.setLayout(vbox)
 
         self.link_text.setFocus()
-        print('in CssDialog.__init__: end of method')
+        # print('in CssDialog.__init__: end of method')
 
     def kies(self):
         "methode om het te linken document te selecteren"
@@ -606,13 +605,12 @@ class CssDialog(qtw.QDialog):
         """bij OK: het geselecteerde (absolute) pad omzetten in een relatief pad
         maar eerst kijken of dit geen inline stylesheet betreft """
         if self.styledata:
-            # self._parent.dialog_data = {"cssdata": self.styledata.decode()}
             self._parent.dialog_data = {"cssdata": self.styledata}
             super().accept()
             return
         if self.cssfilename:
             self.link_text.setText(self.cssfilename)  # moet nog relatief gemaakt worden
-        link = str(self.link_text.text())
+        link = self.link_text.text()
         if link in ('', 'http://'):
             self._parent.meld("bestandsnaam opgeven of inline stylesheet definiëren s.v.p")
             return
@@ -622,7 +620,7 @@ class CssDialog(qtw.QDialog):
             self._parent.meld(str(msg))
             return
         self._parent.dialog_data = {"rel": 'stylesheet', "href": link, "type": 'text/css'}
-        test = str(self.text_text.text())
+        test = self.text_text.text()
         if test:
             self._parent.dialog_data["media"] = test
         super().accept()
@@ -698,14 +696,14 @@ class LinkDialog(qtw.QDialog):
 
     def set_ltext(self, chgtext):
         'indien leeg title tekst gelijk maken aan link adres'
-        linktxt = str(chgtext)
+        linktxt = chgtext
         if self.title_text.text() == self.linktxt:
             self.title_text.setText(linktxt)
             self.linktxt = linktxt
 
     def set_ttext(self, chgtext):
         "indien leeg link tekst leegmaken"
-        if str(chgtext) == "":
+        if chgtext == "":
             self.linktxt = ""
 
     def accept(self):
@@ -800,7 +798,7 @@ class ImageDialog(qtw.QDialog):
     def set_ltext(self, chgtext):
         'indien leeg link tekst gelijk maken aan link adres'
         linktxt = str(chgtext)
-        if str(self.alt_text.text()) == self.linktxt:
+        if self.alt_text.text() == self.linktxt:
             self.alt_text.setText(linktxt)
             self.linktxt = linktxt
 
@@ -818,8 +816,8 @@ class ImageDialog(qtw.QDialog):
             self._parent.meld(str(msg))
             return
         self._parent.dialog_data = {"src": link,
-                                    "alt": str(self.alt_text.text()),
-                                    "title": str(self.title_text.text())}
+                                    "alt": self.alt_text.text(),
+                                    "title": self.title_text.text()}
         super().accept()
 
 
@@ -903,26 +901,25 @@ class VideoDialog(qtw.QDialog):
         if fnaam:
             self.link_text.setText(fnaam)
 
-    def on_text(self, number=None):
+    def on_text(self, number):
         "controle bij invullen/aanpassen hoogte/breedte"
         try:
             int(number)  # self.rows_text.value())
         except ValueError:
             qtw.QMessageBox.information(self, self._parent.title,
                                         'Number must be numeric integer')
-            return
 
     def accept(self):
         "bij OK: het geselecteerde (absolute) pad omzetten in een relatief pad"
         try:
-            link = self._parent.editor.ed.convert_link(self.link_text.text(),
-                                                       self._parent.editor.xmlfn)
+            link = self._parent.editor.convert_link(self.link_text.text(),
+                                                    self._parent.editor.xmlfn)
         except ValueError as msg:
             self._parent.meld(str(msg))
             return
         self._parent.dialog_data = {"src": link,
-                                    "height": str(self.hig_text.text()),
-                                    "width": str(self.wid_text.text())}
+                                    "height": str(self.hig_text.value()),
+                                    "width": str(self.wid_text.value())}
         super().accept()
 
 
@@ -1093,17 +1090,17 @@ class ListDialog(qtw.QDialog):
         """bij OK: de opgebouwde list via self.dialog_data doorgeven
         aan het mainwindow
         """
-        list_type = str(self.type_select.currentText()[0]) + "l"
+        list_type = self.type_select.currentText()[0] + "l"
         list_data = []
         for row in range(self.list_table.rowCount()):
             try:
-                list_item = [str(self.list_table.item(row, 0).text())]
+                list_item = [self.list_table.item(row, 0).text()]
             except AttributeError:
                 self._parent.meld('Graag nog even het laatste item bevestigen (...)')
                 return
             if list_type == "dl":
                 try:
-                    list_item.append(str(self.list_table.item(row, 1).text()))
+                    list_item.append(self.list_table.item(row, 1).text())
                 except AttributeError:
                     self._parent.meld('Graag nog even het laatste item bevestigen (...)')
                     return
@@ -1234,7 +1231,7 @@ class TableDialog(qtw.QDialog):
         txt, ok = qtw.QInputDialog.getText(self, 'Add a table',
                                            'Enter a title for this column:',
                                            qtw.QLineEdit.Normal, "")
-        if txt and ok:
+        if ok and txt:
             self.headings[col] = txt
             self.table_table.setHorizontalHeaderLabels(self.headings)
 
@@ -1244,13 +1241,13 @@ class TableDialog(qtw.QDialog):
         """
         rows = self.table_table.rowCount()
         cols = self.table_table.columnCount()
-        summary = str(self.title_text.text())
+        summary = self.title_text.text()
         items = []
         for row in range(rows):
             rowitems = []
             for col in range(cols):
                 try:
-                    rowitems.append(str(self.table_table.item(row, col).text()))
+                    rowitems.append(self.table_table.item(row, col).text())
                 except AttributeError:
                     self._parent.meld('Graag nog even het laatste item bevestigen (...)')
                     return
@@ -1307,7 +1304,7 @@ class ScrolledTextDialog(qtw.QDialog):
     def show_source(self):
         "start viewing html source"
         with open(self.htmlfile) as f_in:
-            data = ''.join([x for x in f_in])
+            data = ''.join(list(f_in))
         if data:
             dlg = CodeViewDialog(self, "Submitted source", data=data)
             dlg.show()
