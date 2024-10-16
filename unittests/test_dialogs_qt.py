@@ -34,6 +34,9 @@ class TestElementDialog:
     def test_init(self, monkeypatch, capsys, expected_output):
         """unittest for ElementDialog.__init__
         """
+        def mock_flags(self):
+            print('called TableItem.flags')
+            return testee.core.Qt.ItemFlag.ItemIsEnabled | testee.core.Qt.ItemFlag.ItemIsEditable
         def mock_analyze(*args):
             print('called analyze_element with args', args)
             return 'qqq', False, 'xxx', 'yyy', True, False
@@ -53,6 +56,7 @@ class TestElementDialog:
         monkeypatch.setattr(testee.qtw, 'QFrame', mockqtw.MockFrame)
         monkeypatch.setattr(testee.qtw, 'QTableWidget', mockqtw.MockTable)
         monkeypatch.setattr(testee.qtw, 'QTableWidgetItem', mockqtw.MockTableItem)
+        monkeypatch.setattr(testee.qtw.QTableWidgetItem, 'flags', mock_flags)
         monkeypatch.setattr(testee.qtw, 'QPushButton', mockqtw.MockPushButton)
         monkeypatch.setattr(testee.qtw.QDialog, 'accept', lambda *x: True)
         monkeypatch.setattr(testee.qtw.QDialog, 'reject', lambda *x: False)
@@ -192,17 +196,17 @@ class TestElementDialog:
             print(f"called Table.column with arg '{item}'")
             if item == 'item1':
                 return 0
-            elif item == 'item2':
+            if item == 'item2':
                 return 1
-            elif item == 'item3':
+            if item == 'item3':
                 return 0
         def mock_row(item):
             print(f"called Table.row with arg '{item}'")
             if item == 'item1':
                 return 1
-            elif item == 'item2':
+            if item == 'item2':
                 return 2
-            elif item == 'item3':
+            if item == 'item3':
                 return 3
         def mock_item(x, y):
             print(f"called Table.item with args {x}, {y}")
@@ -232,7 +236,8 @@ class TestElementDialog:
         assert not testobj.check_changes
         assert capsys.readouterr().out == (
                 "called PushButton.setText with arg `Chec&k Changes`\n"
-                f"called Table.findItems with args ('href', {testee.core.Qt.MatchFixedString})\n"
+                "called Table.findItems with args"
+                f" ('href', {testee.core.Qt.MatchFlag.MatchFixedString!r})\n"
                 f"called CssManager.call_editor_for_stylesheet with arg ''\n"
                 "called ElementDialog.refresh\n")
 
@@ -246,7 +251,8 @@ class TestElementDialog:
         assert not testobj.check_changes
         assert capsys.readouterr().out == (
                 "called PushButton.setText with arg `Chec&k Changes`\n"
-                f"called Table.findItems with args ('href', {testee.core.Qt.MatchFixedString})\n"
+                "called Table.findItems with args"
+                f" ('href', {testee.core.Qt.MatchFlag.MatchFixedString!r})\n"
                 "called Table.column with arg 'item1'\n"
                 "called Table.row with arg 'item1'\n"
                 "called Table.item with args 1, 1\n"
@@ -263,7 +269,8 @@ class TestElementDialog:
         assert testobj.check_changes
         assert capsys.readouterr().out == (
                 "called PushButton.setText with arg `Chec&k Changes`\n"
-                f"called Table.findItems with args ('href', {testee.core.Qt.MatchFixedString})\n"
+                "called Table.findItems with args"
+                f" ('href', {testee.core.Qt.MatchFlag.MatchFixedString!r})\n"
                 "called Table.column with arg 'item1'\n"
                 "called Table.row with arg 'item1'\n"
                 "called Table.item with args 1, 1\n"
@@ -305,9 +312,9 @@ class TestElementDialog:
                 "called Table.rowCount\n"
                 "called Table.insertRow with arg '0'\n"
                 "called Table.setItem with args"
-                " (0, 0, item of <class 'PyQt5.QtWidgets.QTableWidgetItem'>)\n"
+                " (0, 0, item of <class 'PyQt6.QtWidgets.QTableWidgetItem'>)\n"
                 "called Table.setItem with args"
-                " (0, 1, item of <class 'PyQt5.QtWidgets.QTableWidgetItem'>)\n"
+                " (0, 1, item of <class 'PyQt6.QtWidgets.QTableWidgetItem'>)\n"
                 "called analyze_element with args ('', {'styledata': ''})\n"
                 "called PushButton.setText with arg `xxx`\n")
         assert testobj.attr_table.item(0, 0).text() == 'styledata'
@@ -437,7 +444,7 @@ class TestElementDialog:
         assert testobj._parent.dialog_data == ('element', {'style': 'styledata'}, False)
         assert capsys.readouterr().out == ("called ElementDialog.refresh\n"
                                            "called LineEdit.text\n"
-                                           "called CheckBox.checkState\n"
+                                           "called CheckBox.isChecked\n"
                                            "called Table.rowCount\n"
                                            "called Dialog.accept\n")
         testobj.is_style_tag = True
@@ -445,7 +452,7 @@ class TestElementDialog:
         assert testobj._parent.dialog_data == ('element', {'styledata': 'styledata'}, False)
         assert capsys.readouterr().out == ("called ElementDialog.refresh\n"
                                            "called LineEdit.text\n"
-                                           "called CheckBox.checkState\n"
+                                           "called CheckBox.isChecked\n"
                                            "called Table.rowCount\n"
                                            "called Dialog.accept\n")
         # 205-215
@@ -460,7 +467,7 @@ class TestElementDialog:
         assert testobj._parent.dialog_data == ('element', {'xxx': 'yyy'}, False)
         assert capsys.readouterr().out == ("called ElementDialog.refresh\n"
                                            "called LineEdit.text\n"
-                                           "called CheckBox.checkState\n"
+                                           "called CheckBox.isChecked\n"
                                            "called Table.rowCount\n"
                                            "called Table.item with args (0, 0)\n"
                                            "called Table.item with args (0, 1)\n"
@@ -473,7 +480,7 @@ class TestElementDialog:
         assert testobj._parent.dialog_data == ('element', {}, False)
         assert capsys.readouterr().out == ("called ElementDialog.refresh\n"
                                            "called LineEdit.text\n"
-                                           "called CheckBox.checkState\n"
+                                           "called CheckBox.isChecked\n"
                                            "called Table.rowCount\n"
                                            "called Table.item with args (0, 0)\n"
                                            "called Table.item with args (0, 1)\n"
@@ -486,7 +493,7 @@ class TestElementDialog:
         assert testobj._parent.dialog_data == ('element', {}, False)
         assert capsys.readouterr().out == ("called ElementDialog.refresh\n"
                                            "called LineEdit.text\n"
-                                           "called CheckBox.checkState\n"
+                                           "called CheckBox.isChecked\n"
                                            "called Table.rowCount\n"
                                            "called Table.item with args (0, 0)\n"
                                            "called Table.item with args (0, 1)\n"
@@ -502,7 +509,7 @@ class TestElementDialog:
         assert capsys.readouterr().out == (
                 "called ElementDialog.refresh\n"
                 "called LineEdit.text\n"
-                "called CheckBox.checkState\n"
+                "called CheckBox.isChecked\n"
                 "called Table.rowCount\n"
                 "called Table.item with args (0, 0)\n"
                 "called Table.item with args (0, 1)\n"
@@ -512,12 +519,14 @@ class TestElementDialog:
                 f" `{testobj}` `Add an element` `Duplicate attributes, please merge`\n")
         # 208-210
         testobj.attr_table.item = mock_item2
+        testobj.comment_button.setChecked(True)
+        assert capsys.readouterr().out == "called CheckBox.setChecked with arg True\n"
         testobj.accept()
         assert testobj._parent.dialog_data == ('element', {}, False)
         assert capsys.readouterr().out == (
                 "called ElementDialog.refresh\n"
                 "called LineEdit.text\n"
-                "called CheckBox.checkState\n"
+                "called CheckBox.isChecked\n"
                 "called Table.rowCount\n"
                 "called Table.item with args (0, 0)\n"
                 "called MessageBox.information with args"
@@ -860,6 +869,7 @@ class TestSearchDialog:
                                            "called LineEdit.text\n"
                                            "called LineEdit.text\n"
                                            "called Dialog.accept\n")
+
 
 class TestDtdDialog:
     """unittest for dialogs_qt.DtdDialog
@@ -1322,10 +1332,10 @@ class TestLinkDialog:
         """
         def mock_question(parent, *args, **kwargs):
             print('called MessageBox.question with args', args[:2])
-            return testee.qtw.QMessageBox.No
+            return testee.qtw.QMessageBox.StandardButton.No
         def mock_question_2(parent, *args, **kwargs):
             print('called MessageBox.question with args', args[:2])
-            return testee.qtw.QMessageBox.Yes
+            return testee.qtw.QMessageBox.StandardButton.Yes
         def mock_convert(*args):
             print('called Editor.convert_link with args', args)
             return 'xxx'
@@ -2176,19 +2186,19 @@ class TestTableDialog:
         assert not testobj.headings
         assert capsys.readouterr().out == (
                 "called InputDialog.getText with args"
-                f" {testobj} ('Add a table', 'Enter a title for this column:', 0, '') {{}}\n")
+                f" {testobj} ('Add a table', 'Enter a title for this column:') {{'text': ''}}\n")
         monkeypatch.setattr(testee.qtw.QInputDialog, 'getText', mock_text)
         testobj.on_title(2)
         assert not testobj.headings
         assert capsys.readouterr().out == (
                 "called InputDialog.getText with args"
-                f" {testobj} ('Add a table', 'Enter a title for this column:', 0, '') {{}}\n")
+                f" {testobj} ('Add a table', 'Enter a title for this column:') {{'text': ''}}\n")
         monkeypatch.setattr(testee.qtw.QInputDialog, 'getText', mock_text_2)
         testobj.on_title(2)
         assert testobj.headings == {2: 'xxx'}
         assert capsys.readouterr().out == (
                 "called InputDialog.getText with args"
-                f" {testobj} ('Add a table', 'Enter a title for this column:', 0, '') {{}}\n"
+                f" {testobj} ('Add a table', 'Enter a title for this column:') {{'text': ''}}\n"
                 "called Table.setHorizontalHeaderLabels with arg '{2: 'xxx'}'\n")
 
     def test_accept(self, monkeypatch, capsys):
@@ -2398,13 +2408,13 @@ class TestCodeViewDialog:
                 "called Editor.setMarginsFont\n"
                 "called Fontmetrics.__init__()\n"
                 "called Editor.setMarginsFont\n"
-                "called Editor.width()\n"
+                "called Editor.horizontalAdvance()\n"
                 "called Editor.setMarginWidth with args (0, None)\n"
                 "called Editor.setMarginLineNumbers with args (0, True)\n"
                 "called Editor.setMarginsBackgroundColor with arg 'color #cccccc'\n"
-                "called Editor.setBraceMatching with arg `2`\n"
+                "called Editor.setBraceMatching with arg `BraceMatch.SloppyBraceMatch`\n"
                 "called Editor.setAutoIndent with arg `True`\n"
-                "called Editor.setFolding with arg `1`\n"
+                "called Editor.setFolding with arg `FoldStyle.PlainFoldStyle`\n"
                 "called Editor.setCaretLineVisible with arg `True`\n"
                 "called Editor.setCaretLineBackgroundColor with arg 'color #ffe4e4'\n"
                 "called Lexer.__init__()\n"

@@ -6,10 +6,10 @@ import os
 ## import sys
 import string
 # import pathlib
-import PyQt5.QtWidgets as qtw
-import PyQt5.QtGui as gui
-import PyQt5.QtCore as core
-import PyQt5.Qsci as sci  # scintilla
+import PyQt6.QtWidgets as qtw
+import PyQt6.QtGui as gui
+import PyQt6.QtCore as core
+import PyQt6.Qsci as sci  # scintilla
 from ashe.shared import CMSTART, VAL_MESSAGE, analyze_element
 
 
@@ -43,7 +43,7 @@ class ElementDialog(qtw.QDialog):
         vbox.addLayout(hbox)
 
         sbox = qtw.QFrame()
-        sbox.setFrameStyle(qtw.QFrame.Box)
+        sbox.setFrameStyle(qtw.QFrame.Shape.Box)
 
         box = qtw.QVBoxLayout()
 
@@ -64,11 +64,11 @@ class ElementDialog(qtw.QDialog):
                 item = qtw.QTableWidgetItem(attr)
                 self.attr_table.setItem(row, 0, item)
                 if attr in ('style', 'styledata'):
-                    item.setFlags(item.flags() & (not core.Qt.ItemIsEditable))
+                    item.setFlags(item.flags() & ~core.Qt.ItemFlag.ItemIsEditable)
                 item = qtw.QTableWidgetItem(value)
                 self.attr_table.setItem(row, 1, item)
                 if attr in ('style', 'styledata'):
-                    item.setFlags(item.flags() & (not core.Qt.ItemIsEditable))
+                    item.setFlags(item.flags() & ~core.Qt.ItemFlag.ItemIsEditable)
         hbox.addWidget(self.attr_table)
         box.addLayout(hbox)
 
@@ -140,7 +140,7 @@ class ElementDialog(qtw.QDialog):
         self.style_button.setText('Chec&k Changes')
         tag = self.tag_text.text()
         fname = ''
-        test = self.attr_table.findItems('href', core.Qt.MatchFixedString)
+        test = self.attr_table.findItems('href', core.Qt.MatchFlag.MatchFixedString)
         for item in test:
             col = self.attr_table.column(item)
             row = self.attr_table.row(item)
@@ -173,10 +173,12 @@ class ElementDialog(qtw.QDialog):
             self.attr_table.insertRow(row)
             item = qtw.QTableWidgetItem(attrname)
             self.attr_table.setItem(row, 0, item)
-            item.setFlags(item.flags() & (not core.Qt.ItemIsEditable))
+            # item.setFlags(item.flags() & (not core.Qt.ItemFlag.ItemIsEditable))
+            item.setFlags(item.flags() & ~core.Qt.ItemFlag.ItemIsEditable)
             item = qtw.QTableWidgetItem(self.styledata)
             self.attr_table.setItem(row, 1, item)
-            item.setFlags(item.flags() & (not core.Qt.ItemIsEditable))
+            # item.setFlags(item.flags() & (not core.Qt.ItemFlag.ItemIsEditable))
+            item.setFlags(item.flags() & ~core.Qt.ItemFlag.ItemIsEditable)
             self.style_button.setText(analyze_element('', {attrname: ''})[2])
         self.old_styledata = self.styledata
 
@@ -198,7 +200,7 @@ class ElementDialog(qtw.QDialog):
             if letter not in test:
                 qtw.QMessageBox.information(self, add_title, 'Illegal character(s) in tag name')
                 return
-        commented = self.comment_button.checkState()
+        commented = self.comment_button.isChecked()  # checkState()
         attrs = {}
         for i in range(self.attr_table.rowCount()):
             try:
@@ -435,7 +437,7 @@ class DtdDialog(qtw.QDialog):
         hbox = qtw.QHBoxLayout()
 
         sbox = qtw.QFrame()
-        sbox.setFrameStyle(qtw.QFrame.Box)
+        sbox.setFrameStyle(qtw.QFrame.Shape.Box)
         vsbox = qtw.QVBoxLayout()
 
         hsbox = qtw.QHBoxLayout()
@@ -506,7 +508,7 @@ class CssDialog(qtw.QDialog):
         vbox = qtw.QVBoxLayout()
 
         sbox = qtw.QFrame()
-        sbox.setFrameStyle(qtw.QFrame.Box)
+        sbox.setFrameStyle(qtw.QFrame.Shape.Box)
         gbox = qtw.QGridLayout()
 
         gbox.addWidget(qtw.QLabel("link to stylesheet:", self), 0, 0)
@@ -637,7 +639,7 @@ class LinkDialog(qtw.QDialog):
         vbox = qtw.QVBoxLayout()
 
         sbox = qtw.QFrame()
-        sbox.setFrameStyle(qtw.QFrame.Box)
+        sbox.setFrameStyle(qtw.QFrame.Shape.Box)
         gbox = qtw.QGridLayout()
         row = 0
         gbox.addWidget(qtw.QLabel("link to document:", self), row, 0)
@@ -712,9 +714,10 @@ class LinkDialog(qtw.QDialog):
         if not txt:
             hlp = qtw.QMessageBox.question(self, 'Add Link',
                                            "Link text is empty - are you sure?",
-                                           qtw.QMessageBox.Yes | qtw.QMessageBox.No,
-                                           defaultButton=qtw.QMessageBox.Yes)
-            if hlp == qtw.QMessageBox.No:
+                                           qtw.QMessageBox.StandardButton.Yes
+                                           | qtw.QMessageBox.StandardButton.No,
+                                           defaultButton=qtw.QMessageBox.StandardButton.Yes)
+            if hlp == qtw.QMessageBox.StandardButton.No:
                 return
         try:
             link = self._parent.editor.convert_link(self.link_text.text(),
@@ -738,7 +741,7 @@ class ImageDialog(qtw.QDialog):
         vbox = qtw.QVBoxLayout()
 
         sbox = qtw.QFrame()
-        sbox.setFrameStyle(qtw.QFrame.Box)
+        sbox.setFrameStyle(qtw.QFrame.Shape.Box)
         gbox = qtw.QGridLayout()
         row = 0
         gbox.addWidget(qtw.QLabel("link to image:", self), row, 0)
@@ -834,7 +837,7 @@ class VideoDialog(qtw.QDialog):
         vbox = qtw.QVBoxLayout()
 
         sbox = qtw.QFrame()
-        sbox.setFrameStyle(qtw.QFrame.Box)
+        sbox.setFrameStyle(qtw.QFrame.Shape.Box)
         gbox = qtw.QGridLayout()
 
         row = 0
@@ -934,7 +937,7 @@ class AudioDialog(qtw.QDialog):
         vbox = qtw.QVBoxLayout()
 
         sbox = qtw.QFrame()
-        sbox.setFrameStyle(qtw.QFrame.Box)
+        sbox.setFrameStyle(qtw.QFrame.Shape.Box)
         gbox = qtw.QGridLayout()
 
         row = 0
@@ -1005,7 +1008,7 @@ class ListDialog(qtw.QDialog):
         vbox = qtw.QVBoxLayout()
 
         sbox = qtw.QFrame()
-        sbox.setFrameStyle(qtw.QFrame.Box)
+        sbox.setFrameStyle(qtw.QFrame.Shape.Box)
         vsbox = qtw.QVBoxLayout()
         tbox = qtw.QGridLayout()
         tbox.addWidget(qtw.QLabel("choose type of list:", self), 0, 0)
@@ -1122,7 +1125,7 @@ class TableDialog(qtw.QDialog):
         vbox = qtw.QVBoxLayout()
 
         sbox = qtw.QFrame()
-        sbox.setFrameStyle(qtw.QFrame.Box)
+        sbox.setFrameStyle(qtw.QFrame.Shape.Box)
         gbox = qtw.QGridLayout()
 
         gbox.addWidget(qtw.QLabel("summary (description):", self), 0, 0)
@@ -1228,9 +1231,8 @@ class TableDialog(qtw.QDialog):
 
     def on_title(self, col):
         "opgeven titel bij klikken op kolomheader mogelijk maken"
-        txt, ok = qtw.QInputDialog.getText(self, 'Add a table',
-                                           'Enter a title for this column:',
-                                           qtw.QLineEdit.Normal, "")
+        txt, ok = qtw.QInputDialog.getText(self, 'Add a table', 'Enter a title for this column:',
+                                           text="")
         if ok and txt:
             self.headings[col] = txt
             self.table_table.setHorizontalHeaderLabels(self.headings)
@@ -1356,14 +1358,14 @@ class CodeViewDialog(qtw.QDialog):
         # Margin 0 is used for line numbers
         fontmetrics = gui.QFontMetrics(font)
         self.text.setMarginsFont(font)
-        self.text.setMarginWidth(0, fontmetrics.width("00000"))
+        self.text.setMarginWidth(0, fontmetrics.horizontalAdvance("00000"))
         self.text.setMarginLineNumbers(0, True)
         self.text.setMarginsBackgroundColor(gui.QColor("#cccccc"))
 
         # Enable brace matching, auto-indent, code-folding
-        self.text.setBraceMatching(sci.QsciScintilla.SloppyBraceMatch)
+        self.text.setBraceMatching(sci.QsciScintilla.BraceMatch.SloppyBraceMatch)
         self.text.setAutoIndent(True)
-        self.text.setFolding(sci.QsciScintilla.PlainFoldStyle)
+        self.text.setFolding(sci.QsciScintilla.FoldStyle.PlainFoldStyle)
 
         # Current line visible with special background color
         self.text.setCaretLineVisible(True)

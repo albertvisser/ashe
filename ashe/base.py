@@ -1230,7 +1230,6 @@ class EditorHelper:
         ok, dialog_data = self.gui.do_add_element(where)
         if ok:
             tag, attrs, commented = dialog_data
-            # print('in base.insert, terug uit dialoog, data is', tag, attrs, commented)
             item = self.item if below else self.gui.get_element_parent(self.item)
             under_comment = self.gui.get_element_text(item).startswith(CMSTART)
             text = getelname(tag, attrs, commented or under_comment)

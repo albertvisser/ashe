@@ -63,12 +63,13 @@ class TestVisualTree:
                             mockqtw.MockTreeWidget.setDropIndicatorShown)
         testobj = testee.VisualTree(parent)
         assert testobj._parent == parent
-        assert capsys.readouterr().out == ("called Tree.__init__\n"
-                                           "called Tree.setAcceptDrops with arg True\n"
-                                           "called Tree.setDragEnabled with arg True\n"
-                                           "called Tree.setSelectionMode\n"
-                                           "called Tree.setDragDropMode with arg 4\n"
-                                           "called Tree.setDropIndicatorShown with arg True\n")
+        assert capsys.readouterr().out == (
+                "called Tree.__init__\n"
+                "called Tree.setAcceptDrops with arg True\n"
+                "called Tree.setDragEnabled with arg True\n"
+                "called Tree.setSelectionMode\n"
+                "called Tree.setDragDropMode with arg DragDropMode.InternalMove\n"
+                "called Tree.setDropIndicatorShown with arg True\n")
 
     def test_mouseDoubleClickEvent(self, monkeypatch, capsys):
         """unittest for VisualTree.mouseDoubleClickEvent
@@ -96,26 +97,27 @@ class TestVisualTree:
         testobj._parent.top = parent_top
         testobj._parent.editor.constants = {'ELSTART': '<>'}
         testobj._parent.editor.edit = mock_edit
-        event = types.SimpleNamespace(x=lambda *i: 1, y=lambda *i: 2)
+        event = types.SimpleNamespace(position=lambda *x: types.SimpleNamespace(
+            toPoint=lambda *x: (1, 2)))
         testobj.mouseDoubleClickEvent(event)
         assert capsys.readouterr().out == (
-                "called VisualTree.itemAt with args (1, 2)\n"
+                "called VisualTree.itemAt with args ((1, 2),)\n"
                 f"called TreeWidget.mouseDoubleClickEvent with arg '{event}'\n")
         testobj.itemAt = mock_itemat_2
         testobj.mouseDoubleClickEvent(event)
         assert capsys.readouterr().out == (
-                "called VisualTree.itemAt with args (1, 2)\n"
+                "called VisualTree.itemAt with args ((1, 2),)\n"
                 f"called TreeWidget.mouseDoubleClickEvent with arg '{event}'\n")
         testobj.itemAt = mock_itemat_3
         testobj.mouseDoubleClickEvent(event)
         assert capsys.readouterr().out == (
-                "called VisualTree.itemAt with args (1, 2)\n"
+                "called VisualTree.itemAt with args ((1, 2),)\n"
                 "called TreeItem.text for col 0\n"
                 f"called TreeWidget.mouseDoubleClickEvent with arg '{event}'\n")
         testitem.setText(0, '<> ele')
         assert capsys.readouterr().out == "called TreeItem.setText with arg `<> ele` for col 0\n"
         testobj.mouseDoubleClickEvent(event)
-        assert capsys.readouterr().out == ("called VisualTree.itemAt with args (1, 2)\n"
+        assert capsys.readouterr().out == ("called VisualTree.itemAt with args ((1, 2),)\n"
                                            "called TreeItem.text for col 0\n"
                                            "called Editor.edit\n")
         testitem.addChild(mockqtw.MockTreeItem('x'))
@@ -123,7 +125,7 @@ class TestVisualTree:
                                            "called TreeItem.addChild\n")
         testobj.mouseDoubleClickEvent(event)
         assert capsys.readouterr().out == (
-                "called VisualTree.itemAt with args (1, 2)\n"
+                "called VisualTree.itemAt with args ((1, 2),)\n"
                 "called TreeItem.text for col 0\n"
                 f"called TreeWidget.mouseDoubleClickEvent with arg '{event}'\n")
 
@@ -151,20 +153,24 @@ class TestVisualTree:
         testobj.itemAt = mock_itemat
         testobj._parent.popup_menu = mock_popup
         testobj._parent.top = parent_top
-        event = types.SimpleNamespace(x=lambda *i: 1, y=lambda *i: 2, button=lambda *x: 'button')
+        # event = types.SimpleNamespace(x=lambda *i: 1, y=lambda *i: 2, button=lambda *x: 'button')
+        event = types.SimpleNamespace(position=lambda *x: types.SimpleNamespace(
+            toPoint=lambda *x: (1, 2)), button=lambda *x: 'button')
         testobj.mouseReleaseEvent(event)
         assert capsys.readouterr().out == (
                 f"called TreeWidget.mouseReleaseEvent with arg '{event}'\n")
-        event = types.SimpleNamespace(x=lambda *i: 1, y=lambda *i: 2,
-                                      button=lambda *x: testee.core.Qt.RightButton)
+        # event = types.SimpleNamespace(x=lambda *i: 1, y=lambda *i: 2,
+        #                               button=lambda *x: testee.core.Qt.MouseButton.RightButton)
+        event = types.SimpleNamespace(position=lambda *x: types.SimpleNamespace(
+            toPoint=lambda *x: (1, 2)), button=lambda *x: testee.core.Qt.MouseButton.RightButton)
         testobj.mouseReleaseEvent(event)
         assert capsys.readouterr().out == (
-                "called VisualTree.itemAt with args (1, 2)\n"
+                "called VisualTree.itemAt with args ((1, 2),)\n"
                 f"called TreeWidget.mouseReleaseEvent with arg '{event}'\n")
         testobj.itemAt = mock_itemat_2
         testobj.mouseReleaseEvent(event)
         assert capsys.readouterr().out == (
-                "called VisualTree.itemAt with args (1, 2)\n"
+                "called VisualTree.itemAt with args ((1, 2),)\n"
                 f"called Tree.setCurrentItem with arg `{testitem}`\n"
                 f"called Editor.popup with arg {testitem}\n")
 
@@ -197,7 +203,9 @@ class TestVisualTree:
         testobj = self.setup_testobj(monkeypatch, capsys)
         testobj.itemAt = mock_itemat
         testobj._parent.editor.constants = {'ELSTART': '<>'}
-        event = types.SimpleNamespace(pos=lambda *i: (1, 2))
+        # event = types.SimpleNamespace(pos=lambda *i: (1, 2))
+        event = types.SimpleNamespace(position=lambda *x: types.SimpleNamespace(
+            toPoint=lambda *x: (1, 2)))
         testobj.dropEvent(event)
         assert capsys.readouterr().out == (
                 "called VisualTree.itemAt with args ((1, 2),)\n"
@@ -364,7 +372,7 @@ class TestEditorGui:
         with pytest.raises(SystemExit):
             testobj.go()
         assert capsys.readouterr().out == ("called Application.__init__\n"
-                                           "called Application.exec_\n")
+                                           "called Application.exec\n")
 
     def test_setup_menu(self, monkeypatch, capsys, expected_output):
         """unittest for EditorGui.setup_menu
@@ -388,7 +396,7 @@ class TestEditorGui:
                     ('&HTML', [('Add &DTD', 'D', 'ACS', 'ddddd', testobj.callback5),
                                ('Add &Stylesheet', 'E', 'SCA', 'eeeee', testobj.callback6)])]
         monkeypatch.setattr(testee.qtw, 'QMenu', mockqtw.MockMenu)
-        monkeypatch.setattr(testee.qtw, 'QAction', mockqtw.MockAction)
+        monkeypatch.setattr(testee.gui, 'QAction', mockqtw.MockAction)
         testobj = self.setup_testobj(monkeypatch, capsys)
         testobj.menuBar = mock_menubar
         testobj.callback0 = lambda *x: 0
@@ -413,18 +421,18 @@ class TestEditorGui:
         assert [x[0] for x in testobj.contextmenu_items] == ['M', 'A', '', 'M', 'M']
         assert isinstance(testobj.contextmenu_items[0][1], testee.qtw.QMenu)
         assert testobj.contextmenu_items[0][1].title() == '&Edit'
-        assert isinstance(testobj.contextmenu_items[1][1], testee.qtw.QAction)
+        assert isinstance(testobj.contextmenu_items[1][1], testee.gui.QAction)
         assert testobj.contextmenu_items[1][1].text() == 'qq'
         assert testobj.contextmenu_items[2][1] == ''
         assert isinstance(testobj.contextmenu_items[3][1], testee.qtw.QMenu)
         assert testobj.contextmenu_items[3][1].title() == '&Search'
         assert isinstance(testobj.contextmenu_items[4][1], testee.qtw.QMenu)
         assert testobj.contextmenu_items[4][1].title() == '&HTML'
-        assert isinstance(testobj.adv_menu, testee.qtw.QAction)
+        assert isinstance(testobj.adv_menu, testee.gui.QAction)
         assert testobj.adv_menu.text() == 'Advance selection...'
-        assert isinstance(testobj.dtd_menu, testee.qtw.QAction)
+        assert isinstance(testobj.dtd_menu, testee.gui.QAction)
         assert testobj.dtd_menu.text() == 'Add &DTD'
-        assert isinstance(testobj.css_menu, testee.qtw.QAction)
+        assert isinstance(testobj.css_menu, testee.gui.QAction)
         assert testobj.css_menu.text() == 'Add &Stylesheet'
         # uitgezet want ik kan niet alle variabelen goed weergeven
         # assert capsys.readouterr().out == expected_output['setup_menu'].format(testobj=testobj)
@@ -484,14 +492,14 @@ class TestEditorGui:
         """
         testobj = self.setup_testobj(monkeypatch, capsys)
         node = mockqtw.MockTreeItem('xxx')
-        node.setData(0, testee.core.Qt.UserRole, 'yyy')
+        node.setData(0, testee.core.Qt.ItemDataRole.UserRole, 'yyy')
         assert capsys.readouterr().out == (
                 "called TreeItem.__init__ with args ('xxx',)\n"
                 "called TreeItem.setData to `yyy`"
-                f" with role {testee.core.Qt.UserRole} for col 0\n")
+                f" with role {testee.core.Qt.ItemDataRole.UserRole} for col 0\n")
         assert testobj.get_element_data(node) == "yyy"
         assert capsys.readouterr().out == (
-                f"called TreeItem.data for col 0 role {testee.core.Qt.UserRole}\n")
+                f"called TreeItem.data for col 0 role {testee.core.Qt.ItemDataRole.UserRole}\n")
 
     def test_get_element_children(self, monkeypatch, capsys):
         """unittest for EditorGui.get_element_children
@@ -524,7 +532,7 @@ class TestEditorGui:
         testobj.set_element_data(node, 'data')
         assert capsys.readouterr().out == (
                 "called TreeItem.setData to `data`"
-                f" with role {testee.core.Qt.UserRole} for col 0\n")
+                f" with role {testee.core.Qt.ItemDataRole.UserRole} for col 0\n")
 
     def test_addtreeitem(self, monkeypatch, capsys):
         """unittest for EditorGui.addtreeitem
@@ -538,13 +546,15 @@ class TestEditorGui:
         assert capsys.readouterr().out == (
                 "called TreeItem.__init__ with args ()\n"
                 "called TreeItem.setText with arg `naam` for col 0\n"
-                f"called TreeItem.setData to `data` with role {testee.core.Qt.UserRole} for col 0\n"
+                "called TreeItem.setData to `data` with role"
+                f" {testee.core.Qt.ItemDataRole.UserRole} for col 0\n"
                 "called TreeItem.addChild\n")
         result = testobj.addtreeitem(node, 'naam', 'data', 0)
         assert capsys.readouterr().out == (
                 "called TreeItem.__init__ with args ()\n"
                 "called TreeItem.setText with arg `naam` for col 0\n"
-                f"called TreeItem.setData to `data` with role {testee.core.Qt.UserRole} for col 0\n"
+                "called TreeItem.setData to `data` with role"
+                f" {testee.core.Qt.ItemDataRole.UserRole} for col 0\n"
                 "called TreeItem.insertChild at pos 0\n")
 
     def test_addtreetop(self, monkeypatch, capsys):
@@ -657,7 +667,7 @@ class TestEditorGui:
                 "called Action.__init__ with args ('-----', None)\n"
                 f"called Tree.visualItemRect with arg {item}\n"
                 "called Tree.mapToGlobal with arg bottom-right\n"
-                "called Menu.exec_ with args ('mapped-to-global',) {}\n")
+                "called Menu.exec with args ('mapped-to-global',) {}\n")
 
     def test_keyReleaseEvent(self, monkeypatch, capsys):
         """unittest for EditorGui.keyReleaseEvent
@@ -707,7 +717,7 @@ class TestEditorGui:
         testobj.tree.current = item
         assert not testobj.on_keyup(event)
         assert capsys.readouterr().out == ("called Tree.setCurrentItem\n")
-        event = mockqtw.MockEvent(key=testee.core.Qt.Key_Menu)
+        event = mockqtw.MockEvent(key=testee.core.Qt.Key.Key_Menu)
         assert testobj.on_keyup(event)
         assert capsys.readouterr().out == ("called Tree.setCurrentItem\n"
                                            f"called Tree.popup_menu with arg {item}\n")
@@ -718,13 +728,13 @@ class TestEditorGui:
         def mock_ask(*args, **kwargs):
             # we krijgen hier weer zo'n StandardButtons object dus output even laten zitten
             # print(f'called MessageBox.question with args', args, kwargs)
-            return testee.qtw.QMessageBox.No
+            return testee.qtw.QMessageBox.StandardButton.No
         def mock_ask_2(*args, **kwargs):
             # print(f'called MessageBox.question with args', args, kwargs)
-            return testee.qtw.QMessageBox.Yes
+            return testee.qtw.QMessageBox.StandardButton.Yes
         def mock_ask_3(*args, **kwargs):
             # print(f'called MessageBox.question with args', args, kwargs)
-            return testee.qtw.QMessageBox.Cancel
+            return testee.qtw.QMessageBox.StandardButton.Cancel
         monkeypatch.setattr(testee.qtw.QMessageBox, 'question', mock_ask)
         testobj = self.setup_testobj(monkeypatch, capsys)
         assert testobj.ask_how_to_continue('title', 'text') == 0
@@ -892,17 +902,17 @@ class TestEditorGui:
         """unittest for EditorGui.call_dialog
         """
         def mock_exec(self):
-            print('called Dialog.exec_')
-            return testee.qtw.QDialog.Accepted
+            print('called Dialog.exec')
+            return testee.qtw.QDialog.DialogCode.Accepted
         testobj = self.setup_testobj(monkeypatch, capsys)
         obj = mockqtw.MockDialog()
         assert capsys.readouterr().out == "called Dialog.__init__ with args None () {}\n"
         testobj.dialog_data = {'x': 'y'}
         assert testobj.call_dialog(obj) == (False, None)
-        assert capsys.readouterr().out == ("called Dialog.exec_\n")
-        monkeypatch.setattr(mockqtw.MockDialog, 'exec_', mock_exec)
+        assert capsys.readouterr().out == ("called Dialog.exec\n")
+        monkeypatch.setattr(mockqtw.MockDialog, 'exec', mock_exec)
         assert testobj.call_dialog(obj) == (True, {'x': 'y'})
-        assert capsys.readouterr().out == ("called Dialog.exec_\n")
+        assert capsys.readouterr().out == ("called Dialog.exec\n")
 
     def test_do_edit_element(self, monkeypatch, capsys):
         """unittest for EditorGui.do_edit_element

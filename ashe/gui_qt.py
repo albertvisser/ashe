@@ -2,12 +2,10 @@
 """
 import os
 import sys
-import PyQt5.QtWidgets as qtw
-import PyQt5.QtGui as gui
-import PyQt5.QtCore as core
-## import PyQt5.QtWebKit as webkit
-# import PyQt5.QtWebKitWidgets as webkit
-import PyQt5.QtWebEngineWidgets as webeng
+import PyQt6.QtWidgets as qtw
+import PyQt6.QtGui as gui
+import PyQt6.QtCore as core
+import PyQt6.QtWebEngineWidgets as webeng
 
 from ashe.shared import masks
 from ashe.dialogs_qt import (ElementDialog, TextDialog, DtdDialog, CssDialog, LinkDialog,
@@ -23,13 +21,14 @@ class VisualTree(qtw.QTreeWidget):
         super().__init__()
         self.setAcceptDrops(True)
         self.setDragEnabled(True)
-        self.setSelectionMode(self.SingleSelection)
-        self.setDragDropMode(self.InternalMove)
+        self.setSelectionMode(self.SelectionMode.SingleSelection)
+        self.setDragDropMode(self.DragDropMode.InternalMove)
         self.setDropIndicatorShown(True)
 
     def mouseDoubleClickEvent(self, event):
         "reimplemented event handler"
-        item = self.itemAt(event.x(), event.y())
+        # item = self.itemAt(event.x(), event.y())
+        item = self.itemAt(event.position().toPoint())
         if (item and item != self._parent.top
                 and item.text(0).startswith(self._parent.editor.constants['ELSTART'])
                 and item.childCount() == 0):
@@ -39,9 +38,10 @@ class VisualTree(qtw.QTreeWidget):
 
     def mouseReleaseEvent(self, event):
         "reimplemented event handler"
-        if event.button() == core.Qt.RightButton:
-            xc, yc = event.x(), event.y()
-            item = self.itemAt(xc, yc)
+        if event.button() == core.Qt.MouseButton.RightButton:
+            # xc, yc = event.x(), event.y()
+            # item = self.itemAt(xc, yc)
+            item = self.itemAt(event.position().toPoint())
             if item and item != self._parent.top:
                 self.setCurrentItem(item)
                 self._parent.popup_menu(item)
@@ -54,7 +54,7 @@ class VisualTree(qtw.QTreeWidget):
         Het komt er altijd *onder* te hangen als laatste item
         deze methode breidt de Treewidget methode uit met wat visuele zaken
         """
-        item = self.itemAt(event.pos())
+        item = self.itemAt(event.position().toPoint())
         if not item or not item.text(0).startswith(self._parent.editor.constants['ELSTART']):
             self._parent.meld('Can only drop on element')
             return
@@ -111,7 +111,7 @@ class EditorGui(qtw.QMainWindow):
     def go(self):
         """show the screen
         """
-        sys.exit(self.app.exec_())
+        sys.exit(self.app.exec())
 
     def setup_menu(self):
         """build application menu
@@ -131,7 +131,7 @@ class EditorGui(qtw.QMainWindow):
                     hotkey = f"Ctrl+{hotkey}"
                 if 'S' in modifiers:
                     hotkey = f"Shift+{hotkey}"
-                act = qtw.QAction(menuitem_text, self)
+                act = gui.QAction(menuitem_text, self)
                 menu.addAction(act)
                 act.setStatusTip(status_text)
                 act.setShortcut(hotkey)
@@ -187,7 +187,7 @@ class EditorGui(qtw.QMainWindow):
     @staticmethod
     def get_element_data(node):
         "return attributes or inline text stored with this element"
-        return node.data(0, core.Qt.UserRole)
+        return node.data(0, core.Qt.ItemDataRole.UserRole)
 
     @staticmethod
     def get_element_children(node):
@@ -204,7 +204,7 @@ class EditorGui(qtw.QMainWindow):
     @staticmethod
     def set_element_data(node, data):
         "change stored attrs or inline text for this element"
-        node.setData(0, core.Qt.UserRole, data)
+        node.setData(0, core.Qt.ItemDataRole.UserRole, data)
 
     @staticmethod
     def addtreeitem(node, naam, data, index=-1):
@@ -215,7 +215,7 @@ class EditorGui(qtw.QMainWindow):
         newnode = qtw.QTreeWidgetItem()
         newnode.setText(0, naam)  # self.tree.AppendItem(node, naam)
         # data is ofwel leeg, ofwel een string, ofwel een dictionary
-        newnode.setData(0, core.Qt.UserRole, data)  # self.tree.SetPyData(newnode, data)
+        newnode.setData(0, core.Qt.ItemDataRole.UserRole, data)  # self.tree.SetPyData(newnode, data)
         if index == -1:
             node.addChild(newnode)
         else:
@@ -279,7 +279,7 @@ class EditorGui(qtw.QMainWindow):
         # popup_location = core.QPoint(int(x) + 200, y)
         popup_location = self.tree.visualItemRect(arg).bottomRight()
         self.in_contextmenu = True
-        menu.exec_(self.tree.mapToGlobal(popup_location))
+        menu.exec(self.tree.mapToGlobal(popup_location))
         self.in_contextmenu = False
         # del menu
 
@@ -294,7 +294,7 @@ class EditorGui(qtw.QMainWindow):
         ky = ev.key()
         item = self.tree.currentItem()
         skip = False
-        if item and item != self.top and ky == core.Qt.Key_Menu:
+        if item and item != self.top and ky == core.Qt.Key.Key_Menu:
             self.popup_menu(item)
             skip = True
         return skip
@@ -304,11 +304,12 @@ class EditorGui(qtw.QMainWindow):
         keuze uitvoeren en teruggeven (i.v.m. eventueel gekozen Cancel)
         retourneert 1 = Yes, 0 = No, -1 = Cancel
         """
-        retval = dict(zip((qtw.QMessageBox.Yes, qtw.QMessageBox.No, qtw.QMessageBox.Cancel),
-                          (1, 0, -1)))
-        hlp = qtw.QMessageBox.question(self, title, text, qtw.QMessageBox.Yes
-                                       | qtw.QMessageBox.No | qtw.QMessageBox.Cancel,
-                                       defaultButton=qtw.QMessageBox.Yes)
+        retval = dict(zip((qtw.QMessageBox.StandardButton.Yes, qtw.QMessageBox.StandardButton.No,
+                           qtw.QMessageBox.StandardButton.Cancel), (1, 0, -1)))
+        hlp = qtw.QMessageBox.question(self, title, text, qtw.QMessageBox.StandardButton.Yes
+                                       | qtw.QMessageBox.StandardButton.No
+                                       | qtw.QMessageBox.StandardButton.Cancel,
+                                       defaultButton=qtw.QMessageBox.StandardButton.Yes)
         return retval[hlp]
 
     @staticmethod
@@ -390,8 +391,8 @@ class EditorGui(qtw.QMainWindow):
 
     def call_dialog(self, obj):
         "send dialog and transmit results"
-        edt = obj.exec_()
-        if edt == qtw.QDialog.Accepted:
+        edt = obj.exec()
+        if edt == qtw.QDialog.DialogCode.Accepted:
             return True, self.dialog_data
         return False, None
 
