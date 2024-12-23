@@ -269,7 +269,8 @@ class TextDialog(qtw.QDialog):
 
     def accept(self):
         "pass changed data to parent"
-        commented = self.comment_button.checkState() if self.show_commented else False
+        # commented = self.comment_button.checkState() if self.show_commented else False
+        commented = self.comment_button.isChecked()
         self._parent.dialog_data = (self.data_text.toPlainText(), commented)
         super().accept()
 

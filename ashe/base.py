@@ -466,8 +466,8 @@ class Editor:
         """
         self.tree_dirty = state
         title = self.gui.get_screen_title()
-        test = ' - ' + self.title
-        test2 = '*' + test
+        test = f' - {TITEL}'
+        test2 = f'*{test}'
         if state:
             if test2 not in title:
                 title = title.replace(test, test2)
@@ -539,6 +539,7 @@ class Editor:
                 if err:
                     self.gui.meld(str(err))
                 else:
+                    self.xmlfn = fnaam
                     self.soup2data(fnaam, f'loaded {fnaam}')  # self.xmlfn
                     self.refresh_preview()
 
@@ -1479,7 +1480,7 @@ class SearchHelper:
         nodename = self.gui.get_element_text(found[0])
         if nodename.startswith(ELSTART):
             count = 2
-        elif nodename.startswith(CMELSTART):
+        else:  # if nodename.startswith(CMELSTART): enig andere mogelijkheid
             count = 3
         # count zou hier alleen 2 of 3 mogen zijn
         splits = nodename.split(None, count)
@@ -1510,7 +1511,7 @@ class SearchHelper:
         count = 0
         if name.startswith(ELSTART):
             count = 1
-        elif name.startswith(CMELSTART):
+        else:  # if name.startswith(CMELSTART):  enig andere mogelijkheid
             count = 2
         if count:
             splits = name.split(None, count)

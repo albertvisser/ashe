@@ -119,6 +119,7 @@ class TestVisualTree:
         testobj.mouseDoubleClickEvent(event)
         assert capsys.readouterr().out == ("called VisualTree.itemAt with args ((1, 2),)\n"
                                            "called TreeItem.text for col 0\n"
+                                           "called TreeItem.childCount\n"
                                            "called Editor.edit\n")
         testitem.addChild(mockqtw.MockTreeItem('x'))
         assert capsys.readouterr().out == ("called TreeItem.__init__ with args ('x',)\n"
@@ -127,6 +128,7 @@ class TestVisualTree:
         assert capsys.readouterr().out == (
                 "called VisualTree.itemAt with args ((1, 2),)\n"
                 "called TreeItem.text for col 0\n"
+                "called TreeItem.childCount\n"
                 f"called TreeWidget.mouseDoubleClickEvent with arg '{event}'\n")
 
     def test_mouseReleaseEvent(self, monkeypatch, capsys):
@@ -267,6 +269,8 @@ class TestEditorGui:
         def mock_setup_menu(self):
             print('called EditorGui.setup_menu')
             self.adv_menu = mockqtw.MockAction()
+        def mock_add(self, *args):
+            print(f'called Splitter.addWidget with arg `{args[0]}`')
         monkeypatch.setattr(testee.qtw.QMainWindow, '__init__', mock_init)
         monkeypatch.setattr(testee.qtw.QMainWindow, 'resize', mockqtw.MockMainWindow.resize)
         monkeypatch.setattr(testee.qtw.QMainWindow, 'setWindowTitle',
@@ -278,6 +282,8 @@ class TestEditorGui:
         monkeypatch.setattr(testee.qtw.QMainWindow, 'statusBar', mockqtw.MockMainWindow.statusBar)
         monkeypatch.setattr(testee.qtw.QMainWindow, 'show', mockqtw.MockMainWindow.show)
         monkeypatch.setattr(testee.qtw.QApplication, '__init__', mock_init_app)
+        # monkeypatch.setattr(testee.qtw.QSplitter, 'addWidget', mock_add)
+        monkeypatch.setattr(mockqtw.MockSplitter, 'addWidget', mock_add)
         monkeypatch.setattr(testee.EditorGui, 'meld', mock_meld)
         monkeypatch.setattr(testee.EditorGui, 'setup_menu', mock_setup_menu)
         monkeypatch.setattr(testee.gui, 'QIcon', mockqtw.MockIcon)
@@ -512,7 +518,8 @@ class TestEditorGui:
                                            "called TreeItem.__init__ with args ('xxx',)\n"
                                            "called TreeItem.addChild\n")
         assert testobj.get_element_children(node) == [item]
-        assert capsys.readouterr().out == ("called TreeItem.child with arg 0\n")
+        assert capsys.readouterr().out == ("called TreeItem.childCount\n"
+                                           "called TreeItem.child with arg 0\n")
 
     def test_set_element_text(self, monkeypatch, capsys):
         """unittest for EditorGui.set_element_text
@@ -827,12 +834,16 @@ class TestEditorGui:
         testobj.expand()
         assert capsys.readouterr().out == ("called Tree.currentItem\n"
                                            f"called Tree.expandItem with arg {item}\n"
+                                           "called TreeItem.childCount\n"
                                            "called TreeItem.child with arg 0\n"
                                            "called TreeItem.setExpanded with arg `True`\n"
+                                           "called TreeItem.childCount\n"
                                            "called TreeItem.child with arg 1\n"
                                            "called TreeItem.setExpanded with arg `True`\n"
+                                           "called TreeItem.childCount\n"
                                            "called TreeItem.child with arg 0\n"
                                            "called TreeItem.setExpanded with arg `True`\n"
+                                           "called TreeItem.childCount\n"
                                            "called Tree.resizeColumnToContents with arg 0\n"
                                            f"called Tree.scrollToItem with arg `{subsubitem}`\n")
 
@@ -859,10 +870,14 @@ class TestEditorGui:
                 "called TreeItem.__init__ with args ('ddd',)\ncalled TreeItem.addChild\n")
         testobj.collapse()
         assert capsys.readouterr().out == ("called Tree.currentItem\n"
+                                           "called TreeItem.childCount\n"
                                            "called TreeItem.child with arg 0\n"
+                                           "called TreeItem.childCount\n"
                                            "called TreeItem.setExpanded with arg `False`\n"
                                            "called TreeItem.child with arg 1\n"
+                                           "called TreeItem.childCount\n"
                                            "called TreeItem.child with arg 0\n"
+                                           "called TreeItem.childCount\n"
                                            "called TreeItem.setExpanded with arg `False`\n"
                                            "called TreeItem.setExpanded with arg `False`\n"
                                            f"called Tree.collapseItem with arg {item}\n"
@@ -995,25 +1010,8 @@ class TestEditorGui:
 
     def test_do_delete_item(self, monkeypatch, capsys):
         """unittest for EditorGui.do_delete_item
-        """
-        testobj = self.setup_testobj(monkeypatch, capsys)
-        testobj.editor.root = parent = mockqtw.MockTreeItem('parent')
-        item1 = mockqtw.MockTreeItem('item1')
-        item2 = mockqtw.MockTreeItem('item2')
-        parent.addChild(item1)
-        parent.addChild(item2)
-        assert capsys.readouterr().out == ("called TreeItem.__init__ with args ('parent',)\n"
-                                           "called TreeItem.__init__ with args ('item1',)\n"
-                                           "called TreeItem.__init__ with args ('item2',)\n"
-                                           "called TreeItem.addChild\ncalled TreeItem.addChild\n")
-        testobj.do_delete_item(item2)
-        assert capsys.readouterr().out == ("called TreeItem.parent\n"
-                                           "called TreeItem.indexOfChild\n"
-                                           "called TreeItem.child with arg 0\n"
-                                           "called TreeItem.removeChild\n")
 
-    def test_do_delete_item_2(self, monkeypatch, capsys):
-        """unittest for EditorGui.do_delete_item
+        verwijder het eerste element onder het root element
         """
         testobj = self.setup_testobj(monkeypatch, capsys)
         testobj.editor.root = parent = mockqtw.MockTreeItem('parent')
@@ -1031,12 +1029,36 @@ class TestEditorGui:
                                            "called TreeItem.child with arg 1\n"
                                            "called TreeItem.removeChild\n")
 
-    def test_do_delete_item_3(self, monkeypatch, capsys):
+    def test_do_delete_item_2(self, monkeypatch, capsys):
         """unittest for EditorGui.do_delete_item
+
+        verwijder het eerste element onder een subnode van het root element
         """
         testobj = self.setup_testobj(monkeypatch, capsys)
-        parent = mockqtw.MockTreeItem('root')
-        testobj.editor.root = mockqtw.MockTreeItem('parent')
+        testobj.editor.root = mockqtw.MockTreeItem('root')
+        parent = mockqtw.MockTreeItem('parent')
+        item1 = mockqtw.MockTreeItem('item1')
+        item2 = mockqtw.MockTreeItem('item2')
+        parent.addChild(item1)
+        parent.addChild(item2)
+        assert capsys.readouterr().out == ("called TreeItem.__init__ with args ('root',)\n"
+                                           "called TreeItem.__init__ with args ('parent',)\n"
+                                           "called TreeItem.__init__ with args ('item1',)\n"
+                                           "called TreeItem.__init__ with args ('item2',)\n"
+                                           "called TreeItem.addChild\ncalled TreeItem.addChild\n")
+        testobj.do_delete_item(item1)
+        assert capsys.readouterr().out == ("called TreeItem.parent\n"
+                                           "called TreeItem.indexOfChild\n"
+                                           "called TreeItem.removeChild\n")
+
+    def test_do_delete_item_3(self, monkeypatch, capsys):
+        """unittest for EditorGui.do_delete_item
+
+        verwijder het niet-eerste element onder een element
+        """
+        testobj = self.setup_testobj(monkeypatch, capsys)
+        testobj.editor.root = mockqtw.MockTreeItem('root')
+        parent = mockqtw.MockTreeItem('parent')
         item1 = mockqtw.MockTreeItem('item1')
         item2 = mockqtw.MockTreeItem('item2')
         parent.addChild(item1)

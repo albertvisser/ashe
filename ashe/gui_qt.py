@@ -7,7 +7,7 @@ import PyQt6.QtGui as gui
 import PyQt6.QtCore as core
 import PyQt6.QtWebEngineWidgets as webeng
 
-from ashe.shared import masks
+from ashe.shared import masks, TITEL
 from ashe.dialogs_qt import (ElementDialog, TextDialog, DtdDialog, CssDialog, LinkDialog,
                              ImageDialog, VideoDialog, AudioDialog, ListDialog, TableDialog,
                              ScrolledTextDialog, CodeViewDialog, SearchDialog)
@@ -81,7 +81,7 @@ class EditorGui(qtw.QMainWindow):
 
         self.dialog_data = {}
         # self.search_args = []
-        self.setWindowTitle(self.editor.title)
+        self.setWindowTitle(f'(untitled) - {TITEL}')
         self.appicon = gui.QIcon(icon)
         self.setWindowIcon(self.appicon)
         self.resize(1200, 900)
@@ -224,6 +224,7 @@ class EditorGui(qtw.QMainWindow):
 
     def addtreetop(self, fname, titel):
         """titel en root item in tree instellen"""
+        print(f'in gui.addtreetop with args {fname=}, {titel=}')
         self.setWindowTitle(titel)
         self.tree.clear()
         self.top = qtw.QTreeWidgetItem()

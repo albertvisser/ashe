@@ -419,6 +419,7 @@ def test_call_editor(monkeypatch, capsys):
                                        "called ashegui.call_dialog with args (MockTextDialog,)\n")
 
 
+# 161->166
 def test_call_editor_for_stylesheet(monkeypatch, capsys):
     """unittest for base.call_editor_for_stylesheet
     """
@@ -447,8 +448,10 @@ def test_call_editor_for_stylesheet(monkeypatch, capsys):
     assert capsys.readouterr().out == ('called ashegui.meld with arg `Cannot determine'
                                        ' file system location of stylesheet file`\n')
     monkeypatch.setattr(testee.os.path, 'exists', lambda *x: True)
+    # monkeypatch.setattr(testee.pathlib.Path, 'exists', lambda *x: True)
     testobj.call_editor_for_stylesheet('/test')
     assert capsys.readouterr().out == ('called ashegui.meld with arg `Stylesheet does not exist`\n')
+
     monkeypatch.setattr(testee.pathlib.Path, 'exists', lambda *x: False)
     monkeypatch.setattr(testee.pathlib.Path, 'touch', mock_touch)
     testobj.call_editor_for_stylesheet('../test.css')
@@ -984,22 +987,29 @@ def test_mark_dirty(monkeypatch, capsys):
     """unittest for Editor.mark_dirty
     """
     testobj = setup_editor(monkeypatch, capsys)
-    testobj.title = 'x'
+    unchanged = f"xxx - {testee.TITEL}"
+    changed =  f"xxx* - {testee.TITEL}"
+    monkeypatch.setattr(testobj.gui, 'get_screen_title', lambda *x: 'xxx')
     testobj.mark_dirty(True)
     assert testobj.tree_dirty
-    assert capsys.readouterr().out == 'called EditorGui.set_screen_title with arg `screen title`\n'
-    # waarom krijg ik geen sterretje?
+    assert capsys.readouterr().out == 'called EditorGui.set_screen_title with arg `xxx`\n'
     testobj.mark_dirty(False)
     assert not testobj.tree_dirty
-    assert capsys.readouterr().out == 'called EditorGui.set_screen_title with arg `screen title`\n'
-    monkeypatch.setattr(testobj.gui, 'get_screen_title', lambda *x: '* some text')
+    assert capsys.readouterr().out == 'called EditorGui.set_screen_title with arg `xxx`\n'
+    monkeypatch.setattr(testobj.gui, 'get_screen_title', lambda *x: unchanged)
     testobj.mark_dirty(True)
     assert testobj.tree_dirty
-    assert capsys.readouterr().out == 'called EditorGui.set_screen_title with arg `* some text`\n'
+    assert capsys.readouterr().out == f"called EditorGui.set_screen_title with arg `{changed}`\n"
     testobj.mark_dirty(False)
     assert not testobj.tree_dirty
-    assert capsys.readouterr().out == 'called EditorGui.set_screen_title with arg `* some text`\n'
-    # waarom verdwijnt het sterretje niet?
+    assert capsys.readouterr().out == f"called EditorGui.set_screen_title with arg `{unchanged}`\n"
+    monkeypatch.setattr(testobj.gui, 'get_screen_title', lambda *x: changed)
+    testobj.mark_dirty(True)
+    assert testobj.tree_dirty
+    assert capsys.readouterr().out == f"called EditorGui.set_screen_title with arg `{changed}`\n"
+    testobj.mark_dirty(False)
+    assert not testobj.tree_dirty
+    assert capsys.readouterr().out == f"called EditorGui.set_screen_title with arg `{unchanged}`\n"
 
 
 def test_check_tree_state(monkeypatch, capsys):
@@ -3488,6 +3498,11 @@ def test_editorhelper_add_text(monkeypatch, capsys):
         """stub
         """
         print('called EditorGui.do_add_textvalue')
+        return False, ()
+    def mock_do_add_2():
+        """stub
+        """
+        print('called EditorGui.do_add_textvalue')
         return True, ('newtext', False)
     def mock_do_add_commented():
         """stub
@@ -3520,6 +3535,13 @@ def test_editorhelper_add_text(monkeypatch, capsys):
             "called EditorGui.get_element_text with arg `textitem`\n"
             "called EditorGui.meld with arg `Can't add text below text`\n")
     monkeypatch.setattr(testobj.gui, 'do_add_textvalue', mock_do_add)
+    testobj.editor.advance_selection_on_add = False
+    testobj.editor.item = 'element'
+    testobj.add_text(below=True)
+    assert capsys.readouterr().out == (
+            "called EditorGui.get_element_text with arg `element`\n"
+            "called EditorGui.do_add_textvalue\n")
+    monkeypatch.setattr(testobj.gui, 'do_add_textvalue', mock_do_add_2)
     testobj.editor.advance_selection_on_add = False
     testobj.editor.item = 'element'
     testobj.add_text(below=True)
@@ -3640,6 +3662,9 @@ def test_searchhelper_search_from(monkeypatch, capsys):
     testobj.search_from('ele')
     assert capsys.readouterr().out == ('called EditorGui.meld with arg `search_specs\n\n'
                                        'No (more) results`\n')
+    monkeypatch.setattr(MockEditorGui, 'get_search_args', lambda *x: (False, None))
+    testobj.search_from('top')
+    assert capsys.readouterr().out == ""
 
 
 def test_searchhelper_search_next(monkeypatch, capsys):
@@ -3717,6 +3742,9 @@ def test_searchhelper_replace_from(monkeypatch, capsys):
     testobj.replace_from('ele')
     assert capsys.readouterr().out == ('called EditorGui.meld with arg `search_specs\n\n'
                                        'No (more) results`\n')
+    monkeypatch.setattr(MockEditorGui, 'get_search_args', lambda *x, **y: (False, None))
+    testobj.replace_from('top')
+    assert capsys.readouterr().out == ""
 
 
 def test_searchhelper_replace_next(monkeypatch, capsys):
@@ -3762,7 +3790,13 @@ def test_searchhelper_replace_and_find(monkeypatch, capsys):
         """
         print('called search.find_next() with args', args)
         return 'pos', 1
+    def mock_next_2(self, *args):
+        """stub
+        """
+        print('called search.find_next() with args', args)
+        return ()
     testobj = testee.SearchHelper(MockEditor())
+    assert capsys.readouterr().out == 'called EditorGui.__init__\ncalled Editor.__init__()\n'
     monkeypatch.setattr(testobj, 'replace_element', mock_element)
     monkeypatch.setattr(testobj, 'replace_attr', mock_attr)
     monkeypatch.setattr(testobj, 'replace_text', mock_text)
@@ -3772,19 +3806,26 @@ def test_searchhelper_replace_and_find(monkeypatch, capsys):
     testobj.replace_args = ('x', 'y', 'z', 'a')
     testobj.replace_and_find((1, 'ele'), False)
     assert testobj.search_pos == ('pos', 1)
-    assert capsys.readouterr().out == ('called EditorGui.__init__\ncalled Editor.__init__()\n'
-                                       'called search.replace_element()\n'
+    assert capsys.readouterr().out == ('called search.replace_element()\n'
                                        'called search.replace_attr()\n'
                                        'called search.replace_text()\n'
                                        "called search.find_next() with args (('x', 'y', 'z', 'a')"
                                        ", False, (1, 'ele'))\n"
                                        'called EditorGui.set_selected_item(`1`)\n')
-    monkeypatch.setattr(testobj, 'find_next', lambda *x: None)  # mock_next)
+    monkeypatch.setattr(testobj, 'find_next', mock_next_2)
     testobj.search_specs = 'search_specs'
-    testobj.replace_next()
+    testobj.replace_and_find((1, 'ele'), True)
     assert capsys.readouterr().out == ('called search.replace_element()\n'
                                        'called search.replace_attr()\n'
                                        'called search.replace_text()\n'
+                                       "called search.find_next() with args (('x', 'y', 'z', 'a')"
+                                       ", True, (1, 'ele'))\n"
+                                       'called EditorGui.meld with arg `search_specs\n\n'
+                                       'No (more) results`\n')
+    testobj.replace_args = ('', '', '', '')
+    testobj.replace_and_find((1, 'ele'), False)
+    assert capsys.readouterr().out == ("called search.find_next() with args (('x', 'y', 'z', 'a')"
+                                       ", False, (1, 'ele'))\n"
                                        'called EditorGui.meld with arg `search_specs\n\n'
                                        'No (more) results`\n')
 
