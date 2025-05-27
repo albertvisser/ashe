@@ -676,13 +676,19 @@ class Editor:
         "build text describing search/replace action"
         attr = ''
         if ele:
-            ele = f' an element named `{ele}`'
+            # ele = f' an element named `{ele}`'
+            ele = f' a(n) `{ele}` element'
         if attr_name or attr_val:
-            attr = ' an attribute'
+            # attr = ' an attribute'
+            # if attr_name:
+            #     attr += f' named `{attr_name}`'
             if attr_name:
-                attr += f' named `{attr_name}`'
+                attr += f' a(n) `{attr_name}` attribute'
+            else:
+                attr += ' an attribute'
             if attr_val:
-                attr += f' that has value `{attr_val}`'
+                # attr += f' that has value `{attr_val}`'
+                attr += f' with value `{attr_val}`'
             if ele:
                 attr = f' with {attr[1:]}'
         out = ''
