@@ -112,13 +112,13 @@ class TestVisualTree:
         testobj.mouseDoubleClickEvent(event)
         assert capsys.readouterr().out == (
                 "called VisualTree.itemAt with args ((1, 2),)\n"
-                "called TreeItem.text for col 0\n"
+                "called TreeItem.text with arg 0\n"
                 f"called TreeWidget.mouseDoubleClickEvent with arg '{event}'\n")
         testitem.setText(0, '<> ele')
-        assert capsys.readouterr().out == "called TreeItem.setText with arg `<> ele` for col 0\n"
+        assert capsys.readouterr().out == "called TreeItem.setText with args (0, '<> ele')\n"
         testobj.mouseDoubleClickEvent(event)
         assert capsys.readouterr().out == ("called VisualTree.itemAt with args ((1, 2),)\n"
-                                           "called TreeItem.text for col 0\n"
+                                           "called TreeItem.text with arg 0\n"
                                            "called TreeItem.childCount\n"
                                            "called Editor.edit\n")
         testitem.addChild(mockqtw.MockTreeItem('x'))
@@ -127,7 +127,7 @@ class TestVisualTree:
         testobj.mouseDoubleClickEvent(event)
         assert capsys.readouterr().out == (
                 "called VisualTree.itemAt with args ((1, 2),)\n"
-                "called TreeItem.text for col 0\n"
+                "called TreeItem.text with arg 0\n"
                 "called TreeItem.childCount\n"
                 f"called TreeWidget.mouseDoubleClickEvent with arg '{event}'\n")
 
@@ -216,14 +216,15 @@ class TestVisualTree:
         testobj.dropEvent(event)
         assert capsys.readouterr().out == (
                 "called VisualTree.itemAt with args ((1, 2),)\n"
-                "called TreeItem.text for col 0\n"
+                "called TreeItem.text with arg 0\n"
                 "called EditorGui.meld with arg 'Can only drop on element'\n")
         testitem.setText(0, '<> ele')
         testobj.dropEvent(event)
         assert capsys.readouterr().out == (
-                "called TreeItem.setText with arg `<> ele` for col 0\n"
+                "called TreeItem.setText with args (0, '<> ele')\n"
                 "called VisualTree.itemAt with args ((1, 2),)\n"
-                "called TreeItem.text for col 0\ncalled Tree.selectedItems\n"
+                "called TreeItem.text with arg 0\n"
+                "called Tree.selectedItems\n"
                 f"called TreeWidget.dropEvent with arg '{event}'\n"
                 "called TreeItem.parent\n"
                 f"called Tree.setCurrentItem with arg `{dragitem}`\n"
@@ -314,7 +315,7 @@ class TestEditorGui:
         assert capsys.readouterr().out == (
                 "called Application.__init__ with args (['aaa', 'bbb'],)\n"
                 "called MainWindow.__init__ with args ()\n"
-                "called MainWindow.setWindowTitle with arg `title`\n"
+                f"called MainWindow.setWindowTitle with arg `(untitled) - {testee.TITEL}`\n"
                 "called Icon.__init__ with arg `None`\n"
                 "called MainWindow.setWindowIcon\n"
                 "called MainWindow.resize with args (1200, 900)\n"
@@ -323,6 +324,7 @@ class TestEditorGui:
                 "called MainWidget.setCentralWindow with arg of type"
                 " `<class 'mockgui.mockqtwidgets.MockSplitter'>`\n"
                 "called Tree.__init__\n"
+                "called Tree.headerItem\n"
                 "called TreeItem.__init__ with args ()\n"
                 "called TreeItem.setHidden with arg `True`\n"
                 f"called Splitter.addWidget with arg `{testobj.tree}`\n"
@@ -349,7 +351,7 @@ class TestEditorGui:
         assert capsys.readouterr().out == (
                 "called Application.__init__ with args (['aaa', 'bbb'],)\n"
                 "called MainWindow.__init__ with args ()\n"
-                "called MainWindow.setWindowTitle with arg `title`\n"
+                f"called MainWindow.setWindowTitle with arg `(untitled) - {testee.TITEL}`\n"
                 "called Icon.__init__ with arg `icon`\n"
                 "called MainWindow.setWindowIcon\n"
                 "called MainWindow.resize with args (1200, 900)\n"
@@ -358,6 +360,7 @@ class TestEditorGui:
                 "called MainWidget.setCentralWindow with arg of type"
                 " `<class 'mockgui.mockqtwidgets.MockSplitter'>`\n"
                 "called Tree.__init__\n"
+                "called Tree.headerItem\n"
                 "called TreeItem.__init__ with args ()\n"
                 "called TreeItem.setHidden with arg `True`\n"
                 f"called Splitter.addWidget with arg `{testobj.tree}`\n"
@@ -468,7 +471,7 @@ class TestEditorGui:
         node = mockqtw.MockTreeItem('xxx')
         assert capsys.readouterr().out == "called TreeItem.__init__ with args ('xxx',)\n"
         assert testobj.get_element_text(node) == "xxx"
-        assert capsys.readouterr().out == "called TreeItem.text for col 0\n"
+        assert capsys.readouterr().out == "called TreeItem.text with arg 0\n"
 
     def test_get_element_parent(self, monkeypatch, capsys):
         """unittest for EditorGui.get_element_parent
@@ -501,11 +504,11 @@ class TestEditorGui:
         node.setData(0, testee.core.Qt.ItemDataRole.UserRole, 'yyy')
         assert capsys.readouterr().out == (
                 "called TreeItem.__init__ with args ('xxx',)\n"
-                "called TreeItem.setData to `yyy`"
-                f" with role {testee.core.Qt.ItemDataRole.UserRole} for col 0\n")
+                "called TreeItem.setData with args"
+                f" (0, {testee.core.Qt.ItemDataRole.UserRole!r}, 'yyy')\n")
         assert testobj.get_element_data(node) == "yyy"
         assert capsys.readouterr().out == (
-                f"called TreeItem.data for col 0 role {testee.core.Qt.ItemDataRole.UserRole}\n")
+                f"called TreeItem.data with args (0, {testee.core.Qt.ItemDataRole.UserRole!r})\n")
 
     def test_get_element_children(self, monkeypatch, capsys):
         """unittest for EditorGui.get_element_children
@@ -528,7 +531,7 @@ class TestEditorGui:
         node = mockqtw.MockTreeItem('xxx')
         assert capsys.readouterr().out == "called TreeItem.__init__ with args ('xxx',)\n"
         testobj.set_element_text(node, 'text')
-        assert capsys.readouterr().out == "called TreeItem.setText with arg `text` for col 0\n"
+        assert capsys.readouterr().out == "called TreeItem.setText with args (0, 'text')\n"
 
     def test_set_element_data(self, monkeypatch, capsys):
         """unittest for EditorGui.set_element_data
@@ -538,8 +541,8 @@ class TestEditorGui:
         assert capsys.readouterr().out == "called TreeItem.__init__ with args ('xxx',)\n"
         testobj.set_element_data(node, 'data')
         assert capsys.readouterr().out == (
-                "called TreeItem.setData to `data`"
-                f" with role {testee.core.Qt.ItemDataRole.UserRole} for col 0\n")
+                "called TreeItem.setData with args"
+                f" (0, {testee.core.Qt.ItemDataRole.UserRole!r}, 'data')\n")
 
     def test_addtreeitem(self, monkeypatch, capsys):
         """unittest for EditorGui.addtreeitem
@@ -552,16 +555,16 @@ class TestEditorGui:
         assert isinstance(result, testee.qtw.QTreeWidgetItem)
         assert capsys.readouterr().out == (
                 "called TreeItem.__init__ with args ()\n"
-                "called TreeItem.setText with arg `naam` for col 0\n"
-                "called TreeItem.setData to `data` with role"
-                f" {testee.core.Qt.ItemDataRole.UserRole} for col 0\n"
+                "called TreeItem.setText with args (0, 'naam')\n"
+                "called TreeItem.setData with args"
+                f" (0, {testee.core.Qt.ItemDataRole.UserRole!r}, 'data')\n"
                 "called TreeItem.addChild\n")
         result = testobj.addtreeitem(node, 'naam', 'data', 0)
         assert capsys.readouterr().out == (
                 "called TreeItem.__init__ with args ()\n"
-                "called TreeItem.setText with arg `naam` for col 0\n"
-                "called TreeItem.setData to `data` with role"
-                f" {testee.core.Qt.ItemDataRole.UserRole} for col 0\n"
+                "called TreeItem.setText with args (0, 'naam')\n"
+                "called TreeItem.setData with args"
+                f" (0, {testee.core.Qt.ItemDataRole.UserRole!r}, 'data')\n"
                 "called TreeItem.insertChild at pos 0\n")
 
     def test_addtreetop(self, monkeypatch, capsys):
@@ -578,7 +581,7 @@ class TestEditorGui:
         assert capsys.readouterr().out == ("called MainWindow.setWindowTitle with arg `titel`\n"
                                            "called Tree.clear\n"
                                            "called TreeItem.__init__ with args ()\n"
-                                           "called TreeItem.setText with arg `fname` for col 0\n"
+                                           "called TreeItem.setText with args (0, 'fname')\n"
                                            "called Tree.addTopLevelItem\n")
 
     def test_get_selected_item(self, monkeypatch, capsys):
@@ -637,10 +640,14 @@ class TestEditorGui:
         assert capsys.readouterr().out == "called Action.__init__ with args ()\n"
         testobj.editor.has_dtd = False
         testobj.adjust_dtd_menu()
-        assert capsys.readouterr().out == "called Action.setText with arg `Add &DTD`\n"
+        assert capsys.readouterr().out == (
+                "called Action.setText with arg `Add &DTD`\n"
+                "called Action.setStatusTip with arg 'Add a document type description'\n")
         testobj.editor.has_dtd = True
         testobj.adjust_dtd_menu()
-        assert capsys.readouterr().out == "called Action.setText with arg `Remove &DTD`\n"
+        assert capsys.readouterr().out == (
+                "called Action.setText with arg `Remove &DTD`\n"
+                "called Action.setStatusTip with arg 'Remove the document type declaration'\n")
 
     def test_popup_menu(self, monkeypatch, capsys):
         """unittest for EditorGui.popup_menu
