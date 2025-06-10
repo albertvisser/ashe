@@ -224,7 +224,6 @@ class EditorGui(qtw.QMainWindow):
 
     def addtreetop(self, fname, titel):
         """titel en root item in tree instellen"""
-        print(f'in gui.addtreetop with args {fname=}, {titel=}')
         self.setWindowTitle(titel)
         self.tree.clear()
         self.top = qtw.QTreeWidgetItem()
