@@ -1309,6 +1309,7 @@ class SearchHelper:
         self.editor = editor
         self.gui = self.editor.gui
         self.search_args, self.replace_args = [], []
+        self.search_pos = 0
 
     def search_from(self, item, reverse=False):
         "start search after asking for options"
@@ -1346,6 +1347,10 @@ class SearchHelper:
         ok, dialog_data = self.gui.get_search_args(replace=True)
         if ok:
             self.search_args, self.search_specs, self.replace_args = dialog_data
+            do_globally = self.replace_args[-1]
+            if do_globally:
+                self.replace_all()
+                return
             if item == self.gui.top:
                 found = self.find_next(self.flatten_tree(self.gui.top), self.search_args, reverse)
             else:
@@ -1357,11 +1362,29 @@ class SearchHelper:
             else:
                 self.gui.meld(self.search_specs + '\n\nNo (more) results')
 
+    def replace_all(self):
+        """global search/replace
+
+        reverse is needed as it's an argument for self.replace_and_find
+        """
+        found = self.find_next(self.flatten_tree(self.gui.top), self.search_args)
+        if not found:
+            self.gui.meld(self.search_specs + '\n\nNot found - no replacements')
+            return
+        count = 1
+        found = self.replace_and_find(found, reverse=False)
+        while found:
+            count += 1
+            found = self.replace_and_find(self.search_pos, reverse=False)
+        self.gui.meld(self.search_specs + f'\n\n {count} replacements')
+
     def replace_next(self, reverse=False):
         "find/replace (default is forward)"
         if not self.replace_args:
             return
-        self.replace_and_find(self.search_pos, reverse)
+        found = self.replace_and_find(self.search_pos, reverse)
+        if not found:
+            self.gui.meld(self.search_specs + '\n\nNo (more) results')
 
     def replace_and_find(self, found, reverse):
         "do replace action"
@@ -1378,8 +1401,7 @@ class SearchHelper:
         if found:
             self.gui.set_selected_item(found[1])
             self.search_pos = found
-        else:
-            self.gui.meld(self.search_specs + '\n\nNo (more) results')
+        return found
 
     @staticmethod
     def find_next(data, search_args, reverse=False, pos=None):
@@ -1388,11 +1410,11 @@ class SearchHelper:
         """
         wanted_ele, wanted_attr, wanted_value, wanted_text = search_args
         if pos is None:
-            oldpos, found_earlier = 0, None
+            oldpos = 0
             if reverse:
-                oldpos, found_earlier = len(data), None
+                oldpos = len(data)
         else:
-            oldpos, found_earlier = pos
+            oldpos = pos[0]
         if reverse:
             data.reverse()
         if oldpos:
@@ -1422,8 +1444,7 @@ class SearchHelper:
                     text_ok = True
             else:
                 text_ok = False
-                ele_ok = attr_ok = True
-                ## if not wanted_text or wanted_text in element_name:
+                # ele_ok = attr_ok = True
                 if wanted_text and wanted_text in element_name:
                     text_ok = True
 
@@ -1483,16 +1504,17 @@ class SearchHelper:
         # item, name, data = found
         # find, replace = self.search_args[0], self.replace_args[0]
         # if name != find: return  # check nodig? melden als dit zo is?
-        nodename = self.gui.get_element_text(found[0])
-        if nodename.startswith(ELSTART):
-            count = 2
-        else:  # if nodename.startswith(CMELSTART): enig andere mogelijkheid
-            count = 3
-        # count zou hier alleen 2 of 3 mogen zijn
+        nodename = self.gui.get_element_text(found[1])
+        # if nodename.startswith(ELSTART):
+        #     count = 2
+        # else:  # if nodename.startswith(CMELSTART): enig andere mogelijkheid
+        #     count = 3
+        # count is hier alleen 2 of 3 omdat we altijd met een element bezig zijn
+        count = 2 if nodename.startswith(ELSTART) else 3
         splits = nodename.split(None, count)
         splits[count - 1] = self.replace_args[0]
         newnodename = ' '.join(splits)
-        self.gui.set_element_text(found[0], newnodename)
+        self.gui.set_element_text(found[1], newnodename)
 
     def replace_attr(self, found):
         """vervang de complete attribuutnaam en/of zoek door vervang in de attribuut waarde
@@ -1505,27 +1527,31 @@ class SearchHelper:
             test = replatt.split()
             if test[0] == '=/=':
                 replatt = ''
-        attrs = self.gui.get_element_data(found[0])
+        attrs = self.gui.get_element_data(found[1])
         if replval:
             attrs[findatt] = attrs[findatt].replace(findval, replval)
         if replatt:
             attrs[replatt] = attrs.pop(findatt)
-        self.gui.set_element_data(found[0], attrs)
+        self.gui.set_element_data(found[1], attrs)
         # als kenmerkend attribuut gewijzigd is dan moet ook de element tekst aangepast worden
-        name = self.gui.get_element_text(found[0])
+        name = self.gui.get_element_text(found[1])
         commented = name.startswith(CMSTART)
-        count = 0
-        if name.startswith(ELSTART):
-            count = 1
-        else:  # if name.startswith(CMELSTART):  enig andere mogelijkheid
-            count = 2
-        if count:
-            splits = name.split(None, count)
-            name = splits[count]    # alleen de elementnaam overhouden
-        self.gui.set_element_text(found[0], getelname(name, attrs, commented))
+        # count = 0
+        # if name.startswith(ELSTART):
+        #     count = 1
+        # else:  # if name.startswith(CMELSTART):  enig andere mogelijkheid
+        #     count = 2
+        # count is hier alleen 1 of 2 omdat we altijd met een element bezig zijn
+        count = 2 if commented else 1
+        # if count:
+        splits = name.split()
+        name = splits[count]    # alleen de elementnaam overhouden
+        self.gui.set_element_text(found[1], getelname(name, attrs, commented))
 
     def replace_text(self, found):
         "vervang zoek door vervang in de eerste tekst onder het element"
         find, replace = self.search_args[3], self.replace_args[3]
-        text = self.gui.get_element_text(found[0])
-        self.gui.set_element_text(found[0], text.replace(find, replace))
+        text = self.gui.get_element_text(found[1])
+        self.gui.set_element_text(found[1], text.replace(find, replace))
+        data = self.gui.get_element_data(found[1])
+        self.gui.set_element_data(found[1], data.replace(find, replace))

@@ -170,14 +170,16 @@ class TestElementDialog:
         assert capsys.readouterr().out == ("called ElementDialog.refresh\n"
                                            "called Table.currentRow\n"
                                            "called Table.item with args (0, 0)\n"
-                                           "called TableItem.__init__ with arg xxx\n"
+                                           "called TableItem.__init__ with arg 'xxx'\n"
+                                           "called TableItem.text\n"
                                            "called Table.removeRow with arg '0'\n")
         testobj.on_del()
         assert not testobj.has_style
         assert capsys.readouterr().out == ("called ElementDialog.refresh\n"
                                            "called Table.currentRow\n"
                                            "called Table.item with args (2, 0)\n"
-                                           "called TableItem.__init__ with arg style\n"
+                                           "called TableItem.__init__ with arg 'style'\n"
+                                           "called TableItem.text\n"
                                            "called Table.removeRow with arg '2'\n")
 
     def test_on_style(self, monkeypatch, capsys):
@@ -311,10 +313,8 @@ class TestElementDialog:
                 "called Table.rowCount\n"
                 "called Table.rowCount\n"
                 "called Table.insertRow with arg '0'\n"
-                "called Table.setItem with args"
-                " (0, 0, item of <class 'PyQt6.QtWidgets.QTableWidgetItem'>)\n"
-                "called Table.setItem with args"
-                " (0, 1, item of <class 'PyQt6.QtWidgets.QTableWidgetItem'>)\n"
+                "called Table.setItem with args (0, 0, QTableWidgetItem)\n"
+                "called Table.setItem with args (0, 1, QTableWidgetItem)\n"
                 "called analyze_element with args ('', {'styledata': ''})\n"
                 "called PushButton.setText with arg `xxx`\n")
         assert testobj.attr_table.item(0, 0).text() == 'styledata'
@@ -331,42 +331,41 @@ class TestElementDialog:
         assert capsys.readouterr().out == (
                 "called Table.setRowCount with arg '2'\n"
                 "called Table.setColumnCount with arg '2'\n"
-                "called TableItem.__init__ with arg xy\n"
-                "called Table.setItem with args"
-                " (0, 0, item of <class 'mockgui.mockqtwidgets.MockTableItem'>)\n"
-                "called TableItem.__init__ with arg xy\n"
-                "called Table.setItem with args"
-                " (0, 0, item of <class 'mockgui.mockqtwidgets.MockTableItem'>)\n"
-                "called TableItem.__init__ with arg styledata\n"
-                "called Table.setItem with args"
-                " (1, 0, item of <class 'mockgui.mockqtwidgets.MockTableItem'>)\n"
-                "called TableItem.__init__ with arg xy\n"
-                "called Table.setItem with args"
-                " (1, 1, item of <class 'mockgui.mockqtwidgets.MockTableItem'>)\n")
+                "called TableItem.__init__ with arg ''\n"
+                "called Table.setItem with args (0, 0, MockTableItem)\n"
+                "called TableItem.__init__ with arg ''\n"
+                "called Table.setItem with args (0, 0, MockTableItem)\n"
+                "called TableItem.__init__ with arg 'styledata'\n"
+                "called Table.setItem with args (1, 0, MockTableItem)\n"
+                "called TableItem.__init__ with arg ''\n"
+                "called Table.setItem with args (1, 1, MockTableItem)\n")
         testobj.refresh()
         assert testobj.is_style_tag
         assert not testobj.has_style
         assert capsys.readouterr().out == ("called Table.rowCount\n"
                                            "called Table.item with args (0, 0)\n"
+                                           "called TableItem.text\n"
                                            "called Table.item with args (1, 0)\n"
+                                           "called TableItem.text\n"
                                            "called Table.item with args (1, 1)\n"
-                                           "called TableItem.settext with arg styledata\n")
+                                           "called TableItem.setText with arg 'styledata'\n")
 
         testobj.tag_text.setText(' not style')
         testobj.attr_table.setItem(1, 0, mockqtw.MockTableItem('style'))
         assert capsys.readouterr().out == (
                 "called Label.setText with arg ` not style`\n"
-                "called TableItem.__init__ with arg style\n"
-                "called Table.setItem with args"
-                " (1, 0, item of <class 'mockgui.mockqtwidgets.MockTableItem'>)\n")
+                "called TableItem.__init__ with arg 'style'\n"
+                "called Table.setItem with args (1, 0, MockTableItem)\n")
         testobj.refresh()
         assert not testobj.is_style_tag
         assert testobj.has_style
         assert capsys.readouterr().out == ("called Table.rowCount\n"
                                            "called Table.item with args (0, 0)\n"
+                                           "called TableItem.text\n"
                                            "called Table.item with args (1, 0)\n"
+                                           "called TableItem.text\n"
                                            "called Table.item with args (1, 1)\n"
-                                           "called TableItem.settext with arg styledata\n")
+                                           "called TableItem.setText with arg 'styledata'\n")
 
     def test_reject(self, monkeypatch, capsys):
         """unittest for ElementDialog.reject
@@ -436,7 +435,6 @@ class TestElementDialog:
                 "called LineEdit.text\n"
                 "called MessageBox.information with args"
                 f" `{testobj}` `Add an element` `Illegal character(s) in tag name`\n")
-        # 202-221
         testobj.tag_text.setText('element')
         assert capsys.readouterr().out == "called LineEdit.setText with arg `element`\n"
         testobj.has_style = True
@@ -455,14 +453,13 @@ class TestElementDialog:
                                            "called CheckBox.isChecked\n"
                                            "called Table.rowCount\n"
                                            "called Dialog.accept\n")
-        # 205-215
         testobj.is_style_tag = False
         testobj.has_style = False
         testobj.attr_table.rowCount = mock_rows_1
         listitem1 = mockqtw.MockListItem('xxx')
         listitem2 = mockqtw.MockListItem('yyy')
-        assert capsys.readouterr().out == ("called ListItem.__init__\n"
-                                           "called ListItem.__init__\n")
+        assert capsys.readouterr().out == ("called ListItem.__init__ with args ('xxx',)\n"
+                                           "called ListItem.__init__ with args ('yyy',)\n")
         testobj.accept()
         assert testobj._parent.dialog_data == ('element', {'xxx': 'yyy'}, False)
         assert capsys.readouterr().out == ("called ElementDialog.refresh\n"
@@ -470,12 +467,14 @@ class TestElementDialog:
                                            "called CheckBox.isChecked\n"
                                            "called Table.rowCount\n"
                                            "called Table.item with args (0, 0)\n"
+                                           "called ListItem.text\n"
                                            "called Table.item with args (0, 1)\n"
+                                           "called ListItem.text\n"
                                            "called Dialog.accept\n")
         listitem1 = mockqtw.MockListItem('style')
         listitem2 = mockqtw.MockListItem('yyy')
-        assert capsys.readouterr().out == ("called ListItem.__init__\n"
-                                           "called ListItem.__init__\n")
+        assert capsys.readouterr().out == ("called ListItem.__init__ with args ('style',)\n"
+                                           "called ListItem.__init__ with args ('yyy',)\n")
         testobj.accept()
         assert testobj._parent.dialog_data == ('element', {}, False)
         assert capsys.readouterr().out == ("called ElementDialog.refresh\n"
@@ -483,12 +482,14 @@ class TestElementDialog:
                                            "called CheckBox.isChecked\n"
                                            "called Table.rowCount\n"
                                            "called Table.item with args (0, 0)\n"
+                                           "called ListItem.text\n"
                                            "called Table.item with args (0, 1)\n"
+                                           "called ListItem.text\n"
                                            "called Dialog.accept\n")
         listitem1 = mockqtw.MockListItem('styledata')
         listitem2 = mockqtw.MockListItem('yyy')
-        assert capsys.readouterr().out == ("called ListItem.__init__\n"
-                                           "called ListItem.__init__\n")
+        assert capsys.readouterr().out == ("called ListItem.__init__ with args ('styledata',)\n"
+                                           "called ListItem.__init__ with args ('yyy',)\n")
         testobj.accept()
         assert testobj._parent.dialog_data == ('element', {}, False)
         assert capsys.readouterr().out == ("called ElementDialog.refresh\n"
@@ -496,14 +497,15 @@ class TestElementDialog:
                                            "called CheckBox.isChecked\n"
                                            "called Table.rowCount\n"
                                            "called Table.item with args (0, 0)\n"
+                                           "called ListItem.text\n"
                                            "called Table.item with args (0, 1)\n"
+                                           "called ListItem.text\n"
                                            "called Dialog.accept\n")
-        # 208-210, 212-213
         testobj.attr_table.rowCount = mock_rows_2
         listitem1 = mockqtw.MockListItem('xxx')
         listitem2 = mockqtw.MockListItem('yyy')
-        assert capsys.readouterr().out == ("called ListItem.__init__\n"
-                                           "called ListItem.__init__\n")
+        assert capsys.readouterr().out == ("called ListItem.__init__ with args ('xxx',)\n"
+                                           "called ListItem.__init__ with args ('yyy',)\n")
         testobj.accept()
         assert testobj._parent.dialog_data == ('element', {}, False)
         assert capsys.readouterr().out == (
@@ -512,12 +514,15 @@ class TestElementDialog:
                 "called CheckBox.isChecked\n"
                 "called Table.rowCount\n"
                 "called Table.item with args (0, 0)\n"
+                "called ListItem.text\n"
                 "called Table.item with args (0, 1)\n"
+                "called ListItem.text\n"
                 "called Table.item with args (1, 0)\n"
+                "called ListItem.text\n"
                 "called Table.item with args (1, 1)\n"
+                "called ListItem.text\n"
                 "called MessageBox.information with args"
                 f" `{testobj}` `Add an element` `Duplicate attributes, please merge`\n")
-        # 208-210
         testobj.attr_table.item = mock_item2
         testobj.comment_button.setChecked(True)
         assert capsys.readouterr().out == "called CheckBox.setChecked with arg True\n"
@@ -630,19 +635,20 @@ class TestTextDialog:
                                            "called CheckBox.__init__\n")
         testobj.accept()
         assert testobj._parent.dialog_data == ('xxx', False)
-        assert capsys.readouterr().out == ("called Editor.toPlainText\n"
+        assert capsys.readouterr().out == ("called CheckBox.isChecked\n"
+                                           "called Editor.toPlainText\n"
                                            "called Dialog.accept\n")
         testobj.show_commented = True
         testobj.accept()
         assert testobj._parent.dialog_data == ('xxx', False)
-        assert capsys.readouterr().out == ("called CheckBox.checkState\n"
+        assert capsys.readouterr().out == ("called CheckBox.isChecked\n"
                                            "called Editor.toPlainText\n"
                                            "called Dialog.accept\n")
         testobj.comment_button.setChecked(True)
         assert capsys.readouterr().out == "called CheckBox.setChecked with arg True\n"
         testobj.accept()
         assert testobj._parent.dialog_data == ('xxx', True)
-        assert capsys.readouterr().out == ("called CheckBox.checkState\n"
+        assert capsys.readouterr().out == ("called CheckBox.isChecked\n"
                                            "called Editor.toPlainText\n"
                                            "called Dialog.accept\n")
 
@@ -804,10 +810,12 @@ class TestSearchDialog:
         testobj.txt_attr_name_replace = mockqtw.MockLineEdit('')
         testobj.txt_attr_val_replace = mockqtw.MockLineEdit('')
         testobj.txt_text_replace = mockqtw.MockLineEdit('')
+        testobj.cb_replace_all = mockqtw.MockCheckBox()
         assert capsys.readouterr().out == ("called LineEdit.__init__\ncalled LineEdit.__init__\n"
                                            "called LineEdit.__init__\ncalled LineEdit.__init__\n"
                                            "called LineEdit.__init__\ncalled LineEdit.__init__\n"
-                                           "called LineEdit.__init__\ncalled LineEdit.__init__\n")
+                                           "called LineEdit.__init__\ncalled LineEdit.__init__\n"
+                                           "called CheckBox.__init__\n")
         testobj.accept()
         assert not testobj._parent.dialog_data
         assert capsys.readouterr().out == (
@@ -859,7 +867,7 @@ class TestSearchDialog:
         # testobj.txt_text_replace.setText('ddd')
         testobj.accept()
         assert testobj._parent.dialog_data == (('xxx', 'yyy', 'zzz', 'qqq'), 'search specs',
-                                               ('aaa', '', '', ''))
+                                               ('aaa', '', '', '', False))
         assert capsys.readouterr().out == ("called LineEdit.text\n"
                                            "called LineEdit.text\n"
                                            "called LineEdit.text\n"
@@ -868,6 +876,7 @@ class TestSearchDialog:
                                            "called LineEdit.text\n"
                                            "called LineEdit.text\n"
                                            "called LineEdit.text\n"
+                                           "called CheckBox.isChecked\n"
                                            "called Dialog.accept\n")
 
 
@@ -1848,8 +1857,8 @@ class TestListDialog:
                 "called Table.horizontalHeader\n"
                 "called Table.insertColumn with arg '0'\n"
                 "called Table.setHorizontalHeaderLabels with arg '['term', 'description']'\n"
-                "called Header.resizeSection for col 0 width 102\n"
-                "called Header.resizeSection for col 1 width 152\n")
+                "called Header.resizeSection with args (0, 102)\n"
+                "called Header.resizeSection with args (1, 152)\n")
         testobj.list_table.columnCount = mock_colcount_2
         testobj.type_select.currentText = mock_current
         testobj.on_type()
@@ -1859,7 +1868,7 @@ class TestListDialog:
                 "called Table.horizontalHeader\n"
                 "called Table.removeColumn with arg '0'\n"
                 "called Table.setHorizontalHeaderLabels with arg '['list item']'\n"
-                "called Header.resizeSection for col 0 width 254\n")
+                "called Header.resizeSection with args (0, 254)\n")
         testobj.type_select.currentText = mock_current_2
         testobj.on_type()
         assert capsys.readouterr().out == (
@@ -1948,7 +1957,7 @@ class TestListDialog:
                                            "called Table.__init__ with args ()\n"
                                            "called Header.__init__\n"
                                            "called Header.__init__\n"
-                                           "called TableItem.__init__ with arg xxx\n")
+                                           "called TableItem.__init__ with arg 'xxx'\n")
         testobj.accept()
         assert testobj._parent.dialog_data == ('cl', [])
         assert capsys.readouterr().out == ("called ComboBox.currentText\n"
@@ -1973,6 +1982,7 @@ class TestListDialog:
         assert capsys.readouterr().out == ("called ComboBox.currentText\n"
                                            "called Table.rowCount\n"
                                            "called Table.item with args (0, 0)\n"
+                                           "called TableItem.text\n"
                                            "called Dialog.accept\n")
 
         testobj._parent.dialog_data = ()
@@ -1983,6 +1993,7 @@ class TestListDialog:
         assert capsys.readouterr().out == ("called ComboBox.currentText\n"
                                            "called Table.rowCount\n"
                                            "called Table.item with args (0, 0)\n"
+                                           "called TableItem.text\n"
                                            "called Table.item with args (0, 1)\n"
                                            "called EditorGui.meld with arg"
                                            " 'Graag nog even het laatste item bevestigen (...)'\n")
@@ -1993,7 +2004,9 @@ class TestListDialog:
         assert capsys.readouterr().out == ("called ComboBox.currentText\n"
                                            "called Table.rowCount\n"
                                            "called Table.item with args (0, 0)\n"
+                                           "called TableItem.text\n"
                                            "called Table.item with args (0, 1)\n"
+                                           "called TableItem.text\n"
                                            "called Dialog.accept\n")
 
 
@@ -2228,7 +2241,7 @@ class TestTableDialog:
         assert capsys.readouterr().out == ("called Table.__init__ with args ()\n"
                                            "called Header.__init__\n"
                                            "called Header.__init__\n"
-                                           "called TableItem.__init__ with arg xxx\n"
+                                           "called TableItem.__init__ with arg 'xxx'\n"
                                            "called LineEdit.__init__\n"
                                            "called CheckBox.__init__\n")
         testobj.headings = []
@@ -2261,6 +2274,7 @@ class TestTableDialog:
                                            "called Table.columnCount\n"
                                            "called LineEdit.text\n"
                                            "called Table.item with args (0, 0)\n"
+                                           "called TableItem.text\n"
                                            "called CheckBox.isChecked\n"
                                            "called Dialog.accept\n")
 
@@ -2318,6 +2332,7 @@ class TestScrolledTextDialog:
         """unittest for ScrolledTextDialog.show_source
         """
         class MockDialog:
+            "stub"
             def __init__(self, *args, **kwargs):
                 print('called CodeViewDialog.__init__ with args', args, kwargs)
             def show(self):
@@ -2402,7 +2417,7 @@ class TestCodeViewDialog:
         assert capsys.readouterr().out == (
                 "called Font.__init__\n"
                 "called Font.setFamily\n"
-                "called Font.setFixedPitch\n"
+                "called Font.setFixedPitch with arg `True`\n"
                 "called Font.setPointSize\n"
                 "called Editor.setFont\n"
                 "called Editor.setMarginsFont\n"

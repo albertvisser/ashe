@@ -418,7 +418,7 @@ class SearchDialog(qtw.QDialog):
                                             ' enter replacement criteria or press cancel')
                 self.txt_element_replace.setFocus()
                 return
-            replace_args = (ele, attr_name, attr_val, text)
+            replace_args = (ele, attr_name, attr_val, text, self.cb_replace_all.isChecked())
 
         # self._parent.search_args = (ele, attr_name, attr_val, text)
         # self._parent.search_specs = self.search_specs

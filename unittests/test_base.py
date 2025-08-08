@@ -57,8 +57,9 @@ class MockEditorGui:
     def get_search_args(self, **kwargs):
         """stub
         """
+        print('called EditorGui.get_search_args with args', kwargs)
         if kwargs.get('replace', True):
-            return True, (('x', 'y', 'z', 'a'), 'search_specs', ('q', 'r', 's', 't'))
+            return True, (('x', 'y', 'z', 'a'), 'search_specs', ('q', 'r', 's', 't', False))
         return True, (('x', 'y', 'z', 'a'), 'search_specs')
     def get_selected_item(self):
         """stub
@@ -988,7 +989,7 @@ def test_mark_dirty(monkeypatch, capsys):
     """
     testobj = setup_editor(monkeypatch, capsys)
     unchanged = f"xxx - {testee.TITEL}"
-    changed =  f"xxx* - {testee.TITEL}"
+    changed = f"xxx* - {testee.TITEL}"
     monkeypatch.setattr(testobj.gui, 'get_screen_title', lambda *x: 'xxx')
     testobj.mark_dirty(True)
     assert testobj.tree_dirty
@@ -3639,29 +3640,34 @@ def test_searchhelper_search_from(monkeypatch, capsys):
         print('called search.find_next() with args', args)
         return 'pos', 1
     testobj = testee.SearchHelper(MockEditor())
+    assert capsys.readouterr().out == 'called EditorGui.__init__\ncalled Editor.__init__()\n'
     monkeypatch.setattr(testobj, 'flatten_tree', mock_flatten)
     monkeypatch.setattr(testobj, 'find_next', mock_next)
     testobj.search_from('top')
-    assert capsys.readouterr().out == ('called EditorGui.__init__\ncalled Editor.__init__()\n'
-                                       "called search.find_next() with args (('x', 'y', 'z', 'a')"
-                                       ", False)\n"
-                                       'called EditorGui.set_selected_item(`1`)\n')
+    assert capsys.readouterr().out == (
+            'called EditorGui.get_search_args with args {}\n'
+            "called search.find_next() with args (('x', 'y', 'z', 'a'), False)\n"
+            'called EditorGui.set_selected_item(`1`)\n')
     testobj.search_from('top', True)
-    assert capsys.readouterr().out == ("called search.find_next() with args (('x', 'y', 'z', 'a')"
-                                       ", True)\n"
-                                       'called EditorGui.set_selected_item(`1`)\n')
+    assert capsys.readouterr().out == (
+            'called EditorGui.get_search_args with args {}\n'
+            "called search.find_next() with args (('x', 'y', 'z', 'a'), True)\n"
+            'called EditorGui.set_selected_item(`1`)\n')
     testobj.search_from('ele')
-    assert capsys.readouterr().out == ("called search.find_next() with args (('x', 'y', 'z', 'a')"
-                                       ", False, (1, 'ele'))\n"
-                                       'called EditorGui.set_selected_item(`1`)\n')
+    assert capsys.readouterr().out == (
+            'called EditorGui.get_search_args with args {}\n'
+            "called search.find_next() with args (('x', 'y', 'z', 'a'), False, (1, 'ele'))\n"
+            'called EditorGui.set_selected_item(`1`)\n')
     testobj.search_from('ele', True)
-    assert capsys.readouterr().out == ("called search.find_next() with args (('x', 'y', 'z', 'a')"
-                                       ", True, (1, 'ele'))\n"
-                                       'called EditorGui.set_selected_item(`1`)\n')
+    assert capsys.readouterr().out == (
+            'called EditorGui.get_search_args with args {}\n'
+            "called search.find_next() with args (('x', 'y', 'z', 'a'), True, (1, 'ele'))\n"
+            'called EditorGui.set_selected_item(`1`)\n')
     monkeypatch.setattr(testobj, 'find_next', lambda *x: None)  # mock_next)
     testobj.search_from('ele')
-    assert capsys.readouterr().out == ('called EditorGui.meld with arg `search_specs\n\n'
-                                       'No (more) results`\n')
+    assert capsys.readouterr().out == (
+            'called EditorGui.get_search_args with args {}\n'
+            'called EditorGui.meld with arg `search_specs\n\nNo (more) results`\n')
     monkeypatch.setattr(MockEditorGui, 'get_search_args', lambda *x: (False, None))
     testobj.search_from('top')
     assert capsys.readouterr().out == ""
@@ -3713,38 +3719,115 @@ def test_searchhelper_replace_from(monkeypatch, capsys):
         """stub
         """
         print(f'called search.replace_and_find() with args `{args[0]}`, `{args[1]}`')
+    def mock_replall():
+        """stub
+        """
+        print('called search.replace_all')
+    def mock_get(self, **kwargs):
+        """stub
+        """
+        print('called EditorGui.get_search_args with args', kwargs)
+        # if kwargs.get('replace', True):
+        return True, (('x', 'y', 'z', 'a'), 'search_specs', ('q', 'r', 's', 't', True))
+        # return True, (('x', 'y', 'z', 'a'), 'search_specs')
     testobj = testee.SearchHelper(MockEditor())
+    assert capsys.readouterr().out == 'called EditorGui.__init__\ncalled Editor.__init__()\n'
     monkeypatch.setattr(testobj, 'flatten_tree', mock_flatten)
     monkeypatch.setattr(testobj, 'find_next', mock_next)
     monkeypatch.setattr(testobj, 'replace_and_find', mock_replace)
+    monkeypatch.setattr(testobj, 'replace_all', mock_replall)
     testobj.replace_from('top')
-    assert capsys.readouterr().out == ('called EditorGui.__init__\ncalled Editor.__init__()\n'
-                                       "called search.find_next() with args (('x', 'y', 'z', 'a')"
-                                       ", False)\n"
-                                       "called search.replace_and_find() with args `('pos', 1)`,"
-                                       ' `False`\n')
+    assert capsys.readouterr().out == (
+            "called EditorGui.get_search_args with args {'replace': True}\n"
+            "called search.find_next() with args (('x', 'y', 'z', 'a'), False)\n"
+            "called search.replace_and_find() with args `('pos', 1)`, `False`\n")
     testobj.replace_from('top', True)
-    assert capsys.readouterr().out == ("called search.find_next() with args (('x', 'y', 'z', 'a')"
-                                       ", True)\n"
-                                       "called search.replace_and_find() with args `('pos', 1)`,"
-                                       ' `True`\n')
+    assert capsys.readouterr().out == (
+            "called EditorGui.get_search_args with args {'replace': True}\n"
+            "called search.find_next() with args (('x', 'y', 'z', 'a'), True)\n"
+            "called search.replace_and_find() with args `('pos', 1)`, `True`\n")
     testobj.replace_from('ele')
-    assert capsys.readouterr().out == ("called search.find_next() with args (('x', 'y', 'z', 'a')"
-                                       ", False, (1, 'ele'))\n"
-                                       "called search.replace_and_find() with args `('pos', 1)`,"
-                                       ' `False`\n')
+    assert capsys.readouterr().out == (
+            "called EditorGui.get_search_args with args {'replace': True}\n"
+            "called search.find_next() with args (('x', 'y', 'z', 'a'), False, (1, 'ele'))\n"
+            "called search.replace_and_find() with args `('pos', 1)`, `False`\n")
     testobj.replace_from('ele', True)
-    assert capsys.readouterr().out == ("called search.find_next() with args (('x', 'y', 'z', 'a')"
-                                       ", True, (1, 'ele'))\n"
-                                       "called search.replace_and_find() with args `('pos', 1)`,"
-                                       ' `True`\n')
+    assert capsys.readouterr().out == (
+            "called EditorGui.get_search_args with args {'replace': True}\n"
+            "called search.find_next() with args (('x', 'y', 'z', 'a'), True, (1, 'ele'))\n"
+            "called search.replace_and_find() with args `('pos', 1)`, `True`\n")
     monkeypatch.setattr(testobj, 'find_next', lambda *x: None)  # mock_next)
     testobj.replace_from('ele')
-    assert capsys.readouterr().out == ('called EditorGui.meld with arg `search_specs\n\n'
-                                       'No (more) results`\n')
+    assert capsys.readouterr().out == (
+            "called EditorGui.get_search_args with args {'replace': True}\n"
+            'called EditorGui.meld with arg `search_specs\n\nNo (more) results`\n')
     monkeypatch.setattr(MockEditorGui, 'get_search_args', lambda *x, **y: (False, None))
     testobj.replace_from('top')
     assert capsys.readouterr().out == ""
+    monkeypatch.setattr(MockEditorGui, 'get_search_args', mock_get)
+    testobj.replace_from('top')
+    assert capsys.readouterr().out == (
+            "called EditorGui.get_search_args with args {'replace': True}\n"
+            "called search.replace_all\n")
+    testobj.replace_from('top', True)
+    assert capsys.readouterr().out == (
+            "called EditorGui.get_search_args with args {'replace': True}\n"
+            "called search.replace_all\n")
+    testobj.replace_from('ele')
+    assert capsys.readouterr().out == (
+            "called EditorGui.get_search_args with args {'replace': True}\n"
+            "called search.replace_all\n")
+    testobj.replace_from('ele', True)
+    assert capsys.readouterr().out == (
+            "called EditorGui.get_search_args with args {'replace': True}\n"
+            "called search.replace_all\n")
+
+
+def test_searchhelper_replace_all(monkeypatch, capsys):
+    """unittest for SearchHelper.replace_all
+    """
+    def mock_next(self, *args):
+        """stub
+        """
+        print('called search.find_next() with args', args)
+        return 'pos', 1
+    def mock_replace(*args, **kwargs):
+        """stub
+        """
+        print('called search.replace_and_find() with args', args, kwargs)
+        return ()
+    def mock_replace_2(*args, **kwargs):
+        """stub
+        """
+        nonlocal counter
+        print('called search.replace_and_find() with args', args, kwargs)
+        counter += 1
+        return () if counter == 3 else ('newpos', counter + 1)
+    testobj = testee.SearchHelper(MockEditor())
+    assert capsys.readouterr().out == 'called EditorGui.__init__\ncalled Editor.__init__()\n'
+    testobj.search_args = ('x', 'y', 'z', 'a')
+    testobj.search_specs = 'search specs'
+    monkeypatch.setattr(testobj, 'replace_and_find', mock_replace)
+    counter = 0
+    testobj.replace_all()
+    assert capsys.readouterr().out == (
+            "called EditorGui.meld with arg `search specs\n\nNot found - no replacements`\n")
+    assert counter == 0
+    monkeypatch.setattr(testobj, 'find_next', mock_next)
+    testobj.replace_all()
+    assert capsys.readouterr().out == (
+            "called search.find_next() with args (('x', 'y', 'z', 'a'),)\n"
+            "called search.replace_and_find() with args (('pos', 1),) {'reverse': False}\n"
+            "called EditorGui.meld with arg `search specs\n\n 1 replacements`\n")
+    assert counter == 0
+    monkeypatch.setattr(testobj, 'replace_and_find', mock_replace_2)
+    testobj.replace_all()
+    assert capsys.readouterr().out == (
+            "called search.find_next() with args (('x', 'y', 'z', 'a'),)\n"
+            "called search.replace_and_find() with args (('pos', 1),) {'reverse': False}\n"
+            "called search.replace_and_find() with args (0,) {'reverse': False}\n"
+            "called search.replace_and_find() with args (0,) {'reverse': False}\n"
+            "called EditorGui.meld with arg `search specs\n\n 3 replacements`\n")
 
 
 def test_searchhelper_replace_next(monkeypatch, capsys):
@@ -3754,16 +3837,31 @@ def test_searchhelper_replace_next(monkeypatch, capsys):
         """stub
         """
         print(f'called search.replace_and_find() with args `{args[0]}`, `{args[1]}`')
+        return True
+    def mock_replace_2(*args):
+        """stub
+        """
+        print(f'called search.replace_and_find() with args `{args[0]}`, `{args[1]}`')
+        return False
     testobj = testee.SearchHelper(MockEditor())
+    testobj.search_specs = 'search specs'
     monkeypatch.setattr(testobj, 'replace_and_find', mock_replace)
     testobj.replace_next()
     assert capsys.readouterr().out == 'called EditorGui.__init__\ncalled Editor.__init__()\n'
+    testobj.replace_args = ()
+    testobj.replace_next()
+    assert capsys.readouterr().out == ""
     testobj.replace_args = ('x', 'y', 'z', 'a')
     testobj.search_pos = '1'
     testobj.replace_next()
     assert capsys.readouterr().out == 'called search.replace_and_find() with args `1`, `False`\n'
     testobj.replace_next(True)
     assert capsys.readouterr().out == 'called search.replace_and_find() with args `1`, `True`\n'
+    monkeypatch.setattr(testobj, 'replace_and_find', mock_replace_2)
+    testobj.replace_next()
+    assert capsys.readouterr().out == ('called search.replace_and_find() with args `1`, `False`\n'
+                                       'called EditorGui.meld with arg `search specs\n\n'
+                                       'No (more) results`\n')
 
 
 def test_searchhelper_replace_and_find(monkeypatch, capsys):
@@ -3806,28 +3904,26 @@ def test_searchhelper_replace_and_find(monkeypatch, capsys):
     testobj.replace_args = ('x', 'y', 'z', 'a')
     testobj.replace_and_find((1, 'ele'), False)
     assert testobj.search_pos == ('pos', 1)
-    assert capsys.readouterr().out == ('called search.replace_element()\n'
-                                       'called search.replace_attr()\n'
-                                       'called search.replace_text()\n'
-                                       "called search.find_next() with args (('x', 'y', 'z', 'a')"
-                                       ", False, (1, 'ele'))\n"
-                                       'called EditorGui.set_selected_item(`1`)\n')
+    assert capsys.readouterr().out == (
+            'called search.replace_element()\n'
+            'called search.replace_attr()\n'
+            'called search.replace_text()\n'
+            "called search.find_next() with args (('x', 'y', 'z', 'a'), False, (1, 'ele'))\n"
+            'called EditorGui.set_selected_item(`1`)\n')
     monkeypatch.setattr(testobj, 'find_next', mock_next_2)
     testobj.search_specs = 'search_specs'
     testobj.replace_and_find((1, 'ele'), True)
-    assert capsys.readouterr().out == ('called search.replace_element()\n'
-                                       'called search.replace_attr()\n'
-                                       'called search.replace_text()\n'
-                                       "called search.find_next() with args (('x', 'y', 'z', 'a')"
-                                       ", True, (1, 'ele'))\n"
-                                       'called EditorGui.meld with arg `search_specs\n\n'
-                                       'No (more) results`\n')
+    assert capsys.readouterr().out == (
+            'called search.replace_element()\n'
+            'called search.replace_attr()\n'
+            'called search.replace_text()\n'
+            "called search.find_next() with args (('x', 'y', 'z', 'a'), True, (1, 'ele'))\n")
+            # 'called EditorGui.meld with arg `search_specs\n\nNo (more) results`\n')
     testobj.replace_args = ('', '', '', '')
     testobj.replace_and_find((1, 'ele'), False)
-    assert capsys.readouterr().out == ("called search.find_next() with args (('x', 'y', 'z', 'a')"
-                                       ", False, (1, 'ele'))\n"
-                                       'called EditorGui.meld with arg `search_specs\n\n'
-                                       'No (more) results`\n')
+    assert capsys.readouterr().out == (
+            "called search.find_next() with args (('x', 'y', 'z', 'a'), False, (1, 'ele'))\n")
+            # 'called EditorGui.meld with arg `search_specs\n\nNo (more) results`\n')
 
 
 def test_searchhelper_find_next():
@@ -3845,6 +3941,9 @@ def test_searchhelper_find_next():
     assert testobj.find_next(treedata, ('div', 'test', '', '')) is None
     assert testobj.find_next(treedata, ('div', 'class', 'header', '')) is None
     assert testobj.find_next(treedata, ('div', '', '', 'cheese')) is None
+    assert testobj.find_next(treedata, ('p', 'id', '', '')) is None
+    assert testobj.find_next(treedata, ('p', '', '1', '')) is None
+    assert testobj.find_next(treedata, ('p', '', '', 'some text')) is None
     # findable
     assert testobj.find_next(treedata, ('div', '', '', '')) == (1, 'ele2')
     assert testobj.find_next(treedata, ('div', 'id', '', '')) == (2, 'ele3')
@@ -3929,17 +4028,17 @@ def test_searchhelper_replace_element(monkeypatch, capsys):
     monkeypatch.setattr(MockEditorGui, 'get_element_text', mock_element_text)
     testobj = testee.SearchHelper(MockEditor())
     testobj.replace_args = ('x', 'y', 'z', 'a')
-    testobj.replace_element(('el1',))
+    testobj.replace_element((1, 'el1'))
     assert capsys.readouterr().out == ('called EditorGui.__init__\ncalled Editor.__init__()\n'
                                        'called EditorGui.set_element_text with args `el1`,'
                                        f' `{testee.ELSTART} x`\n')
-    testobj.replace_element(('el2',))
+    testobj.replace_element((2, 'el2'))
     assert capsys.readouterr().out == (
             f'called EditorGui.set_element_text with args `el2`, `{testee.ELSTART} x id="1"`\n')
-    testobj.replace_element(('el3',))
+    testobj.replace_element((3, 'el3'))
     assert capsys.readouterr().out == (
             f'called EditorGui.set_element_text with args `el3`, `{testee.CMELSTART} x`\n')
-    testobj.replace_element(('el4',))
+    testobj.replace_element((4, 'el4'))
     assert capsys.readouterr().out == ('called EditorGui.set_element_text with args `el4`,'
                                        f' `{testee.CMELSTART} x class="centered"`\n')
 
@@ -3960,7 +4059,7 @@ def test_searchhelper_replace_attr(monkeypatch, capsys):
     testobj = testee.SearchHelper(MockEditor())
     testobj.search_args = ('x', 'id', '1', 'a')
     testobj.replace_args = ('x', 'y', '', 'a')
-    testobj.replace_attr(('el1',))
+    testobj.replace_attr((1, 'el1'))
     assert capsys.readouterr().out == (
             'called EditorGui.__init__\ncalled Editor.__init__()\n'
             "called EditorGui.set_element_data with args `el1`, `{'y': '1'}`\n"
@@ -3969,7 +4068,7 @@ def test_searchhelper_replace_attr(monkeypatch, capsys):
     testobj = testee.SearchHelper(MockEditor())
     testobj.search_args = ('x', 'id', '1', 'a')
     testobj.replace_args = ('x', 'y', 'z', 'a')
-    testobj.replace_attr(('el2',))
+    testobj.replace_attr((2, 'el2'))
     assert capsys.readouterr().out == (
             'called EditorGui.__init__\ncalled Editor.__init__()\n'
             "called EditorGui.set_element_data with args `el2`, `{'y': 'z'}`\n"
@@ -3978,7 +4077,7 @@ def test_searchhelper_replace_attr(monkeypatch, capsys):
     testobj = testee.SearchHelper(MockEditor())
     testobj.search_args = ('x', 'id', '1', 'a')
     testobj.replace_args = ('x', '', 'z', 'a')
-    testobj.replace_attr(('el3',))
+    testobj.replace_attr((3, 'el3'))
     assert capsys.readouterr().out == (
             'called EditorGui.__init__\ncalled Editor.__init__()\n'
             "called EditorGui.set_element_data with args `el3`, `{'id': 'z'}`\n"
@@ -3987,7 +4086,7 @@ def test_searchhelper_replace_attr(monkeypatch, capsys):
     testobj = testee.SearchHelper(MockEditor())
     testobj.search_args = ('x', 'id', '1', 'a')
     testobj.replace_args = ('x', '=/= y', 'z', 'a')
-    testobj.replace_attr(('el4',))
+    testobj.replace_attr((4, 'el4'))
     assert capsys.readouterr().out == (
             'called EditorGui.__init__\ncalled Editor.__init__()\n'
             "called EditorGui.set_element_data with args `el4`, `{'id': 'z'}`\n"
@@ -4001,12 +4100,18 @@ def test_searchhelper_replace_text(monkeypatch, capsys):
     def mock_element_text(self, node):
         """stub
         """
-        return 'some text'
+        return 'abbreviated text'
+    def mock_element_data(self, node):
+        """stub
+        """
+        return 'full text'
     monkeypatch.setattr(MockEditorGui, 'get_element_text', mock_element_text)
+    monkeypatch.setattr(MockEditorGui, 'get_element_data', mock_element_data)
     testobj = testee.SearchHelper(MockEditor())
     testobj.search_args = ('x', 'y', 'z', 'tex')
     testobj.replace_args = ('x', 'y', 'z', 'a')
-    testobj.replace_text(('ele',))
+    testobj.replace_text((1, 'ele'))
     assert capsys.readouterr().out == (
         'called EditorGui.__init__\ncalled Editor.__init__()\n'
-        "called EditorGui.set_element_text with args `ele`, `some at`\n")
+        "called EditorGui.set_element_text with args `ele`, `abbreviated at`\n"
+        "called EditorGui.set_element_data with args `ele`, `full at`\n")
