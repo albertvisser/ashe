@@ -52,11 +52,11 @@ class EditorGui(wx.Frame):
                     hotkey = f"Ctrl+{hotkey}"
                 if 'S' in modifiers:
                     hotkey = f"Shift+{hotkey}"
-                menuid = wx.NewId()
+                menuid = wx.ID_ANY  # NewId()
                 caption = f"{menuitem_text}\t{hotkey}" if hotkey else menuitem_text
                 if menuitem_text.startswith('Advance selection'):
-                    self.adv_menu = wx.MenuItem(menu, menuid, caption, status_text, wx.ITEM_CHECK)
-                    mnu = self.adv_menu
+                    mnu = wx.MenuItem(menu, menuid, caption, status_text, wx.ITEM_CHECK)
+                    self.adv_menu = mnu
                 else:
                     mnu = wx.MenuItem(menu, menuid, caption, status_text)
                     if menuitem_text == 'Add &DTD':
@@ -226,7 +226,7 @@ class EditorGui(wx.Frame):
             self.dtd_menu.SetItemLabel('Add &DTD')
             self.dtd_menu.SetHelp('Add a document type declaration')
 
-    def contextmenu(self, arg=None):
+    def contextmenu(self, *args):
         'build/show context menu'
         rect = self.tree.GetBoundingRect(self.get_selected_item(), textOnly=True)
         menupos = (rect[0] + rect[2] + 2, rect[1] + rect[3] + 2)

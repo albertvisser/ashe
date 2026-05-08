@@ -1486,10 +1486,20 @@ class TestEditDialogGui:
         testobj.add_table_row(table, 'row')
         assert capsys.readouterr().out == "called Table.insertRow with arg 'row'\n"
 
-    def _test_add_table_rowitem(self, monkeypatch, capsys):
+    def test_add_table_rowitem(self, monkeypatch, capsys):
         """unittest for EditDialogGui.add_table_rowitem
         """
-        monkeypatch.setattr(testee.qtw, 'QTableWidgetItem', mockqtw.MockTableItem)
+        class MockTableItem:
+            def __init__(self, arg):
+                print(f"called TableItem.__init__ with arg '{arg}'")
+            def flags(self):
+                print('called tableitem.flags')
+                # return (testee.core.Qt.ItemFlag.ItemIsSelectable
+                #         | testee.core.Qt.ItemFlag.ItemIsEditable)
+                return testee.core.Qt.ItemFlag.ItemIsEditable
+            def setFlags(self, value):
+                print(f'called tableitem.setFlags with arg {value}')
+        monkeypatch.setattr(testee.qtw, 'QTableWidgetItem', MockTableItem)
         table = mockqtw.MockTable()
         assert capsys.readouterr().out == ("called Table.__init__ with args ()\n"
                                            "called Header.__init__\ncalled Header.__init__\n")
@@ -1499,7 +1509,11 @@ class TestEditDialogGui:
                 "called TableItem.__init__ with arg 'text'\n"
                 "called Table.setItem with args (row, col, MockTableItem)\n")
         testobj.add_table_rowitem(table, 'row', 'col', 'text', editable=False)
-        assert capsys.readouterr().out == ("")
+        assert capsys.readouterr().out == (
+                "called TableItem.__init__ with arg 'text'\n"
+                "called Table.setItem with args (row, col, MockTableItem)\n"
+                "called tableitem.flags\n"
+                "called tableitem.setFlags with arg ItemFlag.NoItemFlags\n")
 
     def test_delete_table_row(self, monkeypatch, capsys):
         """unittest for EditDialogGui.delete_table_row

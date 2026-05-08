@@ -79,7 +79,7 @@ class TestEditorGui:
                 "called Icon.__init__ with args ('icon', 3)\n"
                 f"called EditorGui.SetIcon with args ({testobj}, Icon created from 'icon')\n")
 
-    def _test_create_nemu(self, monkeypatch, capsys):
+    def test_create_nemu(self, monkeypatch, capsys):
         """unittest for EditorGui.create_menu
         """
     #     def mock_setup():
@@ -92,9 +92,84 @@ class TestEditorGui:
     # def _test_setup_menu(self, monkeypatch, capsys):
     #     """unittest for EditorGui.setup_menu
     #     """
+        def mock_get():
+            print('called Editor.get_menulist')
+            return []
+        def mock_get_2():
+            print('called Editor.get_menulist')
+            return [('xxx', []), ('&Edit', [('aa', 'A', 'A', 'aaaaaa', 'callback1'),
+                                            ('bb', 'B', '', 'bbbbbb', 'callback2'),
+                                            ('cc', 'C', 'C', 'cccccc', 'callback3')]),
+                    ('&View', [('Advance selection...', '', '', 'xxx', 'callback4'),
+                               ('qq', 'Q', 'C', 'qqqq', 'callback0')]),
+                    ('&Search', [('',)]),
+                    ('&HTML', [('Add &DTD', 'D', 'ACS', 'ddddd', 'callback5'),
+                               ('Add &Stylesheet', 'E', 'SCA', 'eeeee', 'callback6')])]
+        monkeypatch.setattr(testee.wx, 'MenuBar', mockwx.MockMenuBar)
+        monkeypatch.setattr(testee.wx, 'Menu', mockwx.MockMenu)
+        monkeypatch.setattr(testee.wx, 'MenuItem', mockwx.MockMenuItem)
+        monkeypatch.setattr(testee.wx.Frame, 'Bind', mockwx.MockFrame.Bind)
+        monkeypatch.setattr(testee.wx.Frame, 'SetMenuBar', mockwx.MockFrame.SetMenuBar)
         testobj = self.setup_testobj(monkeypatch, capsys)
-        assert testobj.create_menu() == "expected_result"
-        assert capsys.readouterr().out == ("")
+        testobj.editor = types.SimpleNamespace(get_menulist=mock_get)
+        testobj.create_menu()
+        assert testobj.contextmenu_items == []
+        # assert isinstance(testobj.adv_menu, testee.wx.MenuItem)
+        # assert isinstance(testobj.dtd_menu, testee.wx.MenuItem)
+        # assert isinstance(testobj.css_menu, testee.wx.MenuItem)
+        # assert testobj.css_menu_text == 'Add &Stylesheet'
+        assert capsys.readouterr().out == ("called MenuBar.__init__ with args ()\n"
+                                           "called Editor.get_menulist\n"
+                                           "called Frame.SetMenuBar with args (A MenuBar,)\n")
+        testobj.editor.get_menulist = mock_get_2
+        testobj.create_menu()
+        assert testobj.contextmenu_items == [('M', '&Edit'), ('A', ('aa', 'callback1', 'aaaaaa')),
+                                             ('A', ('bb', 'callback2', 'bbbbbb')),
+                                             ('A', ('cc', 'callback3', 'cccccc')),
+                                             ('', ''), ('A', ('qq', 'callback0', 'qqqq')),
+                                             ('M', '&Search'), ('M', '&HTML')]
+        assert isinstance(testobj.adv_menu, testee.wx.MenuItem)
+        assert isinstance(testobj.dtd_menu, testee.wx.MenuItem)
+        assert isinstance(testobj.css_menu, testee.wx.MenuItem)
+        assert testobj.css_menu_text == 'Add &Stylesheet'
+        assert capsys.readouterr().out == (
+                "called MenuBar.__init__ with args ()\n"
+                "called Editor.get_menulist\n"
+                "called Menu.__init__ with args ()\n"
+                "called menubar.Append with args (A Menu, 'xxx')\n"
+                "called Menu.__init__ with args ()\n"
+                "called MenuItem.__init__ with args (A Menu, -1, 'aa\\tAlt+A', 'aaaaaa') {}\n"
+                f"called Frame.Bind with args ({testee.wx.EVT_MENU}, 'callback1')\n"
+                "called menu.Append with args MockMenuItem\n"
+                "called MenuItem.__init__ with args (A Menu, -1, 'bb\\tB', 'bbbbbb') {}\n"
+                f"called Frame.Bind with args ({testee.wx.EVT_MENU}, 'callback2')\n"
+                "called menu.Append with args MockMenuItem\n"
+                "called MenuItem.__init__ with args (A Menu, -1, 'cc\\tCtrl+C', 'cccccc') {}\n"
+                f"called Frame.Bind with args ({testee.wx.EVT_MENU}, 'callback3')\n"
+                "called menu.Append with args MockMenuItem\n"
+                "called menubar.Append with args (A Menu, '&Edit')\n"
+                "called Menu.__init__ with args ()\n"
+                "called MenuItem.__init__ with args"
+                " (A Menu, -1, 'Advance selection...', 'xxx', 1) {}\n"
+                "called menu.Append with args MockMenuItem\n"
+                "called MenuItem.__init__ with args (A Menu, -1, 'qq\\tCtrl+Q', 'qqqq') {}\n"
+                f"called Frame.Bind with args ({testee.wx.EVT_MENU}, 'callback0')\n"
+                "called menu.Append with args MockMenuItem\n"
+                "called menubar.Append with args (A Menu, '&View')\n"
+                "called Menu.__init__ with args ()\n"
+                "called menu.AppendSeparator with args ()\n"
+                "called menubar.Append with args (A Menu, '&Search')\n"
+                "called Menu.__init__ with args ()\n"
+                "called MenuItem.__init__ with args"
+                " (A Menu, -1, 'Add &DTD\\tShift+Ctrl+Alt+D', 'ddddd') {}\n"
+                f"called Frame.Bind with args ({testee.wx.EVT_MENU}, 'callback5')\n"
+                "called menu.Append with args MockMenuItem\n"
+                "called MenuItem.__init__ with args"
+                " (A Menu, -1, 'Add &Stylesheet\\tShift+Ctrl+Alt+E', 'eeeee') {}\n"
+                f"called Frame.Bind with args ({testee.wx.EVT_MENU}, 'callback6')\n"
+                "called menu.Append with args MockMenuItem\n"
+                "called menubar.Append with args (A Menu, '&HTML')\n"
+                "called Frame.SetMenuBar with args (A MenuBar,)\n")
 
     def test_create_splitter(self, monkeypatch, capsys):
         """unittest for EditorGui.create_splitter
@@ -411,12 +486,42 @@ class TestEditorGui:
                 "called menuitem.SetItemLabel with arg 'Remove &DTD'\n"
                 "called menuitem.SetHelp with arg 'Remove the document type declaration'\n")
 
-    def _test_contextmenu(self, monkeypatch, capsys):
+    def test_contextmenu(self, monkeypatch, capsys):
         """unittest for EditorGui.contextmenu
         """
+        def mock_get(*args, **kwargs):
+            print('called tree.GetBoundingRect with args', args, kwargs)
+            return (1, 2, 3, 4)
+        monkeypatch.setattr(testee.wx, 'Menu', mockwx.MockMenu)
+        monkeypatch.setattr(testee.wx, 'MenuItem', mockwx.MockMenuItem)
+        monkeypatch.setattr(testee.wx.Frame, 'Bind', mockwx.MockFrame.Bind)
+        monkeypatch.setattr(testee.wx.Frame, 'PopupMenu', mockwx.MockFrame.PopupMenu)
         testobj = self.setup_testobj(monkeypatch, capsys)
-        assert testobj.contextmenu(arg=None) == "expected_result"
-        assert capsys.readouterr().out == ("")
+        testobj.tree = mockwx.MockTree()
+        assert capsys.readouterr().out == "called Tree.__init__ with args () {}\n"
+        testobj.tree.GetBoundingRect = mock_get
+        testobj.contextmenu_items = []
+        testobj.contextmenu()
+        assert capsys.readouterr().out == (
+                "called tree.GetSelection\n"
+                "called tree.GetBoundingRect with args ('selection',) {'textOnly': True}\n"
+                "called Menu.__init__ with args ()\n"
+                "called Frame.PopupMenu with args (A Menu,) {'pos': (6, 8)}\n"
+                "called menu.Destroy\n")
+        testobj.contextmenu_items = [('A', ('xxx', 'yyy', 'zzz')), ('M', 'xxx'), ('', '')]
+        testobj.contextmenu()
+        assert capsys.readouterr().out == (
+                "called tree.GetSelection\n"
+                "called tree.GetBoundingRect with args ('selection',) {'textOnly': True}\n"
+                "called Menu.__init__ with args ()\n"
+                "called MenuItem.__init__ with args (A Menu, 100, 'xxx', 'zzz') {}\n"
+                f"called Frame.Bind with args ({testee.wx.EVT_MENU}, 'yyy')\n"
+                "called menu.Append with args MockMenuItem\n"
+                "called Menu.__init__ with args ()\n"
+                "called menu.AppendSubMenu with args (A Menu, 'xxx')\n"
+                "called menu.AppendSeparator with args ()\n"
+                "called Frame.PopupMenu with args (A Menu,) {'pos': (6, 8)}\n"
+                "called menu.Destroy\n")
 
     def test_ask_how_to_continue(self, monkeypatch, capsys):
         """unittest for EditorGui.ask_how_to_continue
@@ -795,19 +900,94 @@ class TestVisualTree:
                 "called editor.mark_dirty with arg True\n"
                 "called editor.refresh_preview\n")
 
-    def _test_getsubtree(self, monkeypatch, capsys):
+    def test_getsubtree(self, monkeypatch, capsys):
         """unittest for VisualTree.getsubtree
         """
+        class MockItem:
+            def __init__(self, text):
+                self._text = text
+            def __repr__(self):
+                return f"<<Item '{self._text}'>>"
+            def IsOk(self):
+                return not self._text.endswith('not ok')
+        def mock_text(self, *args):
+            print('called tree.GetItemText with args', *args)
+            return 'xxx'
+        def mock_text_2(self, *args):
+            print('called tree.GetItemText with args', *args)
+            return args[0]._text
+        def mock_data(self, *args):
+            print('called tree.GetItemData with args', *args)
+            return 'yyy'
+        def mock_first(self, *args):
+            print('called tree.GetFirstChild with args', *args)
+            return MockItem(f'{args[0]._text.removeprefix('<> ')} first'), 0
+        def mock_next(self, *args):
+            print('called tree.GetNextChild with args', *args)
+            indx = args[1] + 1
+            text = f'{args[0]._text.removeprefix('<> ')} {['first', 'next', 'last', 'not ok'][indx]}'
+            return MockItem(text), indx
         testobj = self.setup_testobj(monkeypatch, capsys)
-        testobj.getsubtree(dropitem, dragitem)
-        assert capsys.readouterr().out == ("")
+        monkeypatch.setattr(testee.wx.TreeCtrl, 'GetItemText', mock_text)
+        monkeypatch.setattr(testee.wx.TreeCtrl, 'GetItemData', mock_data)
+        monkeypatch.setattr(testee.wx.TreeCtrl, 'GetFirstChild', mock_first)
+        monkeypatch.setattr(testee.wx.TreeCtrl, 'GetNextChild', mock_next)
+        result = testobj.getsubtree('elem', [])
+        assert result == [('xxx', 'yyy', [])]
+        assert capsys.readouterr().out == (
+                f"called tree.GetItemText with args elem\n"
+                f"called tree.GetItemData with args elem\n")
+        monkeypatch.setattr(testee.wx.TreeCtrl, 'GetItemText', mock_text_2)
+        result = testobj.getsubtree(MockItem('<> elem'), [])
+        assert result == [('<> elem', 'yyy', [('elem first', 'yyy', []), ('elem next', 'yyy', []),
+                                              ('elem last', 'yyy', [])])]
+        assert capsys.readouterr().out == (
+                "called tree.GetItemText with args <<Item '<> elem'>>\n"
+                "called tree.GetItemData with args <<Item '<> elem'>>\n"
+                "called tree.GetFirstChild with args <<Item '<> elem'>>\n"
+                "called tree.GetItemText with args <<Item 'elem first'>>\n"
+                "called tree.GetItemData with args <<Item 'elem first'>>\n"
+                "called tree.GetNextChild with args <<Item '<> elem'>> 0\n"
+                "called tree.GetItemText with args <<Item 'elem next'>>\n"
+                "called tree.GetItemData with args <<Item 'elem next'>>\n"
+                "called tree.GetNextChild with args <<Item '<> elem'>> 1\n"
+                "called tree.GetItemText with args <<Item 'elem last'>>\n"
+                "called tree.GetItemData with args <<Item 'elem last'>>\n"
+                "called tree.GetNextChild with args <<Item '<> elem'>> 2\n")
 
-    def _test_zetzeronder(self, monkeypatch, capsys):
-        """unittest for VisualTree.zetzeronder
+    def test_putsubtree(self, monkeypatch, capsys):
+        """unittest for VisualTree.putsubtree
         """
+        monkeypatch.setattr(testee.wx.TreeCtrl, 'AppendItem', mockwx.MockTree.AppendItem)
+        monkeypatch.setattr(testee.wx.TreeCtrl, 'InsertItem', mockwx.MockTree.InsertItem)
+        monkeypatch.setattr(testee.wx.TreeCtrl, 'SetItemData', mockwx.MockTree.SetItemData)
+        data = ('<> elem', 'yyy', [('elem first', 'yyy', []), 'elem next',
+                                   ('elem last', 'yyy', [('elem under', 'yyy', [])])])
         testobj = self.setup_testobj(monkeypatch, capsys)
-        testobj.zetzeronder(dropitem, dragitem)
-        assert capsys.readouterr().out == ("")
+        testobj.putsubtree('item', data)
+        assert capsys.readouterr().out == (
+                "called tree.AppendItem with args ('item', '<> elem')\n"
+                "called tree.SetItemData() with args ('appended item', 'yyy')\n"
+                "called tree.AppendItem with args ('appended item', 'elem first')\n"
+                "called tree.SetItemData() with args ('appended item', 'yyy')\n"
+                "called tree.AppendItem with args ('appended item', 'elem next')\n"
+                "called tree.SetItemData() with args ('appended item', '')\n"
+                "called tree.AppendItem with args ('appended item', 'elem last')\n"
+                "called tree.SetItemData() with args ('appended item', 'yyy')\n"
+                "called tree.AppendItem with args ('appended item', 'elem under')\n"
+                "called tree.SetItemData() with args ('appended item', 'yyy')\n")
+        testobj.putsubtree('item', data, 1)
+        assert capsys.readouterr().out == (
+                "called tree.InsertItem with args ('item', 1, '<> elem')\n"
+                "called tree.SetItemData() with args ('inserted item', 'yyy')\n"
+                "called tree.AppendItem with args ('inserted item', 'elem first')\n"
+                "called tree.SetItemData() with args ('appended item', 'yyy')\n"
+                "called tree.AppendItem with args ('inserted item', 'elem next')\n"
+                "called tree.SetItemData() with args ('appended item', '')\n"
+                "called tree.AppendItem with args ('inserted item', 'elem last')\n"
+                "called tree.SetItemData() with args ('appended item', 'yyy')\n"
+                "called tree.AppendItem with args ('appended item', 'elem under')\n"
+                "called tree.SetItemData() with args ('appended item', 'yyy')\n")
 
 
 def test_show_message(monkeypatch, capsys):
@@ -2322,7 +2502,7 @@ class TestCodeViewDialogGui:
         testobj.add_content_area('data')
         assert capsys.readouterr().out == (
                 "called BoxSizer.__init__ with args (4,)\n"
-                f"called Editor.__init__ with args ({testobj},)\n"
+                f"called Editor.__init__ with args ({testobj},) {{}}\n"
                 "called editor.SetText with arg `data`\n"
                 "called editor.SetReadOnly with arg `True`\n"
                 "called hori sizer.Add with args MockEditor (1, 8432)\n"
