@@ -2,8 +2,8 @@
 """
 from .toolkit import toolkit
 if toolkit == 'qt':
-    import ashe.gui_qt as gui
+    import ashe.qtgui as gui
 elif toolkit == 'wx':
-    import ashe.gui_wx as gui
+    import ashe.wxgui as gui
 else:
     raise ImportError('onbekende GUI toolkit')

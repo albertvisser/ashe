@@ -3,7 +3,7 @@
 new and improved version
 """
 import sys
-from ashe.base import Editor
+from ashe.main import Editor
 
 
 def main(args):

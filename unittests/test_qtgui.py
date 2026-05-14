@@ -4,7 +4,7 @@ import types
 import pytest
 from mockgui import mockqtwidgets as mockqtw
 from ashe import qtgui as testee
-from unittests.output_fixtures import expected_output
+# from unittests.output_fixtures import expected_output
 
 class MockEditor:
     """stub for main.Editor object
@@ -54,7 +54,7 @@ class TestEditorGui:
         def mock_init_app(self, *args):
             print('called Application.__init__ with args', args)
         def mock_show(self, *args):
-            print(f"called show_message with args", args)
+            print("called show_message with args", args)
         def mock_meld(self, message):
             print(f"called EditorGui.meld with arg '{message}'")
         monkeypatch.setattr(testee, 'show_message', mock_show)
@@ -95,8 +95,8 @@ class TestEditorGui:
     #             "called EditorGui.setup_menu\n"
     #             "called Action.__init__ with args ()\n")
     # def test_setup_menu(self, monkeypatch, capsys, expected_output):
-        """unittest for EditorGui.setup_menu
-        """
+    #     """unittest for EditorGui.setup_menu
+    #     """
         def mock_menubar():
             result = mockqtw.MockMenuBar()
             assert capsys.readouterr().out == "called MenuBar.__init__\n"
@@ -187,7 +187,7 @@ class TestEditorGui:
                 "called Tree.headerItem\n"
                 "called TreeItem.__init__ with args ()\n"
                 "called TreeItem.setHidden with arg `True`\n"
-                f"called Splitter.addWidget with arg MockTreeWidget\n")
+                "called Splitter.addWidget with arg MockTreeWidget\n")
 
     def test_create_preview_on_right(self, monkeypatch, capsys):
         """unittest for EditorGui.create_preview_on_right
@@ -200,7 +200,7 @@ class TestEditorGui:
         assert isinstance(testobj.html, testee.webeng.QWebEngineView)
         assert capsys.readouterr().out == (
                 "called WebEngineView.__init__()\n"
-                f"called Splitter.addWidget with arg MockWebEngineView\n")
+                "called Splitter.addWidget with arg MockWebEngineView\n")
 
     def test_create_statusbar_at_bottom(self, monkeypatch, capsys):
         """unittest for EditorGui.create_statusbar_at_bottom
@@ -546,7 +546,6 @@ class TestEditorGui:
         assert testobj.ask_how_to_continue('title', 'text') == 'ync'
         assert capsys.readouterr().out == (
                 f"called ask_yesnocancel with args ({testobj}, 'text', 'title')\n")
-
 
     def _test_ask_yes_no_cancel(self, monkeypatch, capsys):
         def mock_ask(*args, **kwargs):
@@ -1056,7 +1055,7 @@ def test_ask_for_text(monkeypatch, capsys):
             "called InputDialog.getText with args parent ('title', 'caption') {}\n")
 
 
-def test_call_dialog(monkeypatch, capsys):
+def test_call_dialog(capsys):
     """unittest for qtgui.call_dialog
     """
     def mock_exec():
@@ -1074,7 +1073,7 @@ def test_call_dialog(monkeypatch, capsys):
     assert capsys.readouterr().out == "called Dialog.exec\n"
 
 
-def test_show_dialog(monkeypatch, capsys):
+def test_show_dialog(capsys):
     """unittest for qtgui.show_dialog
     """
     def mock_show():
@@ -1277,14 +1276,16 @@ class TestEditDialogGui:
         assert capsys.readouterr().out == "called VBox.__init__\n"
         testobj = self.setup_testobj(monkeypatch, capsys)
         testobj.master = types.SimpleNamespace(style_text='qq')
-        testobj.add_buttons_to_section(section, [])
+        result = testobj.add_buttons_to_section(section, [])
+        assert result == []
         assert capsys.readouterr().out == ("called HBox.__init__\n"
                                            "called HBox.addStretch\n"
                                            "called HBox.addStretch\n"
                                            "called VBox.addLayout with arg MockHBoxLayout\n")
         testobj.master = types.SimpleNamespace(style_text='yy')
-        testobj.add_buttons_to_section(section, [('xx', 'callback1'), ('yy', 'callback2')])
-        assert isinstance(testobj.style_button, testee.qtw.QPushButton)
+        result = testobj.add_buttons_to_section(section, [('xx', 'callback1'), ('yy', 'callback2')])
+        assert len(result) == 1
+        assert isinstance(result[0], testee.qtw.QPushButton)
         assert capsys.readouterr().out == (
                 "called HBox.__init__\n"
                 "called HBox.addStretch\n"
@@ -1595,15 +1596,14 @@ class TestEditDialogGui:
         """
         def mock_reject(*args):
             print("called Dialog.reject")
-        def mock_show(*args):
-            print("called shoe_message with args", args)
+        # def mock_show(*args):
+        #     print("called shoe_message with args", args)
         def mock_refresh():
             print("called EditDialog.refresh")
         monkeypatch.setattr(testee.qtw, 'QMessageBox', mockqtw.MockMessageBox)
         monkeypatch.setattr(testee.qtw.QDialog, 'reject', mock_reject)
         testobj = self.setup_testobj(monkeypatch, capsys)
-        testobj.master = types.SimpleNamespace(old_styledata='xxx')
-        testobj.refresh = mock_refresh
+        testobj.master = types.SimpleNamespace(old_styledata='xxx', refresh=mock_refresh)
         testobj.reject()
         assert capsys.readouterr().out == "called Dialog.reject\n"
         testobj.master.styledata = 'yyy'
@@ -1621,8 +1621,8 @@ class TestEditDialogGui:
         """
         def mock_accept(*args):
             print("called Dialog.accept")
-        def mock_show(*args):
-            print("called shoe_message with args", args)
+        # def mock_show(*args):
+        #     print("called shoe_message with args", args)
         def mock_confirm():
             print("called DialogParent.confirm")
             return 'No luck'
@@ -1630,13 +1630,12 @@ class TestEditDialogGui:
             print("called DialogParent.confirm")
             return ''
         def mock_refresh():
-            print("called EditDialog.refresh")
+            print("called DialogParent.refresh")
         monkeypatch.setattr(testee.qtw, 'QMessageBox', mockqtw.MockMessageBox)
         monkeypatch.setattr(testee.qtw.QDialog, 'accept', mock_accept)
         testobj = self.setup_testobj(monkeypatch, capsys)
-        testobj.master = types.SimpleNamespace(confirm=mock_confirm)
+        testobj.master = types.SimpleNamespace(refresh=mock_refresh, confirm=mock_confirm)
         testobj.title = 'title'
-        testobj.refresh = mock_refresh
         testobj.accept()
         assert capsys.readouterr().out == (
                 "called DialogParent.confirm\n"
@@ -1645,14 +1644,14 @@ class TestEditDialogGui:
         testobj.master.attr_table = 'xxx'
         testobj.accept()
         assert capsys.readouterr().out == (
-                "called EditDialog.refresh\n"
+                "called DialogParent.refresh\n"
                 "called DialogParent.confirm\n"
                 "called MessageBox.information with args"
                 f" `{testobj}` `title` `No luck`\n")
         testobj.master.confirm = mock_confirm_2
         testobj.accept()
         assert capsys.readouterr().out == (
-                "called EditDialog.refresh\n"
+                "called DialogParent.refresh\n"
                 "called DialogParent.confirm\n"
                 "called Dialog.accept\n")
 
@@ -1863,10 +1862,9 @@ class TestSearchDialogGui:
         monkeypatch.setattr(testee.qtw.QDialog, 'accept', mockqtw.MockDialog.accept)
         testobj = self.setup_testobj(monkeypatch, capsys)
         testobj.set_focus_to = mock_set
-        testobj.parent = types.SimpleNamespace(title='title')
         testobj.txt_element = 'search'
         testobj.txt_element_replace = 'replace'
-        testobj.master = types.SimpleNamespace(confirm=mock_confirm)
+        testobj.master = types.SimpleNamespace(confirm=mock_confirm, title='title')
         testobj.accept()
         assert capsys.readouterr().out == (
                 "called DialogParent.confirm\n"
@@ -2015,7 +2013,7 @@ class TestAddDialogGui:
         assert capsys.readouterr().out == (
                 "called HBox.__init__\n"
                 "called SpinBox.__init__\n"
-                "called SpinBox.setMaximum with arg '0'\n"
+                # "called SpinBox.setMaximum with arg '0'\n"
                 "called SpinBox.setValue with arg '0'\n"
                 "called HBox.addWidget with arg MockSpinBox\n"
                 "called HBox.addStretch\n"
@@ -2089,36 +2087,38 @@ class TestAddDialogGui:
         testobj.add_table_to_section(section, 'row', 0, [])
         assert capsys.readouterr().out == (
                 "called HBox.__init__\n"
-                "called HBox.addStretch\n"
+                "called HBox.addSpacing\n"
                 f"called Table.__init__ with args ({testobj},)\n"
                 "called Header.__init__\n"
                 "called Header.__init__\n"
                 "called Table.setRowCount with arg '0'\n"
                 "called Table.setColumnCount with arg '0'\n"
-                "called Table.setHorizontalHeaderLabels with arg '[]'\n"
                 "called Table.horizontalHeader\n"
+                "called Header.setStretchLastSection with arg True\n"
+                "called Table.setHorizontalHeaderLabels with arg '[]'\n"
                 "called Table.verticalHeader\n"
                 "called Header.setVisible with arg False\n"
                 "called HBox.addWidget with arg MockTable\n"
-                "called HBox.addStretch\n"
+                "called HBox.addSpacing\n"
                 "called Grid.addLayout with arg MockHBoxLayout at ('row', 0, 1, 2)\n")
         testobj.add_table_to_section(section, 'row', 1, ['column', 'defs'], 'callback')
         assert capsys.readouterr().out == (
                 "called HBox.__init__\n"
-                "called HBox.addStretch\n"
+                "called HBox.addSpacing\n"
                 f"called Table.__init__ with args ({testobj},)\n"
                 "called Header.__init__\n"
                 "called Header.__init__\n"
                 "called Table.setRowCount with arg '1'\n"
                 "called Table.setColumnCount with arg '2'\n"
-                "called Table.setHorizontalHeaderLabels with arg '['column', 'defs']'\n"
                 "called Table.horizontalHeader\n"
+                "called Header.setStretchLastSection with arg True\n"
                 "called Header.setSectionsClickable with arg True\n"
                 "called Signal.connect with args ('callback',)\n"
+                "called Table.setHorizontalHeaderLabels with arg '['column', 'defs']'\n"
                 "called Table.verticalHeader\n"
                 "called Header.setVisible with arg False\n"
                 "called HBox.addWidget with arg MockTable\n"
-                "called HBox.addStretch\n"
+                "called HBox.addSpacing\n"
                 "called Grid.addLayout with arg MockHBoxLayout at ('row', 0, 1, 2)\n")
 
     def test_add_buttons_to_bottom(self, monkeypatch, capsys):
@@ -2192,7 +2192,7 @@ class TestAddDialogGui:
         cmb = mockqtw.MockComboBox()
         assert capsys.readouterr().out == "called ComboBox.__init__\n"
         testobj = self.setup_testobj(monkeypatch, capsys)
-        assert testobj.get_conbobox_text(cmb) == 'current text'
+        assert testobj.get_combobox_text(cmb) == 'current text'
         assert capsys.readouterr().out == "called ComboBox.currentText\n"
 
     def test_get_spinbox_value(self, monkeypatch, capsys):
@@ -2260,8 +2260,8 @@ class TestAddDialogGui:
         testobj = self.setup_testobj(monkeypatch, capsys)
         testobj.set_table_headers(table, ['xx', 'yy'], [10, 20])
         assert capsys.readouterr().out == (
+                "called Table.setHorizontalHeaderLabels with arg '['xx', 'yy']'\n"
                 "called Table.horizontalHeader\n"
-                "called Header.setHorizontalHeaderLabels with arg ['xx', 'yy']\n"
                 "called Header.resizeSection with args (0, 10)\n"
                 "called Header.resizeSection with args (1, 20)\n")
 
@@ -2340,8 +2340,8 @@ class TestAddDialogGui:
         """
         def mock_accept(*args):
             print("called Dialog.accept")
-        def mock_show(*args):
-            print("called shoe_message with args", args)
+        # def mock_show(*args):
+        #     print("called shoe_message with args", args)
         def mock_confirm():
             print("called DialogParent.confirm")
             return 'No luck'
@@ -2399,15 +2399,15 @@ class TestScrolledTextDialogGui:
         monkeypatch.setattr(testee.qtw.QDialog, 'setLayout', mockqtw.MockDialog.setLayout)
         monkeypatch.setattr(testee.qtw, 'QVBoxLayout', mockqtw.MockVBoxLayout)
         parent = types.SimpleNamespace(appicon='icon')
-        testobj = testee.ScrolledTextDialogGui('master', parent, 'title')
+        testobj = testee.ScrolledTextDialogGui(parent, 'title')
         assert isinstance(testobj.vbox, testee.qtw.QVBoxLayout)
         assert capsys.readouterr().out == (
                 "called Dialog.__init__ with args namespace(appicon='icon') () {}\n"
                 "called Dialog.setWindowTitle with args ('title',)\n"
                 "called Dialog.setWindowIcon with args ('icon',)\n"
-                "called Dialog.resize with args (600, 400)\n"
                 "called VBox.__init__\n"
-                "called Dialog.setLayout with arg MockVBoxLayout\n")
+                "called Dialog.setLayout with arg MockVBoxLayout\n"
+                "called Dialog.resize with args (800, 600)\n")
 
     def test_add_top_label(self, monkeypatch, capsys):
         """unittest for ScrolledTextDialogGui.add_top_label
@@ -2501,14 +2501,13 @@ class TestCodeViewDialogGui:
         monkeypatch.setattr(testee.qtw.QDialog, 'setLayout', mockqtw.MockDialog.setLayout)
         monkeypatch.setattr(testee.qtw, 'QVBoxLayout', mockqtw.MockVBoxLayout)
         parent = types.SimpleNamespace(appicon='icon')
-        testobj = testee.CodeViewDialogGui('master', parent, 'title')
+        testobj = testee.CodeViewDialogGui(parent, 'title')
         assert isinstance(testobj.vbox, testee.qtw.QVBoxLayout)
         assert capsys.readouterr().out == (
                 "called Dialog.__init__ with args namespace(appicon='icon') () {}\n"
                 "called Dialog.setWindowTitle with args ('title',)\n"
-                # "called Dialog.setWindowIcon with args ('icon',)\n"
-                "called Dialog.resize with args (600, 400)\n"
                 "called VBox.__init__\n"
+                "called Dialog.resize with args (800, 600)\n"
                 "called Dialog.setLayout with arg MockVBoxLayout\n")
 
     def test_add_top_message(self, monkeypatch, capsys):

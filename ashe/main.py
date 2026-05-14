@@ -13,8 +13,8 @@ import subprocess
 import contextlib
 import bs4 as bs  # BeautifulSoup as bs
 
-from ashe.gui_new import gui, toolkit
-from ashe.shared import ICO, TITEL, CMSTART, ELSTART, DTDSTART, BL, VAL_MESSAGE, analyze_element
+from ashe.gui import gui, toolkit
+from ashe.shared import ICO, TITEL, CMSTART, ELSTART, DTDSTART, BL, VAL_MESSAGE
 # check if we can use a separate editor for the parts dealing with style
 try:
     import cssedit.editor.main as csed
@@ -38,9 +38,9 @@ class Editor:
                 ' http://www.w3.org/TR/html4/loose.dtd" '),
                ('HTML 4.1 Frameset', 'HTML PUBLIC "-//W3C//DTD HTML 4.01 Frameset//EN'
                 ' http://www.w3.org/TR/html4/frameset.dtd" '),
-               ('', '', ''),
+               ('', ''),
                ('HTML 5', 'html'),
-               ('', '', ''),
+               ('', ''),
                ('XHTML 1.0 Strict', 'html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN'
                 ' http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd" '),
                ('XHTML 1.0 Transitional', 'html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN'
@@ -220,11 +220,11 @@ class Editor:
                 # breakpoint()
                 root.append(sub)  # data.decode("latin-1")) # insert(0,sub)
 
-    def soup2file(self, saveas=False):
+    def soup2file(self, xmlfn, saveas=False):
         "write HTML to file"
-        if not saveas and os.path.exists(self.xmlfn):  # maakt het uit of saveas aan of uit staat?
-            shutil.copyfile(self.xmlfn, self.xmlfn + '.bak')
-        with open(self.xmlfn, "w") as f_out:
+        if not saveas and os.path.exists(xmlfn):  # maakt het uit of saveas aan of uit staat?
+            shutil.copyfile(xmlfn, xmlfn + '.bak')
+        with open(xmlfn, "w") as f_out:
             f_out.write(str(self.soup))
         self.mark_dirty(False)
 
@@ -385,7 +385,7 @@ class Editor:
         if self.check_tree_state() != -1:
             # fnaam = self.gui.ask_for_open_filename()
             fnaam = gui.ask_for_open_filename(self.gui, self.xmlfn or os.getcwd(),
-                                              gui.build_mask('html'))[0]
+                                              gui.build_mask('html'))
             if fnaam:
                 err = self.file2soup(fname=str(fnaam))
                 if err:
@@ -402,7 +402,7 @@ class Editor:
         else:
             self.data2soup()
             try:
-                self.soup2file()
+                self.soup2file(self.xmlfn)
             except OSError as err:
                 self.gui.meld(str(err))
                 return
@@ -413,11 +413,11 @@ class Editor:
         bestand opslaan en naam in titel en root element zetten"""
         # fname = self.gui.ask_for_save_filename()
         fname = gui.ask_for_save_filename(self.gui, self.xmlfn or os.getcwd(),
-                                              gui.build_mask('html'))[0]
+                                          gui.build_mask('html'))
         if fname:
             self.data2soup()
             try:
-                self.soup2file(saveas=True)
+                self.soup2file(fname, saveas=True)
             except OSError as err:
                 self.gui.meld(str(err))
                 return
@@ -836,6 +836,46 @@ def getshortname(text, comment=False):
     return text
 
 
+def analyze_element(tag, attrs):
+    """setup text and such
+    """
+    old_styledata = ''
+    is_stylesheet = has_style = iscomment = False
+    if tag:
+        x = tag.split(None, 1)
+        if x[0] == CMSTART:
+            iscomment = True
+            x = x[1].split(None, 1)
+        if x[0] == ELSTART:
+            x = x[1].split(None, 1)
+        tag = x[0]
+        # afhankelijk van of ik vind dat bij een style tag has_style ook aan moet staan
+        # if tag == 'style':
+        #     has_style = True
+        #     old_styledata = tag.text -- niet nodig, style(s) zit in pseudo element styledata
+    if attrs:
+        for attr, value in attrs.items():
+            if attr == 'styledata':
+                old_styledata = value
+                break
+            if tag == 'link' and attr == 'rel' and value == 'stylesheet':
+                is_stylesheet = True
+                break
+            if attr == 'style':
+                has_style = True
+                old_styledata = value
+                break
+    if tag == 'style':  # is_style_tag:
+        text = '&Edit styles'
+    elif is_stylesheet:
+        text = '&Edit linked stylesheet'
+    elif has_style:
+        text = '&Edit inline style'
+    else:
+        text = 'Add &inline style'
+    return tag, iscomment, text, old_styledata, has_style, is_stylesheet
+
+
 class CssManager:
     """shared interface from Edit Element Dialog with css editor
     """
@@ -850,35 +890,36 @@ class CssManager:
         compare data returned with original data supplied
         """
         # print('in CssManager.call_editor, tag is', tag)
-        self.styledata = self.old_styledata = master.styledata
-        self.tag = tag
+        master.old_styledata = master.styledata
+        # self.tag = tag
         if self.cssedit_available:
             # print('in htmledit.call_editor, app is', self._parent.gui.app)
             # css = csed.MainWindow(master, app=self._parent.gui.app)  # app)
             css = csed.Editor(master, app=self.parent.gui.app)  # app)
             # master is for setting returndata on (attributes styledata and cssfilename)
             if tag == 'style':
-                css.open(text=self.styledata)
+                css.open(text=master.styledata)
             else:
-                css.open(tag=tag, text=self.styledata)
+                css.open(tag=tag, text=master.styledata)
             # print('in CssManager.call_editor, before show_from_external')
             css.show_from_external()  # sets self.styledata right before closing
             # print('in CssManager.call_editor, after  show_from_external')
             master.csseditor_called = True
-            return None, None    # styledata is ingesteld in de dialoog
-        dlg = TextDialog(self.parent, title='Edit inline style', text=self.styledata,
+            return  # None, None    # styledata is ingesteld in de dialoog
+        dlg = TextDialog(self.parent, title='Edit inline style', text=master.styledata,
                          show_comment_switch=False)
-        ok, dialog_data = gui.call_dialog(dlg.gui)
+        ok, dialog_data = gui.call_dialog(dlg)
         if ok:
-            self.styledata = dialog_data[0]
-        if self.styledata != self.old_styledata:
-            self.old_styledata = self.styledata
-        # het vervolg is tbv call_from_inline, kan net zo goed weggelaten worden
-        if self.tag == 'style':
-            attrs = {'styledata': self.old_styledata}
-        else:
-            attrs = {'style': self.old_styledata}
-        return self.styledata, attrs
+            master.styledata = dialog_data[0]
+        # moet dit? Ik wil dit verderop ook nog kunnen vergelijken
+        # if self.styledata != self.old_styledata:
+        #     self.old_styledata = self.styledata
+        # # het vervolg is tbv call_from_inline, kan net zo goed weggelaten worden
+        # if self.tag == 'style':
+        #     attrs = {'styledata': self.old_styledata}
+        # else:
+        #     attrs = {'style': self.old_styledata}
+        # return self.styledata, attrs
 
     def call_editor_for_stylesheet(self, fname, new_ok=False):
         """call external css editor from the edit element dialog
@@ -978,9 +1019,14 @@ class EditorHelper:
         modified = False
         oldtag = get_tag_from_elname(text)
         attrdict = self.gui.get_element_data(self.item)
-        test = self.gui.get_element_children(self.item) if oldtag == 'style' else []
-        oldstyledata = self.gui.get_element_data(test[0]) if test else ''
-        attrdict['styledata'] = oldstyledata
+        oldstyledata = ''
+        style_item = None
+        if oldtag == 'style':
+            test = self.gui.get_element_children(self.item)
+            if test:
+                style_item = test[0]
+                oldstyledata = self.gui.get_element_data(style_item)
+            attrdict['styledata'] = oldstyledata
         was_commented = text.startswith(CMSTART)
         under_comment = self.gui.get_element_text(
             self.gui.get_element_parent(self.item)).startswith(CMELSTART)
@@ -999,8 +1045,8 @@ class EditorHelper:
                     # dit is voor rekening houden met element wijzigen in style element
                     self.gui.addtreeitem(self.item, newstyledata, {}, -1)
                 elif newstyledata != oldstyledata:
-                    self.gui.set_element_text(newstyledata, getshortname(newstyledata))
-                    self.gui.set_element_data(newstyledata, newstyledata)
+                    self.gui.set_element_text(style_item, getshortname(newstyledata))
+                    self.gui.set_element_data(style_item, newstyledata)
             if 'style' in attrs and not attrs['style']:
                 attrs.pop('style')
             if tag != oldtag or attrs != attrdict:
@@ -1600,21 +1646,22 @@ class ElementDialog:
         self.attr_table = self.gui.add_table_to_section(middle,
                                                         [('attribute', 102), ('value', 152)],
                                                         attrs)
-        self.gui.add_buttons_to_section(middle, [('&Add Attribute', self.on_add),
-                                                 ('&Delete Selected', self.on_del),
-                                                 (self.style_text, self.on_style)])
+        self.style_button = self.gui.add_buttons_to_section(middle,
+                                                            [('&Add Attribute', self.on_add),
+                                                             ('&Delete Selected', self.on_del),
+                                                             (self.style_text, self.on_style)])[-1]
         self.gui.add_buttons_to_bottom()
         self.gui.set_focus_to(self.tag_text)
 
-    def on_add(self):
+    def on_add(self, *args):
         "attribuut toevoegen"
         self.refresh()
         row = self.gui.get_table_rowcount(self.attr_table)
         self.gui.add_table_row(self.attr_table, row)
-        self.gui.set_table_rowheader(self.attr_table, row)
+        self.gui.set_table_rowheader(self.attr_table, row, '')
         self.gui.select_table_cell(self.attr_table, row, 0)
 
-    def on_del(self):
+    def on_del(self, *args):
         "attribuut verwijderen"
         self.refresh()
         row = self.gui.get_selected_table_row(self.attr_table)
@@ -1626,7 +1673,7 @@ class ElementDialog:
             gui.show_message(self.gui, 'Delete attribute',
                              "Select a row by clicking on the row heading")
 
-    def on_style(self):
+    def on_style(self, *args):
         "adjust style attributes"
         if self.check_changes:
             self.refresh()
@@ -1672,7 +1719,7 @@ class ElementDialog:
         else:
             row = rowcount  # niet +1 want 0-based
             self.gui.add_table_row(self.attr_table, row)
-            self.gui.set_table_rowheader(self.attr_table, row)
+            self.gui.set_table_rowheader(self.attr_table, row, '')
             self.gui.add_table_rowitem(self.attr_table, row, 0, attrname, editable=False)
             self.gui.add_table_rowitem(self.attr_table, row, 1, self.styledata, editable=False)
             self.gui.set_button_text(self.style_button, analyze_element('', {attrname: ''})[2])
@@ -1715,7 +1762,7 @@ class TextDialog:
         show_commented = show_comment_switch
         if show_commented:
             topline = self.gui.add_topline()
-            self.comment_button = self.gui.add_checkbox(topline, '&Comment(ed)')
+            self.comment_button = self.gui.add_checkbox(topline, '&Comment(ed)', False)
             if text.startswith(CMSTART):
                 self.gui.set_checkbox_state(self.comment_button, True)
                 dummy, text = text.split(None, 1)
@@ -1743,29 +1790,29 @@ class SearchDialog:
         self.gui = gui.SearchDialogGui(self, parent.gui, title)
         grid = self.gui.setup_container()
         self.gui.add_title(grid, 'Search for:', 0, 0)
-        self.gui.add_text(grid, 'Element', grid, 1, 0)
-        self.gui.add_text(grid, "name:", grid, 1, 1)
+        self.gui.add_text(grid, 'Element', 1, 0)
+        self.gui.add_text(grid, "name:", 1, 1)
         self.txt_element = self.gui.add_lineinput(grid, 1, 2, self.update_search_text)
-        self.gui.add_text(grid, 'Attribute', grid, 2, 0)
-        self.gui.add_text(grid, "name:", grid, 2, 1)
+        self.gui.add_text(grid, 'Attribute', 2, 0)
+        self.gui.add_text(grid, "name:", 2, 1)
         self.txt_attr_name = self.gui.add_lineinput(grid, 2, 2, self.update_search_text)
-        self.gui.add_text(grid, "value:", grid, 3, 1)
+        self.gui.add_text(grid, "value:", 3, 1)
         self.txt_attr_val = self.gui.add_lineinput(grid, 3, 2, self.update_search_text)
-        self.gui.add_text(grid, 'Text', grid, 4, 0)
-        self.gui.add_text(grid, "value:", grid, 4, 1)
+        self.gui.add_text(grid, 'Text', 4, 0)
+        self.gui.add_text(grid, "value:", 4, 1)
         self.txt_text = self.gui.add_lineinput(grid, 4, 2, self.update_search_text)
         if self.replace:
             self.gui.add_title(grid, 'Replace with:', 0, 3)
-            self.gui.add_text(grid, 'Element', grid, 1, 4)
-            self.gui.add_text(grid, "name:", grid, 1, 5)
+            self.gui.add_text(grid, 'Element', 1, 4)
+            self.gui.add_text(grid, "name:", 1, 5)
             self.txt_element_replace = self.gui.add_lineinput(grid, 1, 6, self.update_search_text)
-            self.gui.add_text(grid, 'Attribute', grid, 2, 4)
-            self.gui.add_text(grid, "name:", grid, 2, 5)
+            self.gui.add_text(grid, 'Attribute', 2, 4)
+            self.gui.add_text(grid, "name:", 2, 5)
             self.txt_attr_name_replace = self.gui.add_lineinput(grid, 2, 6, self.update_search_text)
-            self.gui.add_text(grid, "value:", grid, 3, 5)
+            self.gui.add_text(grid, "value:", 3, 5)
             self.txt_attr_val_replace = self.gui.add_lineinput(grid, 3, 6, self.update_search_text)
-            self.gui.add_text(grid, 'Text', grid, 4, 4)
-            self.gui.add_text(grid, "value:", grid, 4, 5)
+            self.gui.add_text(grid, 'Text', 4, 4)
+            self.gui.add_text(grid, "value:", 4, 5)
             self.txt_text_replace = self.gui.add_lineinput(grid, 4, 6, self.update_search_text)
             self.cb_replace_all = self.gui.add_checkbox(grid, 'Replace All', 5, 3)
         self.lbl_search = self.gui.add_description()
@@ -1782,7 +1829,7 @@ class SearchDialog:
             self.gui.set_lineinput_value(self.txt_text_replace, self.parent.replace_args[3])
         self.gui.set_focus_to(self.txt_element)
 
-    def update_search_text(self):
+    def update_search_text(self, *args):
         """build text describing search action"""
         replace = (self.gui.get_lineinput_value(self.txt_element_replace),
                    self.gui.get_lineinput_value(self.txt_attr_name_replace),
@@ -1798,7 +1845,7 @@ class SearchDialog:
         self.gui.update_size()
 
     def confirm(self):
-        ""
+        "data controleren en doorgeven bij dialoog accepteren"
         ele = self.gui.get_lineinput_value(self.txt_element)
         attr_name = self.gui.get_lineinput_value(self.txt_attr_name)
         attr_val = self.gui.get_lineinput_value(self.txt_attr_val)
@@ -1843,6 +1890,7 @@ class DtdDialog:
             if radio and self.gui.get_radiobutton_state(radio):
                 self.parent.dialog_data = dtd
                 break
+        return ''
 
 
 class CssDialog:
@@ -1850,6 +1898,8 @@ class CssDialog:
     """
     def __init__(self, parent, title='Add StyleSheet'):
         self.parent = parent
+        self.styledata = ''
+        self.cssfilename = ''
         self.gui = gui.AddDialogGui(self, parent.gui, title)
         middle = self.gui.add_content_section()
 
@@ -1860,10 +1910,10 @@ class CssDialog:
                                                        ('C&reate', self.nieuw),
                                                        ('Select + &Edit', self.edit)])
         self.new_button, self.choose_button, self.edit_button = buttons
-        self.gui.add_text_to_section(middle, "for media type(s):" , 2, 0)
+        self.gui.add_text_to_section(middle, "for media type(s):", 2, 0)
         # middle.Add(lbl, (2, 0), (1, 1), wx.ALIGN_CENTER_VERTICAL)
         self.text_text = self.gui.add_textinput_to_section(middle, 2, 1)
-        self.gui.add_buttons_to_bottom(extra=('&Add inline', self.on_inline))
+        self.inline_button = self.gui.add_buttons_to_bottom(extra=('&Add inline', self.on_inline))[0]
         self.gui.set_focus_to(self.link_text)
 
     def kies(self, *args):
@@ -1889,16 +1939,16 @@ class CssDialog:
         loc = self.gui.get_textinput_value(self.link_text)
         if not loc or (loc.startswith('http') and '://' in loc):
             loc = os.path.dirname(self.parent.xmlfn) or os.getcwd()
-        text, mask = "Choose a file", self.parent.build_mask('css')
+        mask = gui.build_mask('css')
         if create:
-            fnaam = gui.ask_for_save_filename(self.gui, text, loc, mask)
+            fnaam = gui.ask_for_save_filename(self.gui, loc, mask)
         else:
-            fnaam = gui.ask_for_open_filename(self.gui, text, loc, mask)
+            fnaam = gui.ask_for_open_filename(self.gui, loc, mask)
         if fnaam:
             self.gui.set_textinput_value(self.link_text, fnaam)
         return fnaam
 
-    def on_inline(self):
+    def on_inline(self, *args):
         "voegt een 'style' tag in"
         self.parent.cssm.call_from_inline(self, '')
         for widget in (self.link_text, self.new_button, self.edit_button, self.choose_button,
@@ -1947,24 +1997,26 @@ class LinkDialog:
         self.gui.add_buttons_to_bottom()
         self.gui.set_focus_to(self.link_text)
 
-    def kies(self):
+    def kies(self, *args):
         "methode om het te linken document te selecteren"
         loc = self.parent.xmlfn or os.getcwd()
-        text, mask = "Choose a file", self.parent.build_mask('html')
-        fnaam = gui.ask_for_open_filename(self.gui, text, loc, mask)
+        mask = gui.build_mask('html')
+        fnaam = gui.ask_for_open_filename(self.gui, loc, mask)
         if fnaam:
             self.gui.set_textinput_value(self.link_text, fnaam)
 
-    def set_ltext(self, chgtext):
-        'indien leeg title tekst gelijk maken aan link adres'
-        # moet dit niet text_text zijn? Niet in het origineel
-        linktxt = chgtext
-        if self.gui.get_textinput_value(self.title_text) == self.linktxt:
-            self.gui.set_textinput_value(self.title_text, linktxt)
+    def set_ltext(self, *args):  # chgtext):
+        'title tekst gelijk maken aan link adres en deze in attribuut onthouden'
+        # moet dit niet text_text zijn? Wel in de origiele wx versie, niet in de qt versie
+        # linktxt = chgtext
+        linktxt = self.gui.get_textinput_value(self.link_text)
+        if self.gui.get_textinput_value(self.text_text) == self.linktxt:
+            self.gui.set_textinput_value(self.text_text, linktxt)
             self.linktxt = linktxt
 
-    def set_ttext(self, chgtext):
-        "indien leeg link tekst leegmaken"
+    def set_ttext(self, *args):  # chgtext):
+        "indien link tekst leeg attribuut ook leegmaken"
+        chgtext = self.gui.get_textinput_value(self.text_text)
         if chgtext == "":
             self.linktxt = ""
 
@@ -2010,23 +2062,24 @@ class ImageDialog:
         self.gui.add_buttons_to_bottom()
         self.gui.set_focus_to(self.link_text)
 
-    def kies(self):
+    def kies(self, *args):
         "methode om het te linken image te selecteren"
         loc = self.parent.xmlfn or os.getcwd()
-        text, mask = "Choose a file", self.parent.build_mask('html')
-        fnaam = gui.ask_for_open_filename(self.gui, text, loc, mask)
+        mask = gui.build_mask('image')
+        fnaam = gui.ask_for_open_filename(self.gui, loc, mask)
         if fnaam:
             self.gui.set_textinput_value(self.link_text, fnaam)
 
-    def set_ltext(self, chgtext):
-        'indien leeg title tekst gelijk maken aan link adres'
-        linktxt = chgtext
+    def set_ltext(self, *args):  # chgtext):
+        'alt tekst gelijk maken aan link adres en deze in attribuut onthouden'
+        linktxt = self.gui.get_textinput_value(self.link_text)
         if self.gui.get_textinput_value(self.alt_text) == self.linktxt:
             self.gui.set_textinput_value(self.alt_text, linktxt)
             self.linktxt = linktxt
 
-    def set_ttext(self, chgtext):
-        "indien leeg link tekst leegmaken"
+    def set_ttext(self, *args):  # chgtext):
+        "indien alt tekst leeg attribuut ook leegmaken"
+        chgtext = self.gui.get_textinput_value(self.alt_text)
         if chgtext == "":
             self.linktxt = ""
 
@@ -2038,8 +2091,8 @@ class ImageDialog:
         except ValueError as msg:
             return str(msg)
         self.parent.dialog_data = {"src": link,
-                                    "alt": self.gui.get_textinput_value(self.alt_text),
-                                    "title": self.gui.get_textinput_value(self.title_text)}
+                                   "alt": self.gui.get_textinput_value(self.alt_text),
+                                   "title": self.gui.get_textinput_value(self.title_text)}
         return ''
 
 
@@ -2056,25 +2109,32 @@ class VideoDialog:
                                                                  [('&Browse', self.kies)])[0]
         self.gui.add_text_to_section(middle, "height of video window:", 2, 0)
         self.hig_text = self.gui.add_spinbox_to_section(middle, 2, 1, 1200, 200,
-                                                        callback=self.on_spinbox)
+                                                        callback=self.on_height)
         self.gui.add_text_to_section(middle, "width of video window:", 3, 0)
         self.wid_text = self.gui.add_spinbox_to_section(middle, 3, 1, 2400, 400,
-                                                        callback=self.on_spinbox)
+                                                        callback=self.on_width)
         self.gui.add_buttons_to_bottom()
         self.gui.set_focus_to(self.link_text)
 
-    def kies(self):
+    def kies(self, *args):
         "methode om het te linken image te selecteren"
         loc = self.parent.xmlfn or os.getcwd()
-        text, mask = "Choose a file", self.parent.build_mask('video')
-        fnaam = gui.ask_for_open_filename(self.gui, text, loc, mask)
+        mask = gui.build_mask('video')
+        fnaam = gui.ask_for_open_filename(self.gui, loc, mask)
         if fnaam:
             self.gui.set_textinput_value(self.link_text, fnaam)
 
-    def on_spinbox(self, number):
+    def on_height(self, *args):
         "controle bij invullen/aanpassen hoogte/breedte"
         try:
-            int(number)  # self.rows_text.value())
+            number = int(self.gui.get_spinbox_value(self.hig_text))
+        except ValueError:
+            gui.show_message(self.gui, 'Add Image', 'Number must be numeric integer')
+
+    def on_width(self, *args):
+        "controle bij invullen/aanpassen hoogte/breedte"
+        try:
+            number = int(self.gui.get_spinbox_value(self.wid_text))
         except ValueError:
             gui.show_message(self.gui, 'Add Image', 'Number must be numeric integer')
 
@@ -2086,8 +2146,8 @@ class VideoDialog:
         except ValueError as msg:
             return str(msg)
         self.parent.dialog_data = {"src": link,
-                                    "height": self.gui.get_spinbox_value(self.hig_text),
-                                    "width": self.gui.get_spinbox_value(self.wid_text)}
+                                   "height": self.gui.get_spinbox_value(self.hig_text),
+                                   "width": self.gui.get_spinbox_value(self.wid_text)}
         return ''
 
 
@@ -2105,11 +2165,11 @@ class AudioDialog:
         self.gui.add_buttons_to_bottom()
         self.gui.set_focus_to(self.link_text)
 
-    def kies(self):
+    def kies(self, *args):
         "methode om het te linken image te selecteren"
         loc = self.parent.xmlfn or os.getcwd()
-        text, mask = "Choose a file", self.parent.build_mask('audio')
-        fnaam = gui.ask_for_open_filename(self.gui, text, loc, mask)
+        mask = gui.build_mask('audio')
+        fnaam = gui.ask_for_open_filename(self.gui, loc, mask)
         if fnaam:
             self.gui.set_textinput_value(self.link_text, fnaam)
 
@@ -2129,6 +2189,7 @@ class ListDialog:
     """
     def __init__(self, parent, title='Add a List'):
         self.parent = parent
+        initialrows = 1
         self.gui = gui.AddDialogGui(self, parent.gui, title)
         middle = self.gui.add_content_section()
         self.gui.add_text_to_section(middle, "choose type of list:", 0, 0)
@@ -2136,23 +2197,24 @@ class ListDialog:
                                                             ["unordered", "ordered", "definition"],
                                                             callback=self.on_type)
         self.gui.add_text_to_section(middle, "initial number of items:", 1, 0)
-        self.rows_text = self.gui.add_spinbox_to_section(middle, 1, 1, callback=self.on_rows)
-        self.list_table = self.gui.add_table_to_section(middle, 2, 1, ['list item'])
+        self.rows_text = self.gui.add_spinbox_to_section(middle, 1, 1, startvalue=initialrows,
+                                                         callback=self.on_rows)
+        self.list_table = self.gui.add_table_to_section(middle, 2, initialrows, ['list item'])
         self.gui.add_buttons_to_bottom()
         self.gui.set_focus_to(self.type_select)
 
-    def on_type(self):  # , selectedindex=None):
+    def on_type(self, *args):  # , selectedindex=None):
         "geselecteerde list type toepassen"
         sel = self.gui.get_combobox_text(self.type_select)
         numcols = self.gui.get_table_columncount(self.list_table)
         if sel[0] == "d" and numcols == len(['one_column']):
             self.gui.add_table_column(self.list_table, 0)
-            self.gui.set_table_headers(['term', 'description'], (102, 152))
+            self.gui.set_table_headers(self.list_table, ['term', 'description'], (102, 152))
         elif sel[0] != "d" and numcols == len(['two', 'columns']):
             self.gui.remove_table_column(self.list_table, 0)
-            self.gui.set_table_headers(['list item'], (254,))
+            self.gui.set_table_headers(self.list_table, ['list item'], (254,))
 
-    def on_rows(self):  # , number=None):
+    def on_rows(self, *args):  # , number=None):
         "controle en actie bij invullen/aanpassen aantal regels"
         try:
             cur_rows = int(self.gui.get_spinbox_value(self.rows_text))
@@ -2193,56 +2255,64 @@ class TableDialog:
     """
     def __init__(self, parent, title='Add a Table'):
         self.parent = parent
-        self.headings = []
-        initialcols, initialrows = 1, 1
+        self.headings = ['']
+        initialcols, initialrows = len(self.headings), 1
         self.gui = gui.AddDialogGui(self, parent.gui, title)
         middle = self.gui.add_content_section()
         self.gui.add_text_to_section(middle, "summary (description):", 0, 0)
         self.title_text = self.gui.add_textinput_to_section(middle, 0, 1, width=250)
         self.gui.add_text_to_section(middle, "initial number of rows:", 1, 0)
-        self.rows_text = self.gui.add_spinbox_to_section(middle, 1, 1)
+        self.rows_text = self.gui.add_spinbox_to_section(middle, 1, 1, startvalue=initialrows,
+                                                         callback=self.on_rows)
         self.gui.add_text_to_section(middle, "initial number of columns:", 2, 0)
-        self.cols_text = self.gui.add_spinbox_to_section(middle, 2, 1)
+        self.cols_text = self.gui.add_spinbox_to_section(middle, 2, 1, startvalue=initialcols,
+                                                         callback=self.on_cols)
         self.show_titles = self.gui.add_checkbox_to_section(middle, 3, 1, 'Show Titles',
                                                             checked=True, callback=self.on_check)
-        self.table_table = self.gui.add_table_to_section(middle, 4, 1, [''],
+        self.table_table = self.gui.add_table_to_section(middle, 4, initialrows, self.headings,
                                                          callback=self.on_title)
         self.gui.add_buttons_to_bottom()
         self.gui.set_focus_to(self.title_text)
 
-    def on_rows(self):  # , number=None):
+    def on_rows(self, *args):  # , number=None):
         "controle en actie bij invullen/aanpassen aantal regels"
         try:
             cur_rows = int(self.gui.get_spinbox_value(self.rows_text))
         except ValueError:
             gui.show_message(self.gui, 'Add list', 'Number must be numeric integer')
             return
-        num_rows = self.gui.get_table_rowcount(self.list_table)
+        num_rows = self.gui.get_table_rowcount(self.table_table)
         if num_rows > cur_rows:
             for idx in range(num_rows - 1, cur_rows - 1, -1):
-                self.gui.remove_table_row(self.list_table, idx)
+                self.gui.remove_table_row(self.table_table, idx)
         elif cur_rows > num_rows:
             for idx in range(num_rows, cur_rows):
-                self.gui.add_table_row(self.list_table, idx)
+                self.gui.add_table_row(self.table_table, idx)
 
-    def on_cols(self):  # , number=None):
+    def on_cols(self, *args):  # , number=None):
         "controle en actie bij invullen/aanpassen aantal regels"
         try:
             cur_cols = int(self.gui.get_spinbox_value(self.cols_text))
         except ValueError:
             gui.show_message(self.gui, 'Add list', 'Number must be numeric integer')
             return
-        num_cols = self.gui.get_table_columncount(self.list_table)
+        num_cols = self.gui.get_table_columncount(self.table_table)
         if num_cols > cur_cols:
-            for idx in range(num_cols - 1, cur_cols - 1, -1):
-                self.gui.remove_table_column(self.list_table, idx)
-                self.headings.pop()
-                self.gui.set_table_headers(self.headings, [])
+            # for idx in range(num_cols - 1, cur_cols - 1, -1):
+            #     self.gui.remove_table_column(self.table_table, idx)
+            #     self.headings.pop()
+            #     self.gui.set_table_headers(self.table_table, self.headings, [])
+            self.gui.remove_table_column(self.table_table, num_cols - 1)
+            self.headings.pop()
+            self.gui.set_table_headers(self.table_table, self.headings, [])
         elif cur_cols > num_cols:
-            for idx in range(num_cols, cur_cols):
-                self.gui.add_table_column(self.list_table, idx)
-                self.headings.append('')
-                self.gui.set_table_headers(self.headings, [])
+            # for idx in range(num_cols, cur_cols):
+            #     self.gui.add_table_column(self.table_table, idx)
+            #     self.headings.append('')
+            #     self.gui.set_table_headers(self.table_table, self.headings, [])
+            self.gui.add_table_column(self.table_table, num_cols)
+            self.headings.append('')
+            self.gui.set_table_headers(self.table_table, self.headings, [])
 
     def on_check(self, *args):
         "callback for show titles checkbox"
@@ -2252,11 +2322,11 @@ class TableDialog:
     def on_title(self, *args):
         "callback bij klikken op kolomtitel: titel opgeven"
         col = self.gui.get_table_column(*args)
-        if col:
+        if col >= 0:
             text = gui.ask_for_text(self.gui, 'Add a table', 'Enter a title for this column:')
             if text:
                 self.headings[col] = text
-                self.gui.set_table_headers(self.headings, [])
+                self.gui.set_table_headers(self.table_table, self.headings, [])
 
     def confirm(self):
         """bij OK: de opgebouwde tabel via self.dialog_data doorgeven
@@ -2283,7 +2353,7 @@ class ScrolledTextDialog:
     """
     def __init__(self, parent, title='', data='', htmlfile='', fromdisk=False):
         self.htmlfile = htmlfile
-        self.gui = gui.ScrolledTextDialogGui(self, parent.gui, title)
+        self.gui = gui.ScrolledTextDialogGui(parent.gui, title)
         self.gui.add_top_label(VAL_MESSAGE if fromdisk else '')
         textfield = self.gui.add_text_area()
         buttondefs = [('&Done', self.gui.close)]
@@ -2295,21 +2365,23 @@ class ScrolledTextDialog:
         if data:
             self.gui.set_textarea_contents(textfield, data)
 
-    def show_source(self):
+    def show_source(self, *args):
         "start viewing html source"
+        # print('called ScrolledTextDialog.show_source with args', args)
         with open(self.htmlfile) as f_in:
             data = ''.join(list(f_in))
         if data:
             dlg = CodeViewDialog(self, "Submitted source", data=data)
-            # dlg.show()  # Show(Modal)() in het geval van wx
-            gui.show_dialog(dlg.gui)
+            self.dlg = dlg  # alleen t.b.v. unittest
+            # dlg.gui.show()  # Show(Modal)() in het geval van wx
+            gui.show_dialog(dlg)
 
 
 class CodeViewDialog:
     """dialoog voor het tonen van de broncode
     """
     def __init__(self, parent, title='', caption='', data='', size=(600, 400)):
-        self.gui = gui.CodeViewDialogGui(self, parent.gui, title)
+        self.gui = gui.CodeViewDialogGui(parent.gui, title)
         self.gui.add_top_message(caption)
         self.gui.add_content_area(data)
         self.gui.add_bottom_button()

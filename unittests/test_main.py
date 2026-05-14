@@ -682,23 +682,26 @@ class TestEditor:
         assert capsys.readouterr().out == f'called Editor.__init__ with filename `{xmlfn}`\n'
         # testobj = self.setup_testobj(monkeypatch, capsys)
         testobj.soup = 12
-        testobj.soup2file()
+        testobj.soup2file(str(xmlfn))
         assert not backup.exists()
         assert xmlfn.read_text() == '12'
         assert capsys.readouterr().out == 'called.Editor.mark_dirty with value `False`\n'
         xmlfn.unlink()
-        testobj.soup2file(saveas=True)
+        testobj.soup2file(str(xmlfn), saveas=True)
         assert not backup.exists()
         assert xmlfn.read_text() == '12'
         assert capsys.readouterr().out == 'called.Editor.mark_dirty with value `False`\n'
         testobj.soup = 15
-        testobj.soup2file()
+        testobj.soup2file(str(xmlfn))
         assert backup.read_text() == '12'
         assert xmlfn.read_text() == '15'
         assert capsys.readouterr().out == 'called.Editor.mark_dirty with value `False`\n'
         backup.unlink()
-        testobj.soup = 12
-        testobj.soup2file(saveas=True)
+        testobj.soup = 18
+        testobj.soup2file(str(xmlfn), saveas=True)
+        assert not backup.exists()
+        assert xmlfn.read_text() == '18'
+        assert capsys.readouterr().out == 'called.Editor.mark_dirty with value `False`\n'
 
     def test_get_menulist(self, monkeypatch, capsys):
         """unittest for Editor.get_menulist
@@ -974,10 +977,10 @@ class TestEditor:
             return 0
         def mock_ask_filename(*args):
             print('called gui.ask_for_open_filename with args', args)
-            return '', ''
+            return ''
         def mock_ask_filename_2(*args):
             print('called gui.ask_for_open_filename with args', args)
-            return 'filename', ''
+            return 'filename'
         def mock_file2soup(self, *args, **kwargs):
             """stub
             """
@@ -1064,7 +1067,7 @@ class TestEditor:
         testobj.xmlfn = 'filename'
         testobj.savexml()
         assert capsys.readouterr().out == ('called Editor.data2soup with args () {}\n'
-                                           'called Editor.soup2file with args () {}\n'
+                                           "called Editor.soup2file with args ('filename',) {}\n"
                                            'called EditorGui.show_statusbar_message with arg'
                                            ' `saved filename`\n')
         monkeypatch.setattr(testee.Editor, 'soup2file', mock_soup2file_2)
@@ -1079,10 +1082,10 @@ class TestEditor:
         """
         def mock_ask_filename(*args):
             print('called gui.ask_for_save_filename with args', args)
-            return '', ''
+            return ''
         def mock_ask_filename_2(*args):
             print('called gui.ask_for_save_filename with args', args)
-            return 'filename', ''
+            return 'filename'
         def mock_data2soup(self, *args, **kwargs):
             """stub
             """
@@ -1117,7 +1120,7 @@ class TestEditor:
             "called Editor.build_mask with args ('html',)\n"
             f"called gui.ask_for_save_filename with args ({testobj.gui}, 'xmlfile', 'filemask')\n"
             'called Editor.data2soup with args () {}\n'
-            "called Editor.soup2file with args () {'saveas': True}\n"
+            "called Editor.soup2file with args ('filename',) {'saveas': True}\n"
             'called EditorGui.set_element_text with args `top`, `filename`\n'
             'called EditorGui.show_statusbar_message with arg `saved as filename`\n')
         monkeypatch.setattr(testee.Editor, 'soup2file', mock_soup2file_2)
@@ -1685,11 +1688,11 @@ class TestEditor:
         def mock_call_2(*args):
             print('called gui.call_dialog with args', type(args[0]).__name__, args[1:])
             return True, ('txt', 'data')
-        def mock_get_link_data_2():
-            """stub
-            """
-            print('called EditorGui.get_link_data')
-            return False, ('', '')
+        # def mock_get_link_data_2():
+        #     """stub
+        #     """
+        #     print('called EditorGui.get_link_data')
+        #     return False, ('', '')
         def mock_getelname(*args):
             """stub
             """
@@ -1799,8 +1802,7 @@ class TestEditor:
         testobj.add_video()
         assert capsys.readouterr().out == (
                 f"called VideoDialog.__init__ with args ({testobj},)\n"
-                "called gui.call_dialog with args MockDialog ()\n"
-                )
+                "called gui.call_dialog with args MockDialog ()\n")
         monkeypatch.setattr(testee.gui, 'call_dialog', mock_call_2)
         testobj.item = 'item'
         testobj.add_video()
@@ -1985,8 +1987,7 @@ class TestEditor:
         testobj.add_table()
         assert capsys.readouterr().out == (
                 f"called TableDialog.__init__ with args ({testobj},)\n"
-                "called gui.call_dialog with args MockDialog ()\n"
-                )
+                "called gui.call_dialog with args MockDialog ()\n")
         monkeypatch.setattr(testee.gui, 'call_dialog', mock_call_2)
         testobj.item = 'testobjitem'
         testobj.add_table()
@@ -2092,8 +2093,7 @@ class TestEditor:
         assert capsys.readouterr().out == (
                 f"called ScrolledtextDialog.__init__ with args ({testobj},"
                 " 'Validation output') {'htmlfile': 'test.html', 'fromdisk': True}\n"
-                "called gui.show_dialog with args MockDialog ()\n"
-                )
+                "called gui.show_dialog with args MockDialog ()\n")
         testobj.tree_dirty = True
         testobj.validate()
         assert capsys.readouterr().out == (
@@ -2168,7 +2168,7 @@ class TestEditor:
                 f"called CodeViewDialog.__init__ with args ({testobj},"
                 " 'Source view', 'Let op: de tekst wordt niet ververst"
                 " bij wijzigingen in het hoofdvenster', 'pretty')\n"
-                "called gui.show_dialog with args MockDialog ()\n"                                   )
+                "called gui.show_dialog with args MockDialog ()\n")
 
     def test_about(self, monkeypatch, capsys):
         """unittest for Editor.about
@@ -2229,7 +2229,7 @@ def test_get_tag_from_elname():
     assert testee.get_tag_from_elname(f'{testee.CMELSTART} commented element') == 'commented'
 
 
-def test_getshortname(monkeypatch, capsys):
+def test_getshortname():
     """unittest for main.getshortname
     """
     assert testee.getshortname('some\nname') == 'some [+]'
@@ -2238,6 +2238,28 @@ def test_getshortname(monkeypatch, capsys):
     assert testee.getshortname('looooooooooooooooooooooooooooong\name') == (
         'looooooooooooooooooooooooooooo... [+]')
     assert testee.getshortname('name', comment=True) == '<!> name'
+
+
+def test_analyze_element():
+    """unittest for shared.analyze_element
+    """
+    assert testee.analyze_element('', {}) == ('', False, 'Add &inline style', '', False, False)
+    assert testee.analyze_element('x', {'y': 'z'}) == (
+            'x', False, 'Add &inline style', '', False, False)
+    assert testee.analyze_element(f'{testee.ELSTART} x', {}) == (
+            'x', False, 'Add &inline style', '', False, False)
+    assert testee.analyze_element(f'{testee.CMSTART} {testee.ELSTART} x', {}) == (
+            'x', True, 'Add &inline style', '', False, False)
+    assert testee.analyze_element(f'{testee.CMSTART} x', {}) == (
+            'x', True, 'Add &inline style', '', False, False)
+    assert testee.analyze_element('link', {'rel': 'stylesheet'}) == (
+            'link', False, '&Edit linked stylesheet', '', False, True)
+    assert testee.analyze_element('x', {'style': 'y'}) == (
+            'x', False, '&Edit inline style', 'y', True, False)
+    assert testee.analyze_element('style', {}) == ('style', False, '&Edit styles', '', False, False)
+    assert testee.analyze_element('style', {'styledata': 'y'}) == (
+            'style', False, '&Edit styles', 'y', False, False)
+    # of `'y', True, False)` als ik vind dat bij een style tag has_style ook aan moet staan
 
 
 class TestCssManager:
@@ -2259,7 +2281,7 @@ class TestCssManager:
         testobj.parent = types.SimpleNamespace(gui=types.SimpleNamespace(app='EditorGui.app'))
         return testobj
 
-    def test_init(self, monkeypatch, capsys):
+    def test_init(self, monkeypatch):
         """unittest for CssManager.__init__
         """
         monkeypatch.setattr(testee, 'toolkit', 'qt')
@@ -2310,41 +2332,49 @@ class TestCssManager:
         monkeypatch.setattr(testee.csed, 'Editor', MockCssEditor)
         testobj.cssedit_available = True
         testobjmaster = types.SimpleNamespace(styledata='style_data')
-        assert testobj.call_editor(testobjmaster, 'style') == (None, None)
-        assert testobj.styledata == 'style_data'
-        assert testobj.tag == 'style'
+        # assert testobj.call_editor(testobjmaster, 'style') == (None, None)
+        testobj.call_editor(testobjmaster, 'style')
+        # assert testobj.styledata == 'style_data'
+        # assert testobj.tag == 'style'
         assert capsys.readouterr().out == (
                 "called CssEditor.__init__ with args"
-                " (namespace(styledata='style_data'),) {'app': 'EditorGui.app'}\n"
+                " (namespace(styledata='style_data', old_styledata='style_data'),)"
+                " {'app': 'EditorGui.app'}\n"
                 "called CssEditor.open with args () {'text': 'style_data'}\n"
                 "called CssEditor.show_from_external\n")
         testobjmaster = types.SimpleNamespace(styledata='style_data')
-        assert testobj.call_editor(testobjmaster, 'other') == (None, None)
-        assert testobj.styledata == 'style_data'
-        assert testobj.tag == 'other'
+        # assert testobj.call_editor(testobjmaster, 'other') == (None, None)
+        testobj.call_editor(testobjmaster, 'other')
+        # assert testobj.styledata == 'style_data'
+        # assert testobj.tag == 'other'
         assert capsys.readouterr().out == (
                 "called CssEditor.__init__ with args"
-                " (namespace(styledata='style_data'),) {'app': 'EditorGui.app'}\n"
+                " (namespace(styledata='style_data', old_styledata='style_data'),)"
+                " {'app': 'EditorGui.app'}\n"
                 "called CssEditor.open with args () {'tag': 'other', 'text': 'style_data'}\n"
                 "called CssEditor.show_from_external\n")
         testobj.cssedit_available = False
         monkeypatch.setattr(testee, 'TextDialog', MockTextDialog)
         monkeypatch.setattr(testee.gui, 'call_dialog', mock_call)
-        assert testobj.call_editor(testobjmaster, 'style') == ('style_data',
-                                                               {'styledata': 'style_data'})
+        # assert testobj.call_editor(testobjmaster, 'style') == ('style_data',
+        #                                                        {'styledata': 'style_data'})
+        testobj.call_editor(testobjmaster, 'style')
         assert capsys.readouterr().out == (
                 f"called TextDialog.__init__ with args ({testobj.parent},)"
                 " {'title': 'Edit inline style', 'text': 'style_data',"
                 " 'show_comment_switch': False}\n"
-                "called call_dialog with args ('MockTextDialogGui',)\n")
+                # "called call_dialog with args ('MockTextDialogGui',)\n")
+                "called call_dialog with args (MockTextDialog,)\n")
         monkeypatch.setattr(testee.gui, 'call_dialog', mock_call_2)
-        assert testobj.call_editor(testobjmaster, 'other') == ('dialog_data',
-                                                               {'style': 'dialog_data'})
+        # assert testobj.call_editor(testobjmaster, 'other') == ('dialog_data',
+        #                                                        {'style': 'dialog_data'})
+        testobj.call_editor(testobjmaster, 'other')
         assert capsys.readouterr().out == (
                 f"called TextDialog.__init__ with args ({testobj.parent},)"
                 " {'title': 'Edit inline style', 'text': 'style_data',"
                 " 'show_comment_switch': False}\n"
-                "called call_dialog with args ('MockTextDialogGui',)\n")
+                # "called call_dialog with args ('MockTextDialogGui',)\n")
+                "called call_dialog with args (MockTextDialog,)\n")
 
     def test_call_editor_for_stylesheet(self, monkeypatch, capsys, tmp_path):
         """unittest for CssManager.call_editor_for_stylesheet
@@ -2352,11 +2382,7 @@ class TestCssManager:
         def mock_meld(*args):
             """stub
             """
-            print(f'called show_message with args', args)
-        def mock_touch(*args):
-            """stub
-            """
-            print(f'called path.touch with args', args)
+            print('called show_message with args', args)
         # monkeypatch.setattr(testee.CssManager, '__init__', mock_cssman_init)
         # testobj = testee.CssManager()
         # assert capsys.readouterr().out == 'called CssManager.__init__ with args ()\n'
@@ -2454,7 +2480,7 @@ class TestEditorHelper:
                                            "called Editor.__init__()\n")
         return testobj
 
-    def test_init(self, monkeypatch, capsys):
+    def test_init(self):
         """unittest for EditorHelper.__init__
         """
         editor = types.SimpleNamespace(gui='EditorGui')
@@ -2597,12 +2623,12 @@ class TestEditorHelper:
         def mock_call_3a(*args):  # attrs
             print('called call_dialog with args', args)
             return True, ('p', {'x': 'z', 'style': 'aaaa'}, False)
-        def mock_call_4(*args):  # style_attr
-            print('called call_dialog with args', args)
-            return True, ('p', {'style': 'aaaa'}, False)
-        def mock_call_4a(*args):  # style_attr
-            print('called call_dialog with args', args)
-            return True, ('p', {'style': ''}, False)
+        # def mock_call_4(*args):  # style_attr
+        #     print('called call_dialog with args', args)
+        #     return True, ('p', {'style': 'aaaa'}, False)
+        # def mock_call_4a(*args):  # style_attr
+        #     print('called call_dialog with args', args)
+        #     return True, ('p', {'style': ''}, False)
         def mock_call_5(*args):  # style_ele
             print('called call_dialog with args', args)
             return True, ('style', {'x': 'z', 'styledata': 'yyy'}, False)
@@ -2663,7 +2689,7 @@ class TestEditorHelper:
         def mock_get_no_children(arg):
             """stub
             """
-            print('called EditorGui.get_element_children with arg `{arg}`')
+            print(f'called EditorGui.get_element_children with arg `{arg}`')
             return []
         def mock_comment(*args):
             """stub
@@ -2677,7 +2703,7 @@ class TestEditorHelper:
         monkeypatch.setattr(testobj.gui, 'get_element_data', mock_get_data)
         monkeypatch.setattr(testobj.gui, 'get_element_text', mock_get_text)
         monkeypatch.setattr(testobj.gui, 'get_element_parent', mock_get_parent)
-        monkeypatch.setattr(testobj.gui, 'get_element_children', mock_get_children)
+        monkeypatch.setattr(testobj.gui, 'get_element_children', mock_get_no_children)
         testobj.item = f'{testee.ELSTART} p'
         # canceling the edit dialog
         assert not testobj.process_element_dialog(f'{testee.ELSTART} p')
@@ -2687,12 +2713,12 @@ class TestEditorHelper:
             f"called EditorGui.get_element_parent with arg `{testee.ELSTART} p`\n"
             "called EditorGui.get_element_text with arg `item parent`\n"
             f"called ElementDialog.__init__ with args ({testobj},)"
-            " {'title': 'Edit an element', 'tag': '<> p', 'attrs': {'x': 'y', 'styledata': ''}}\n"
-            "called call_dialog with args (MockElementDialog,)\n"
-            )
+            # " {'title': 'Edit an element', 'tag': '<> p', 'attrs': {'x': 'y', 'styledata': ''}}\n"
+            " {'title': 'Edit an element', 'tag': '<> p', 'attrs': {'x': 'y'}}\n"
+            "called call_dialog with args (MockElementDialog,)\n")
         # scenario's:
         # wijzig attributen van een element
-        monkeypatch.setattr(testee.gui, 'call_dialog', mock_call_2) # geeft element p terug
+        monkeypatch.setattr(testee.gui, 'call_dialog', mock_call_2)  # geeft element p terug
         assert testobj.process_element_dialog(f'{testee.ELSTART} p')
         assert capsys.readouterr().out == (
             f"called get_tag_from_elname with arg `{testee.ELSTART} p`\n"
@@ -2700,14 +2726,15 @@ class TestEditorHelper:
             f"called EditorGui.get_element_parent with arg `{testee.ELSTART} p`\n"
             "called EditorGui.get_element_text with arg `item parent`\n"
             f"called ElementDialog.__init__ with args ({testobj},)"
-            " {'title': 'Edit an element', 'tag': '<> p', 'attrs': {'x': 'y', 'styledata': ''}}\n"
+            # " {'title': 'Edit an element', 'tag': '<> p', 'attrs': {'x': 'y', 'styledata': ''}}\n"
+            " {'title': 'Edit an element', 'tag': '<> p', 'attrs': {'x': 'y'}}\n"
             "called call_dialog with args (MockElementDialog,)\n"
             f"called EditorGui.set_element_text with args `{testee.ELSTART} p`,"
             f" `{testee.CMELSTART} p`\n"
             f"called EditorGui.set_element_data with args `{testee.ELSTART} p`, `{{'x': 'z'}}`\n"
             f"called EditorHelper.comment_out with args ('{testee.ELSTART} p', True)\n")
         # voeg inline style toe aan een element
-        monkeypatch.setattr(testee.gui, 'call_dialog', mock_call_3) # geeft element p terug
+        monkeypatch.setattr(testee.gui, 'call_dialog', mock_call_3)  # geeft element p terug
         assert testobj.process_element_dialog(f'{testee.ELSTART} p')
         assert capsys.readouterr().out == (
             f"called get_tag_from_elname with arg `{testee.ELSTART} p`\n"
@@ -2715,7 +2742,8 @@ class TestEditorHelper:
             f"called EditorGui.get_element_parent with arg `{testee.ELSTART} p`\n"
             "called EditorGui.get_element_text with arg `item parent`\n"
             f"called ElementDialog.__init__ with args ({testobj},)"
-            " {'title': 'Edit an element', 'tag': '<> p', 'attrs': {'x': 'y', 'styledata': ''}}\n"
+            # " {'title': 'Edit an element', 'tag': '<> p', 'attrs': {'x': 'y', 'styledata': ''}}\n"
+            " {'title': 'Edit an element', 'tag': '<> p', 'attrs': {'x': 'y'}}\n"
             "called call_dialog with args (MockElementDialog,)\n"
             f"called EditorGui.set_element_text with args `{testee.ELSTART} p`,"
             f" `{testee.ELSTART} p`\n"
@@ -2724,7 +2752,7 @@ class TestEditorHelper:
         # wijzig inline style van een element
         monkeypatch.setattr(testobj.gui, 'get_element_data', mock_get_data_2)
         # style xxx naar geen style
-        monkeypatch.setattr(testee.gui, 'call_dialog', mock_call_2a) # geeft element p terug
+        monkeypatch.setattr(testee.gui, 'call_dialog', mock_call_2a)   # geeft element p terug
         assert testobj.process_element_dialog(f'{testee.ELSTART} p')
         assert capsys.readouterr().out == (
             f"called get_tag_from_elname with arg `{testee.ELSTART} p`\n"
@@ -2732,14 +2760,15 @@ class TestEditorHelper:
             f"called EditorGui.get_element_parent with arg `{testee.ELSTART} p`\n"
             f"called EditorGui.get_element_text with arg `item parent`\n"
             f"called ElementDialog.__init__ with args ({testobj},)"
-            " {'title': 'Edit an element', 'tag': '<> p', 'attrs': {'x': 'y', 'styledata': ''}}\n"
+            # " {'title': 'Edit an element', 'tag': '<> p', 'attrs': {'x': 'y', 'styledata': ''}}\n"
+            " {'title': 'Edit an element', 'tag': '<> p', 'attrs': {'x': 'y'}}\n"
             "called call_dialog with args (MockElementDialog,)\n"
-            f"called EditorGui.set_element_text with args `{testee.ELSTART} p`,"
-            f" `{testee.ELSTART} p`\n"
+            # f"called EditorGui.set_element_text with args `{testee.ELSTART} p`,"
+            # f" `{testee.ELSTART} p`\n"
             f"called EditorGui.set_element_data with args `{testee.ELSTART} p`,"
             " `{'x': 'y'}`\n")
         # style xxx naar style ''
-        monkeypatch.setattr(testee.gui, 'call_dialog', mock_call_3) # geeft element p terug
+        monkeypatch.setattr(testee.gui, 'call_dialog', mock_call_3)  # geeft element p terug
         assert testobj.process_element_dialog(f'{testee.ELSTART} p')
         assert capsys.readouterr().out == (
             f"called get_tag_from_elname with arg `{testee.ELSTART} p`\n"
@@ -2747,14 +2776,15 @@ class TestEditorHelper:
             f"called EditorGui.get_element_parent with arg `{testee.ELSTART} p`\n"
             f"called EditorGui.get_element_text with arg `item parent`\n"
             f"called ElementDialog.__init__ with args ({testobj},)"
-            " {'title': 'Edit an element', 'tag': '<> p', 'attrs': {'x': 'y', 'styledata': ''}}\n"
+            # " {'title': 'Edit an element', 'tag': '<> p', 'attrs': {'x': 'y', 'styledata': ''}}\n"
+            " {'title': 'Edit an element', 'tag': '<> p', 'attrs': {'x': 'y'}}\n"
             "called call_dialog with args (MockElementDialog,)\n"
             f"called EditorGui.set_element_text with args `{testee.ELSTART} p`,"
             f" `{testee.ELSTART} p`\n"
             f"called EditorGui.set_element_data with args `{testee.ELSTART} p`,"
             " `{'x': 'z'}`\n")
         # style xxx naar style 'aaaa'
-        monkeypatch.setattr(testee.gui, 'call_dialog', mock_call_3a) # geeft element p terug
+        monkeypatch.setattr(testee.gui, 'call_dialog', mock_call_3a)  # geeft element p terug
         assert testobj.process_element_dialog(f'{testee.ELSTART} p')
         assert capsys.readouterr().out == (
             f"called get_tag_from_elname with arg `{testee.ELSTART} p`\n"
@@ -2762,40 +2792,13 @@ class TestEditorHelper:
             f"called EditorGui.get_element_parent with arg `{testee.ELSTART} p`\n"
             f"called EditorGui.get_element_text with arg `item parent`\n"
             f"called ElementDialog.__init__ with args ({testobj},)"
-            " {'title': 'Edit an element', 'tag': '<> p', 'attrs': {'x': 'y', 'styledata': ''}}\n"
+            # " {'title': 'Edit an element', 'tag': '<> p', 'attrs': {'x': 'y', 'styledata': ''}}\n"
+            " {'title': 'Edit an element', 'tag': '<> p', 'attrs': {'x': 'y'}}\n"
             "called call_dialog with args (MockElementDialog,)\n"
             f"called EditorGui.set_element_text with args `{testee.ELSTART} p`,"
             f" `{testee.ELSTART} p`\n"
             f"called EditorGui.set_element_data with args `{testee.ELSTART} p`,"
             " `{'x': 'z', 'style': 'aaaa'}`\n")
-        # monkeypatch.setattr(testee.gui, 'call_dialog', mock_call_4) # geeft element p terug
-        # assert testobj.process_element_dialog(f'{testee.ELSTART} p')
-        # assert capsys.readouterr().out == (
-        #     f"called get_tag_from_elname with arg `{testee.ELSTART} p`\n"
-        #     f"called EditorGui.get_element_data with arg `{testee.ELSTART} p`\n"
-        #     f"called EditorGui.get_element_parent with arg `{testee.ELSTART} p`\n"
-        #     f"called EditorGui.get_element_text with arg `item parent`\n"
-        #     f"called ElementDialog.__init__ with args ({testobj},)"
-        #     " {'title': 'Edit an element', 'tag': '<> p', 'attrs': {'x': 'y', 'styledata': ''}}\n"
-        #     "called call_dialog with args (MockElementDialog,)\n"
-        #     f"called EditorGui.set_element_text with args `{testee.ELSTART} p`,"
-        #     f" `{testee.ELSTART} p`\n"
-        #     f"called EditorGui.set_element_data with args `{testee.ELSTART} p`,"
-        #     " `{'style': 'aaaa'}`\n")
-        # # wat is het verschil? In de vorige verandert niks, in de volgende wordt style leeggemaakt
-        # monkeypatch.setattr(testee.gui, 'call_dialog', mock_call_4a) # geeft element p terug
-        # assert testobj.process_element_dialog(f'{testee.ELSTART} p')
-        # assert capsys.readouterr().out == (
-        #     f"called get_tag_from_elname with arg `{testee.ELSTART} p`\n"
-        #     f"called EditorGui.get_element_data with arg `{testee.ELSTART} p`\n"
-        #     f"called EditorGui.get_element_parent with arg `{testee.ELSTART} p`\n"
-        #     f"called EditorGui.get_element_text with arg `item parent`\n"
-        #     f"called ElementDialog.__init__ with args ({testobj},)"
-        #     " {'title': 'Edit an element', 'tag': '<> p', 'attrs': {'x': 'y', 'styledata': ''}}\n"
-        #     "called call_dialog with args (MockElementDialog,)\n"
-        #     f"called EditorGui.set_element_text with args `{testee.ELSTART} p`,"
-        #     f" `{testee.ELSTART} p`\n"
-        #     f"called EditorGui.set_element_data with args `{testee.ELSTART} p`, `{{}}`\n")
         monkeypatch.setattr(testobj.gui, 'get_element_data', mock_get_data)
         # wijzig naam van een element
         monkeypatch.setattr(testee.gui, 'call_dialog', mock_call_6)
@@ -2806,7 +2809,8 @@ class TestEditorHelper:
             f"called EditorGui.get_element_parent with arg `{testee.ELSTART} p`\n"
             "called EditorGui.get_element_text with arg `item parent`\n"
             f"called ElementDialog.__init__ with args ({testobj},)"
-            " {'title': 'Edit an element', 'tag': '<> p', 'attrs': {'x': 'y', 'styledata': ''}}\n"
+            # " {'title': 'Edit an element', 'tag': '<> p', 'attrs': {'x': 'y', 'styledata': ''}}\n"
+            " {'title': 'Edit an element', 'tag': '<> p', 'attrs': {'x': 'y'}}\n"
             "called call_dialog with args (MockElementDialog,)\n"
             f"called EditorGui.set_element_text with args `{testee.ELSTART} p`,"
             f" `{testee.ELSTART} b`\n"
@@ -2820,12 +2824,33 @@ class TestEditorHelper:
             f"called EditorGui.get_element_parent with arg `{testee.ELSTART} p`\n"
             "called EditorGui.get_element_text with arg `item parent`\n"
             f"called ElementDialog.__init__ with args ({testobj},)"
-            " {'title': 'Edit an element', 'tag': '<> p', 'attrs': {'x': 'y', 'styledata': ''}}\n"
+            # " {'title': 'Edit an element', 'tag': '<> p', 'attrs': {'x': 'y', 'styledata': ''}}\n"
+            " {'title': 'Edit an element', 'tag': '<> p', 'attrs': {'x': 'y'}}\n"
             "called call_dialog with args (MockElementDialog,)\n"
             f"called EditorGui.addtreeitem with args ('{testee.ELSTART} p', 'yyy', {{}}, -1)\n"
             f"called EditorGui.set_element_text with args `{testee.ELSTART} p`,"
             f" `{testee.ELSTART} style`\n"
             f"called EditorGui.set_element_data with args `{testee.ELSTART} p`, `{{'x': 'z'}}`\n")
+        # style element zonder children (geen style data)
+        assert testobj.process_element_dialog(f'{testee.ELSTART} style')
+        assert capsys.readouterr().out == (
+            f"called get_tag_from_elname with arg `{testee.ELSTART} style`\n"
+            f"called EditorGui.get_element_data with arg `{testee.ELSTART} p`\n"
+            f"called EditorGui.get_element_children with arg `{testee.ELSTART} p`\n"
+            # "called EditorGui.get_element_data with arg `text`\n"
+            f"called EditorGui.get_element_parent with arg `{testee.ELSTART} p`\n"
+            "called EditorGui.get_element_text with arg `item parent`\n"
+            "called ElementDialog.__init__ with args"
+            f" ({testobj},) {{'title': 'Edit an element', 'tag': '<> style',"
+            " 'attrs': {'x': 'y', 'styledata': ''}}\n"
+            "called call_dialog with args (MockElementDialog,)\n"
+            "called EditorGui.addtreeitem with args ('<> p', 'yyy', {}, -1)\n"
+            # "called EditorGui.set_element_text with args `text`, `yyy`\n"
+            # "called EditorGui.set_element_data with args `text`, `yyy`\n"
+            f"called EditorGui.set_element_text with args `{testee.ELSTART} p`,"
+            f" `{testee.ELSTART} style`\n"
+            f"called EditorGui.set_element_data with args `{testee.ELSTART} p`, `{{'x': 'z'}}`\n")
+        monkeypatch.setattr(testobj.gui, 'get_element_children', mock_get_children)
         assert testobj.process_element_dialog(f'{testee.ELSTART} style')
         assert capsys.readouterr().out == (
             f"called get_tag_from_elname with arg `{testee.ELSTART} style`\n"
@@ -2838,8 +2863,8 @@ class TestEditorHelper:
             f" ({testobj},) {{'title': 'Edit an element', 'tag': '<> style',"
             " 'attrs': {'x': 'y', 'styledata': 'styletext'}}\n"
             "called call_dialog with args (MockElementDialog,)\n"
-            "called EditorGui.set_element_text with args `yyy`, `yyy`\n"
-            "called EditorGui.set_element_data with args `yyy`, `yyy`\n"
+            "called EditorGui.set_element_text with args `text`, `yyy`\n"
+            "called EditorGui.set_element_data with args `text`, `yyy`\n"
             f"called EditorGui.set_element_text with args `{testee.ELSTART} p`,"
             f" `{testee.ELSTART} style`\n"
             f"called EditorGui.set_element_data with args `{testee.ELSTART} p`, `{{'x': 'z'}}`\n")
@@ -2874,8 +2899,8 @@ class TestEditorHelper:
             " {'title': 'Edit an element', 'tag': '<> style', 'attrs': {'x': 'y',"
             " 'styledata': 'styletext'}}\n"
             "called call_dialog with args (MockElementDialog,)\n"
-            "called EditorGui.set_element_text with args `yyy`, `yyy`\n"
-            "called EditorGui.set_element_data with args `yyy`, `yyy`\n"
+            "called EditorGui.set_element_text with args `text`, `yyy`\n"
+            "called EditorGui.set_element_data with args `text`, `yyy`\n"
             f"called EditorGui.set_element_text with args `{testee.ELSTART} p`,"
             f" `{testee.ELSTART} style`\n"
             f"called EditorGui.set_element_data with args `{testee.ELSTART} p`,"
@@ -2907,8 +2932,9 @@ class TestEditorHelper:
             f"called EditorGui.get_element_parent with arg `{testee.ELSTART} p`\n"
             "called EditorGui.get_element_text with arg `item parent`\n"
             f"called ElementDialog.__init__ with args ({testobj},)"
-            " {'title': 'Edit an element', 'tag': '<!> <> p', 'attrs': {'x': 'y',"
-            " 'styledata': ''}}\n"
+            # " {'title': 'Edit an element', 'tag': '<!> <> p', 'attrs': {'x': 'y',"
+            # " 'styledata': ''}}\n"
+            " {'title': 'Edit an element', 'tag': '<!> <> p', 'attrs': {'x': 'y'}}\n"
             "called call_dialog with args (MockElementDialog,)\n"
             f"called EditorGui.set_element_text with args `{testee.ELSTART} p`,"
             f" `{testee.ELSTART} p`\n"
@@ -3015,8 +3041,7 @@ class TestEditorHelper:
             "called EditorGui.get_element_text with arg `item parent`\n"
             f"called TextDialog.__init__ with args ({testobj},)"
             " {'title': 'Edit Text', 'text': 'itemtext'}\n"
-            "called call_dialog with args (MockTextDialog,)\n"
-            )
+            "called call_dialog with args (MockTextDialog,)\n")
         monkeypatch.setattr(testee.gui, 'call_dialog', mock_call_2)
         assert testobj.process_text_dialog('xx')
         assert capsys.readouterr().out == (
@@ -3511,11 +3536,11 @@ class TestEditorHelper:
             """
             print(f'called EditorGui.get_element_parent with arg `{item}`')
             return 'commented parent'
-        def mock_get_parent_2(item):
-            """stub
-            """
-            print(f'called EditorGui.get_element_parent with arg `{item}`')
-            return 'parent'
+        # def mock_get_parent_2(item):
+        #     """stub
+        #     """
+        #     print(f'called EditorGui.get_element_parent with arg `{item}`')
+        #     return 'parent'
         def mock_get_children(node):
             print(f'called EditorGui.get_element_children with arg `{node}`')
             return 'node1', 'node2'
@@ -3908,7 +3933,7 @@ class TestSearchHelper:
                                            "called Editor.__init__()\n")
         return testobj
 
-    def test_init(self, monkeypatch, capsys):
+    def test_init(self):
         """unittest for SearchHelper.__init__
         """
         editor = types.SimpleNamespace(gui='EditorGui')
@@ -4525,6 +4550,7 @@ class MockEditGui:
         print('called EditDialogGui.add_buttons_to_bottom with args', args, kwargs)
     def add_buttons_to_section(self, *args, **kwargs):
         print('called EditDialogGui.add_buttons_to_section with args', args, kwargs)
+        return ['', '', 'style_button']
     def add_checkbox(self, *args, **kwargs):
         print('called EditDialogGui.add_checkbox with args', args, kwargs)
         return 'checkbox'
@@ -4628,6 +4654,7 @@ class TestElementDialog:
         testobj = testee.ElementDialog(parent)
         assert testobj.parent == parent
         assert testobj.style_text == 'xxx'
+        assert testobj.style_button == 'style_button'
         assert testobj.styledata == 'yyy'
         assert testobj.has_style
         assert not testobj.is_stylesheet
@@ -4657,6 +4684,7 @@ class TestElementDialog:
         testobj = testee.ElementDialog(parent, title='title', tag=tag, attrs=attrs)
         assert testobj.parent == parent
         assert testobj.style_text == 'xxx'
+        assert testobj.style_button == 'style_button'
         assert testobj.styledata == 'yyy'
         assert not testobj.has_style
         assert testobj.is_stylesheet
@@ -4697,7 +4725,7 @@ class TestElementDialog:
                 "called ElementDialog.refresh\n"
                 "called EditDialogGui.get_table_rowcount with args ('table',)\n"
                 "called EditDialogGui.add_table_row with args ('table', 0)\n"
-                "called EditDialogGui.set_table_rowheader with args ('table', 0)\n"
+                "called EditDialogGui.set_table_rowheader with args ('table', 0, '')\n"
                 "called EditDialogGui.select_table_cell with args ('table', 0, 0)\n")
 
     def test_on_del(self, monkeypatch, capsys):
@@ -4844,7 +4872,7 @@ class TestElementDialog:
                 "called EditDialogGui.get_textinput_value with args ('text',)\n"
                 "called EditDialogGui.get_table_rowcount with args ('table',)\n"
                 "called EditDialogGui.add_table_row with args ('table', 0)\n"
-                "called EditDialogGui.set_table_rowheader with args ('table', 0)\n"
+                "called EditDialogGui.set_table_rowheader with args ('table', 0, '')\n"
                 "called EditDialogGui.add_table_rowitem with args"
                 " ('table', 0, 0, 'style') {'editable': False}\n"
                 "called EditDialogGui.add_table_rowitem with args"
@@ -4997,7 +5025,7 @@ class TestTextDialog:
         assert capsys.readouterr().out == (
                 f"called EditDialogGui.__init__ with args ({testobj}, 'EditDialogGui', '') {{}}\n"
                 "called EditDialogGui.add_topline with args () {}\n"
-                "called EditDialogGui.add_checkbox with args ('topline', '&Comment(ed)') {}\n"
+                "called EditDialogGui.add_checkbox with args ('topline', '&Comment(ed)', False) {}\n"
                 "called EditDialogGui.add_content_section with args () {}\n"
                 "called EditDialogGui.add_textinput_to_section with args"
                 " ('section', '', 340, 175) {}\n"
@@ -5010,7 +5038,7 @@ class TestTextDialog:
         assert capsys.readouterr().out == (
                 f"called EditDialogGui.__init__ with args ({testobj}, 'EditDialogGui', 'xxx') {{}}\n"
                 "called EditDialogGui.add_topline with args () {}\n"
-                "called EditDialogGui.add_checkbox with args ('topline', '&Comment(ed)') {}\n"
+                "called EditDialogGui.add_checkbox with args ('topline', '&Comment(ed)', False) {}\n"
                 "called EditDialogGui.add_content_section with args () {}\n"
                 "called EditDialogGui.add_textinput_to_section with args"
                 " ('section', 'yyyy', 340, 175) {}\n"
@@ -5023,7 +5051,7 @@ class TestTextDialog:
         assert capsys.readouterr().out == (
                 f"called EditDialogGui.__init__ with args ({testobj}, 'EditDialogGui', 'xxx') {{}}\n"
                 "called EditDialogGui.add_topline with args () {}\n"
-                "called EditDialogGui.add_checkbox with args ('topline', '&Comment(ed)') {}\n"
+                "called EditDialogGui.add_checkbox with args ('topline', '&Comment(ed)', False) {}\n"
                 "called EditDialogGui.set_checkbox_state with args ('checkbox', True)\n"
                 "called EditDialogGui.add_content_section with args () {}\n"
                 "called EditDialogGui.add_textinput_to_section with args"
@@ -5140,19 +5168,19 @@ class TestSearchDialog:
                 f"called SearchDialogGui.__init__ with args ({testobj}, 'EditorGui', '') {{}}\n"
                 "called SearchDialogGui.setup_container\n"
                 "called SearchDialogGui.add_title with args (None, 'Search for:', 0, 0)\n"
-                "called SearchDialogGui.add_text with args (None, 'Element', None, 1, 0)\n"
-                "called SearchDialogGui.add_text with args (None, 'name:', None, 1, 1)\n"
+                "called SearchDialogGui.add_text with args (None, 'Element', 1, 0)\n"
+                "called SearchDialogGui.add_text with args (None, 'name:', 1, 1)\n"
                 "called SearchDialogGui.add_lineinput with args"
                 f" (None, 1, 2, {testobj.update_search_text})\n"
-                "called SearchDialogGui.add_text with args (None, 'Attribute', None, 2, 0)\n"
-                "called SearchDialogGui.add_text with args (None, 'name:', None, 2, 1)\n"
+                "called SearchDialogGui.add_text with args (None, 'Attribute', 2, 0)\n"
+                "called SearchDialogGui.add_text with args (None, 'name:', 2, 1)\n"
                 "called SearchDialogGui.add_lineinput with args"
                 f" (None, 2, 2, {testobj.update_search_text})\n"
-                "called SearchDialogGui.add_text with args (None, 'value:', None, 3, 1)\n"
+                "called SearchDialogGui.add_text with args (None, 'value:', 3, 1)\n"
                 "called SearchDialogGui.add_lineinput with args"
                 f" (None, 3, 2, {testobj.update_search_text})\n"
-                "called SearchDialogGui.add_text with args (None, 'Text', None, 4, 0)\n"
-                "called SearchDialogGui.add_text with args (None, 'value:', None, 4, 1)\n"
+                "called SearchDialogGui.add_text with args (None, 'Text', 4, 0)\n"
+                "called SearchDialogGui.add_text with args (None, 'value:', 4, 1)\n"
                 "called SearchDialogGui.add_lineinput with args"
                 f" (None, 4, 2, {testobj.update_search_text})\n"
                 "called SearchDialogGui.add_description\n"
@@ -5175,35 +5203,35 @@ class TestSearchDialog:
                 f"called SearchDialogGui.__init__ with args ({testobj}, 'EditorGui', 'title') {{}}\n"
                 "called SearchDialogGui.setup_container\n"
                 "called SearchDialogGui.add_title with args (None, 'Search for:', 0, 0)\n"
-                "called SearchDialogGui.add_text with args (None, 'Element', None, 1, 0)\n"
-                "called SearchDialogGui.add_text with args (None, 'name:', None, 1, 1)\n"
+                "called SearchDialogGui.add_text with args (None, 'Element', 1, 0)\n"
+                "called SearchDialogGui.add_text with args (None, 'name:', 1, 1)\n"
                 "called SearchDialogGui.add_lineinput with args"
                 f" (None, 1, 2, {testobj.update_search_text})\n"
-                "called SearchDialogGui.add_text with args (None, 'Attribute', None, 2, 0)\n"
-                "called SearchDialogGui.add_text with args (None, 'name:', None, 2, 1)\n"
+                "called SearchDialogGui.add_text with args (None, 'Attribute', 2, 0)\n"
+                "called SearchDialogGui.add_text with args (None, 'name:', 2, 1)\n"
                 "called SearchDialogGui.add_lineinput with args"
                 f" (None, 2, 2, {testobj.update_search_text})\n"
-                "called SearchDialogGui.add_text with args (None, 'value:', None, 3, 1)\n"
+                "called SearchDialogGui.add_text with args (None, 'value:', 3, 1)\n"
                 "called SearchDialogGui.add_lineinput with args"
                 f" (None, 3, 2, {testobj.update_search_text})\n"
-                "called SearchDialogGui.add_text with args (None, 'Text', None, 4, 0)\n"
-                "called SearchDialogGui.add_text with args (None, 'value:', None, 4, 1)\n"
+                "called SearchDialogGui.add_text with args (None, 'Text', 4, 0)\n"
+                "called SearchDialogGui.add_text with args (None, 'value:', 4, 1)\n"
                 "called SearchDialogGui.add_lineinput with args"
                 f" (None, 4, 2, {testobj.update_search_text})\n"
                 "called SearchDialogGui.add_title with args (None, 'Replace with:', 0, 3)\n"
-                "called SearchDialogGui.add_text with args (None, 'Element', None, 1, 4)\n"
-                "called SearchDialogGui.add_text with args (None, 'name:', None, 1, 5)\n"
+                "called SearchDialogGui.add_text with args (None, 'Element', 1, 4)\n"
+                "called SearchDialogGui.add_text with args (None, 'name:', 1, 5)\n"
                 "called SearchDialogGui.add_lineinput with args"
                 f" (None, 1, 6, {testobj.update_search_text})\n"
-                "called SearchDialogGui.add_text with args (None, 'Attribute', None, 2, 4)\n"
-                "called SearchDialogGui.add_text with args (None, 'name:', None, 2, 5)\n"
+                "called SearchDialogGui.add_text with args (None, 'Attribute', 2, 4)\n"
+                "called SearchDialogGui.add_text with args (None, 'name:', 2, 5)\n"
                 "called SearchDialogGui.add_lineinput with args"
                 f" (None, 2, 6, {testobj.update_search_text})\n"
-                "called SearchDialogGui.add_text with args (None, 'value:', None, 3, 5)\n"
+                "called SearchDialogGui.add_text with args (None, 'value:', 3, 5)\n"
                 "called SearchDialogGui.add_lineinput with args"
                 f" (None, 3, 6, {testobj.update_search_text})\n"
-                "called SearchDialogGui.add_text with args (None, 'Text', None, 4, 4)\n"
-                "called SearchDialogGui.add_text with args (None, 'value:', None, 4, 5)\n"
+                "called SearchDialogGui.add_text with args (None, 'Text', 4, 4)\n"
+                "called SearchDialogGui.add_text with args (None, 'value:', 4, 5)\n"
                 "called SearchDialogGui.add_lineinput with args"
                 f" (None, 4, 6, {testobj.update_search_text})\n"
                 "called SearchDialogGui.add_checkbox with args (None, 'Replace All', 5, 3)\n"
@@ -5231,35 +5259,35 @@ class TestSearchDialog:
                 f"called SearchDialogGui.__init__ with args ({testobj}, 'EditorGui', 'title') {{}}\n"
                 "called SearchDialogGui.setup_container\n"
                 "called SearchDialogGui.add_title with args (None, 'Search for:', 0, 0)\n"
-                "called SearchDialogGui.add_text with args (None, 'Element', None, 1, 0)\n"
-                "called SearchDialogGui.add_text with args (None, 'name:', None, 1, 1)\n"
+                "called SearchDialogGui.add_text with args (None, 'Element', 1, 0)\n"
+                "called SearchDialogGui.add_text with args (None, 'name:', 1, 1)\n"
                 "called SearchDialogGui.add_lineinput with args"
                 f" (None, 1, 2, {testobj.update_search_text})\n"
-                "called SearchDialogGui.add_text with args (None, 'Attribute', None, 2, 0)\n"
-                "called SearchDialogGui.add_text with args (None, 'name:', None, 2, 1)\n"
+                "called SearchDialogGui.add_text with args (None, 'Attribute', 2, 0)\n"
+                "called SearchDialogGui.add_text with args (None, 'name:', 2, 1)\n"
                 "called SearchDialogGui.add_lineinput with args"
                 f" (None, 2, 2, {testobj.update_search_text})\n"
-                "called SearchDialogGui.add_text with args (None, 'value:', None, 3, 1)\n"
+                "called SearchDialogGui.add_text with args (None, 'value:', 3, 1)\n"
                 "called SearchDialogGui.add_lineinput with args"
                 f" (None, 3, 2, {testobj.update_search_text})\n"
-                "called SearchDialogGui.add_text with args (None, 'Text', None, 4, 0)\n"
-                "called SearchDialogGui.add_text with args (None, 'value:', None, 4, 1)\n"
+                "called SearchDialogGui.add_text with args (None, 'Text', 4, 0)\n"
+                "called SearchDialogGui.add_text with args (None, 'value:', 4, 1)\n"
                 "called SearchDialogGui.add_lineinput with args"
                 f" (None, 4, 2, {testobj.update_search_text})\n"
                 "called SearchDialogGui.add_title with args (None, 'Replace with:', 0, 3)\n"
-                "called SearchDialogGui.add_text with args (None, 'Element', None, 1, 4)\n"
-                "called SearchDialogGui.add_text with args (None, 'name:', None, 1, 5)\n"
+                "called SearchDialogGui.add_text with args (None, 'Element', 1, 4)\n"
+                "called SearchDialogGui.add_text with args (None, 'name:', 1, 5)\n"
                 "called SearchDialogGui.add_lineinput with args"
                 f" (None, 1, 6, {testobj.update_search_text})\n"
-                "called SearchDialogGui.add_text with args (None, 'Attribute', None, 2, 4)\n"
-                "called SearchDialogGui.add_text with args (None, 'name:', None, 2, 5)\n"
+                "called SearchDialogGui.add_text with args (None, 'Attribute', 2, 4)\n"
+                "called SearchDialogGui.add_text with args (None, 'name:', 2, 5)\n"
                 "called SearchDialogGui.add_lineinput with args"
                 f" (None, 2, 6, {testobj.update_search_text})\n"
-                "called SearchDialogGui.add_text with args (None, 'value:', None, 3, 5)\n"
+                "called SearchDialogGui.add_text with args (None, 'value:', 3, 5)\n"
                 "called SearchDialogGui.add_lineinput with args"
                 f" (None, 3, 6, {testobj.update_search_text})\n"
-                "called SearchDialogGui.add_text with args (None, 'Text', None, 4, 4)\n"
-                "called SearchDialogGui.add_text with args (None, 'value:', None, 4, 5)\n"
+                "called SearchDialogGui.add_text with args (None, 'Text', 4, 4)\n"
+                "called SearchDialogGui.add_text with args (None, 'value:', 4, 5)\n"
                 "called SearchDialogGui.add_lineinput with args"
                 f" (None, 4, 6, {testobj.update_search_text})\n"
                 "called SearchDialogGui.add_checkbox with args (None, 'Replace All', 5, 3)\n"
@@ -5421,10 +5449,10 @@ class TestDtdDialog:
         """unittest for DtdDialog.__init__
         """
         monkeypatch.setattr(testee.gui, 'EditDialogGui', MockEditGui)
-        parent = types.SimpleNamespace(gui='EditDialogGui', dtdlist= [])
+        parent = types.SimpleNamespace(gui='EditDialogGui', dtdlist=[])
         with pytest.raises(IndexError):
             testobj = testee.DtdDialog(parent, title='Add DTD')
-        capsys.readouterr().out   # ignore captured output
+        dummy = capsys.readouterr().out   # ignore captured output
         parent.dtdlist = [('xxx', 'yyy', 'zzz'), ('HTML 5', 'bbb', 'ccc')]
         testobj = testee.DtdDialog(parent, title='Add DTD')
         assert testobj.parent == parent
@@ -5476,6 +5504,7 @@ class MockAddGui:
         return [x[0] for x in args[2]]
     def add_buttons_to_bottom(self, **kwargs):
         print('called AddDialogGui.add_buttons_to_bottom with args', kwargs)
+        return ['extra_button'] if 'extra' in kwargs else None
     def add_checkbox_to_section(self, *args, **kwargs):
         print('called AddDialogGui.add_checkbox_to_section with args', args, kwargs)
         return 'checkbox'
@@ -5571,6 +5600,7 @@ class TestCssDialog:
         assert testobj.new_button == '&Select'
         assert testobj.choose_button == 'C&reate'
         assert testobj.edit_button == 'Select + &Edit'
+        assert testobj.inline_button == 'extra_button'
         assert testobj.text_text == 'text'
         assert capsys.readouterr().out == (
                 "called AddDialogGui.__init__ with args"
@@ -5655,7 +5685,7 @@ class TestCssDialog:
             print('called AddDialogGui.get_textinput_value with args', args)
             return args[0]
         def mock_build(*args):
-            print('called Editor.build_mask with args', args)
+            print('called gui.build_mask with args', args)
             return 'mask'
         def mock_ask_save(*args):
             print('called gui.ask_for_save_filename with args', args)
@@ -5673,59 +5703,55 @@ class TestCssDialog:
         monkeypatch.setattr(testee.gui, 'ask_for_open_filename', mock_ask_open)
         testobj = self.setup_testobj(monkeypatch, capsys)
         testobj.gui.get_textinput_value = mock_get
-        testobj.parent = types.SimpleNamespace(xmlfn='path/to/xxx', build_mask=mock_build)
+        testobj.parent = types.SimpleNamespace(xmlfn='path/to/xxx')
+        testee.gui.build_mask = mock_build
         testobj.link_text = 'xxx'
         assert testobj.select_file() == ""
         assert capsys.readouterr().out == (
                 "called AddDialogGui.get_textinput_value with args ('xxx',)\n"
-                "called Editor.build_mask with args ('css',)\n"
-                "called gui.ask_for_open_filename with args"
-                f" ({testobj.gui}, 'Choose a file', 'xxx', 'mask')\n")
+                "called gui.build_mask with args ('css',)\n"
+                f"called gui.ask_for_open_filename with args ({testobj.gui}, 'xxx', 'mask')\n")
         monkeypatch.setattr(testee.gui, 'ask_for_open_filename', mock_ask_open_2)
         assert testobj.select_file() == "xxx"
         assert capsys.readouterr().out == (
                 "called AddDialogGui.get_textinput_value with args ('xxx',)\n"
-                "called Editor.build_mask with args ('css',)\n"
-                "called gui.ask_for_open_filename with args"
-                f" ({testobj.gui}, 'Choose a file', 'xxx', 'mask')\n"
+                "called gui.build_mask with args ('css',)\n"
+                f"called gui.ask_for_open_filename with args ({testobj.gui}, 'xxx', 'mask')\n"
                 "called AddDialogGui.set_textinput_value with args ('xxx', 'xxx')\n")
         assert testobj.select_file(create=True) == ""
         assert capsys.readouterr().out == (
                 "called AddDialogGui.get_textinput_value with args ('xxx',)\n"
-                "called Editor.build_mask with args ('css',)\n"
-                "called gui.ask_for_save_filename with args"
-                f" ({testobj.gui}, 'Choose a file', 'xxx', 'mask')\n")
+                "called gui.build_mask with args ('css',)\n"
+                f"called gui.ask_for_save_filename with args ({testobj.gui}, 'xxx', 'mask')\n")
         monkeypatch.setattr(testee.gui, 'ask_for_save_filename', mock_ask_save_2)
         assert testobj.select_file(create=True) == "xxx"
         assert capsys.readouterr().out == (
                 "called AddDialogGui.get_textinput_value with args ('xxx',)\n"
-                "called Editor.build_mask with args ('css',)\n"
-                "called gui.ask_for_save_filename with args"
-                f" ({testobj.gui}, 'Choose a file', 'xxx', 'mask')\n"
+                "called gui.build_mask with args ('css',)\n"
+                f"called gui.ask_for_save_filename with args ({testobj.gui}, 'xxx', 'mask')\n"
                 "called AddDialogGui.set_textinput_value with args ('xxx', 'xxx')\n")
         testobj.link_text = ''
         assert testobj.select_file() == "xxx"
         assert capsys.readouterr().out == (
                 "called AddDialogGui.get_textinput_value with args ('',)\n"
-                "called Editor.build_mask with args ('css',)\n"
-                "called gui.ask_for_open_filename with args"
-                f" ({testobj.gui}, 'Choose a file', 'path/to', 'mask')\n"
+                "called gui.build_mask with args ('css',)\n"
+                f"called gui.ask_for_open_filename with args ({testobj.gui}, 'path/to', 'mask')\n"
                 "called AddDialogGui.set_textinput_value with args ('', 'xxx')\n")
         testobj.parent.xmlfn = ''
         assert testobj.select_file() == "xxx"
         assert capsys.readouterr().out == (
                 "called AddDialogGui.get_textinput_value with args ('',)\n"
-                "called Editor.build_mask with args ('css',)\n"
+                "called gui.build_mask with args ('css',)\n"
                 "called gui.ask_for_open_filename with args"
-                f" ({testobj.gui}, 'Choose a file', '{testee.os.getcwd()}', 'mask')\n"
+                f" ({testobj.gui}, '{testee.os.getcwd()}', 'mask')\n"
                 "called AddDialogGui.set_textinput_value with args ('', 'xxx')\n")
         testobj.link_text = 'http://xxx'
         assert testobj.select_file() == "xxx"
         assert capsys.readouterr().out == (
                 "called AddDialogGui.get_textinput_value with args ('http://xxx',)\n"
-                "called Editor.build_mask with args ('css',)\n"
+                "called gui.build_mask with args ('css',)\n"
                 "called gui.ask_for_open_filename with args"
-                f" ({testobj.gui}, 'Choose a file', '{testee.os.getcwd()}', 'mask')\n"
+                f" ({testobj.gui}, '{testee.os.getcwd()}', 'mask')\n"
                 "called AddDialogGui.set_textinput_value with args ('http://xxx', 'xxx')\n")
 
     def test_on_inline(self, monkeypatch, capsys):
@@ -5882,15 +5908,15 @@ class TestLinkDialog:
         testobj.link_text = 'linktext'
         testobj.kies()
         assert capsys.readouterr().out == (
-                "called Editor.build_mask with args ('html',)\n"
+                "called gui.build_mask with args ('html',)\n"
                 "called gui.ask_for_open_filename with args"
-                f" ({testobj.gui}, 'Choose a file', 'path/to/xxx', 'mask')\n")
+                f" ({testobj.gui}, 'path/to/xxx', 'mask')\n")
         monkeypatch.setattr(testee.gui, 'ask_for_open_filename', mock_ask_open_2)
         testobj.kies()
         assert capsys.readouterr().out == (
-                "called Editor.build_mask with args ('html',)\n"
+                "called gui.build_mask with args ('html',)\n"
                 "called gui.ask_for_open_filename with args"
-                f" ({testobj.gui}, 'Choose a file', 'path/to/xxx', 'mask')\n"
+                f" ({testobj.gui}, 'path/to/xxx', 'mask')\n"
                 "called AddDialogGui.set_textinput_value with args ('linktext', 'xxx')\n")
 
     def test_set_ltext(self, monkeypatch, capsys):
@@ -5900,34 +5926,65 @@ class TestLinkDialog:
             print('called AddDialogGui.get_textinput_value with args', args)
             return args[0]
         testobj = self.setup_testobj(monkeypatch, capsys)
-        testobj.linktxt = 'linktxt'
         testobj.gui.get_textinput_value = mock_get
-        testobj.title_text = 'xxx'
-        testobj.set_ltext('chgtext')
-        assert testobj.linktxt == 'linktxt'
+        testobj.linktxt = 'xxx'
+        testobj.link_text = 'link_text'
+        testobj.text_text = 'xxx'
+        testobj.set_ltext()
+        assert testobj.linktxt == 'link_text'
         assert capsys.readouterr().out == (
-                "called AddDialogGui.get_textinput_value with args ('xxx',)\n")
-        testobj.title_text = 'chgtext'
-        testobj.set_ltext('chgtext')
-        assert testobj.linktxt == 'linktxt'
+                "called AddDialogGui.get_textinput_value with args ('link_text',)\n"
+                "called AddDialogGui.get_textinput_value with args ('xxx',)\n"
+                "called AddDialogGui.set_textinput_value with args ('xxx', 'link_text')\n")
+
+        testobj.linktxt = ''
+        testobj.link_text = 'link_text'
+        testobj.text_text = 'text_text'
+        testobj.set_ltext()
+        assert testobj.linktxt == ''
         assert capsys.readouterr().out == (
-                "called AddDialogGui.get_textinput_value with args ('chgtext',)\n")
-        testobj.title_text = 'linktxt'
-        testobj.set_ltext('chgtext')
-        assert testobj.linktxt == 'chgtext'
-        assert capsys.readouterr().out == (
-                "called AddDialogGui.get_textinput_value with args ('linktxt',)\n"
-                "called AddDialogGui.set_textinput_value with args ('linktxt', 'chgtext')\n")
+                "called AddDialogGui.get_textinput_value with args ('link_text',)\n"
+                "called AddDialogGui.get_textinput_value with args ('text_text',)\n")
+
+        # testobj.link_text = 'linktxt'  # dit kan niet, moet gelijk zijn aan de meegegeven waarde
+        # testobj.linktxt = ''
+        # testobj.gui.get_textinput_value = mock_get
+        # testobj.title_text = 'xxx'
+        # testobj.set_ltext('chgtext')
+        # assert testobj.linktxt == 'linktxt'
+        # assert capsys.readouterr().out == (
+        #         "called AddDialogGui.get_textinput_value with args ('xxx',)\n")
+        # testobj.title_text = 'chgtext'
+        # testobj.set_ltext('chgtext')
+        # assert testobj.linktxt == 'linktxt'
+        # assert capsys.readouterr().out == (
+        #         "called AddDialogGui.get_textinput_value with args ('chgtext',)\n")
+        # testobj.title_text = 'linktxt'
+        # testobj.set_ltext('chgtext')
+        # assert testobj.linktxt == 'chgtext'
+        # assert capsys.readouterr().out == (
+        #         "called AddDialogGui.get_textinput_value with args ('linktxt',)\n"
+        #         "called AddDialogGui.set_textinput_value with args ('linktxt', 'chgtext')\n")
 
     def test_set_ttext(self, monkeypatch, capsys):
         """unittest for LinkDialog.set_ttext
         """
+        def mock_get(*args):
+            print('called AddDialogGui.get_textinput_value with args', args)
+            return args[0]
         testobj = self.setup_testobj(monkeypatch, capsys)
+        testobj.gui.get_textinput_value = mock_get
         testobj.linktxt = 'xxx'
-        testobj.set_ttext('chgtext')
+        testobj.text_text = 'text_text'
+        testobj.set_ttext()
         assert testobj.linktxt == 'xxx'
-        testobj.set_ttext('')
+        assert capsys.readouterr().out == (
+                "called AddDialogGui.get_textinput_value with args ('text_text',)\n")
+        testobj.text_text = ''
+        testobj.set_ttext()
         assert testobj.linktxt == ''
+        assert capsys.readouterr().out == (
+                "called AddDialogGui.get_textinput_value with args ('',)\n")
 
     def test_confirm(self, monkeypatch, capsys):
         """unittest for LinkDialog.confirm
@@ -6037,15 +6094,15 @@ class TestImageDialog:
         testobj.link_text = 'linktext'
         testobj.kies()
         assert capsys.readouterr().out == (
-                "called Editor.build_mask with args ('html',)\n"
+                "called gui.build_mask with args ('image',)\n"
                 "called gui.ask_for_open_filename with args"
-                f" ({testobj.gui}, 'Choose a file', 'path/to/xxx', 'mask')\n")
+                f" ({testobj.gui}, 'path/to/xxx', 'mask')\n")
         monkeypatch.setattr(testee.gui, 'ask_for_open_filename', mock_ask_open_2)
         testobj.kies()
         assert capsys.readouterr().out == (
-                "called Editor.build_mask with args ('html',)\n"
+                "called gui.build_mask with args ('image',)\n"
                 "called gui.ask_for_open_filename with args"
-                f" ({testobj.gui}, 'Choose a file', 'path/to/xxx', 'mask')\n"
+                f" ({testobj.gui}, 'path/to/xxx', 'mask')\n"
                 "called AddDialogGui.set_textinput_value with args ('linktext', 'xxx')\n")
 
     def test_set_ltext(self, monkeypatch, capsys):
@@ -6055,34 +6112,43 @@ class TestImageDialog:
             print('called AddDialogGui.get_textinput_value with args', args)
             return args[0]
         testobj = self.setup_testobj(monkeypatch, capsys)
-        testobj.linktxt = 'linktxt'
         testobj.gui.get_textinput_value = mock_get
+        testobj.linktxt = 'linktxt'
+        testobj.link_text = 'link_text'
         testobj.alt_text = 'xxx'
-        testobj.set_ltext('chgtext')
+        testobj.set_ltext()
         assert testobj.linktxt == 'linktxt'
         assert capsys.readouterr().out == (
+                "called AddDialogGui.get_textinput_value with args ('link_text',)\n"
                 "called AddDialogGui.get_textinput_value with args ('xxx',)\n")
-        testobj.alt_text = 'chgtext'
-        testobj.set_ltext('chgtext')
-        assert testobj.linktxt == 'linktxt'
-        assert capsys.readouterr().out == (
-                "called AddDialogGui.get_textinput_value with args ('chgtext',)\n")
         testobj.alt_text = 'linktxt'
-        testobj.set_ltext('chgtext')
-        assert testobj.linktxt == 'chgtext'
+        testobj.set_ltext()
+        assert testobj.linktxt == 'link_text'
         assert capsys.readouterr().out == (
+                "called AddDialogGui.get_textinput_value with args ('link_text',)\n"
                 "called AddDialogGui.get_textinput_value with args ('linktxt',)\n"
-                "called AddDialogGui.set_textinput_value with args ('linktxt', 'chgtext')\n")
+                "called AddDialogGui.set_textinput_value with args ('linktxt', 'link_text')\n")
 
     def test_set_ttext(self, monkeypatch, capsys):
         """unittest for ImageDialog.set_ttext
         """
+        def mock_get(*args):
+            print('called AddDialogGui.get_textinput_value with args', args)
+            return args[0]
         testobj = self.setup_testobj(monkeypatch, capsys)
-        testobj.linktxt = 'xxx'
-        testobj.set_ttext('chgtext')
-        assert testobj.linktxt == 'xxx'
-        testobj.set_ttext('')
+        testobj.gui.get_textinput_value = mock_get
+        testobj.linktxt = 'linktxt'
+        testobj.link_text = 'link_text'
+        testobj.alt_text = 'xxx'
+        testobj.set_ttext()
+        assert testobj.linktxt == 'linktxt'
+        assert capsys.readouterr().out == (
+                "called AddDialogGui.get_textinput_value with args ('xxx',)\n")
+        testobj.alt_text = ''
+        testobj.set_ttext()
         assert testobj.linktxt == ''
+        assert capsys.readouterr().out == (
+                "called AddDialogGui.get_textinput_value with args ('',)\n")
 
     def test_confirm(self, monkeypatch, capsys):
         """unittest for ImageDialog.confirm
@@ -6160,11 +6226,11 @@ class TestVideoDialog:
                 "called AddDialogGui.add_text_to_section with args"
                 " ('grid', 'height of video window:', 2, 0)\n"
                 "called AddDialogGui.add_spinbox_to_section with args"
-                f" ('grid', 2, 1, 1200, 200) {{'callback': {testobj.on_spinbox}}}\n"
+                f" ('grid', 2, 1, 1200, 200) {{'callback': {testobj.on_height}}}\n"
                 "called AddDialogGui.add_text_to_section with args"
                 " ('grid', 'width of video window:', 3, 0)\n"
                 "called AddDialogGui.add_spinbox_to_section with args"
-                f" ('grid', 3, 1, 2400, 400) {{'callback': {testobj.on_spinbox}}}\n"
+                f" ('grid', 3, 1, 2400, 400) {{'callback': {testobj.on_width}}}\n"
                 "called AddDialogGui.add_buttons_to_bottom with args {}\n"
                 "called AddDialogGui.set_focus_to with args ('text',)\n")
 
@@ -6186,37 +6252,67 @@ class TestVideoDialog:
         testobj.link_text = 'linktext'
         testobj.kies()
         assert capsys.readouterr().out == (
-                "called Editor.build_mask with args ('video',)\n"
+                "called gui.build_mask with args ('video',)\n"
                 "called gui.ask_for_open_filename with args"
-                f" ({testobj.gui}, 'Choose a file', 'path/to/xxx', 'mask')\n")
+                f" ({testobj.gui}, 'path/to/xxx', 'mask')\n")
         monkeypatch.setattr(testee.gui, 'ask_for_open_filename', mock_ask_open_2)
         testobj.kies()
         assert capsys.readouterr().out == (
-                "called Editor.build_mask with args ('video',)\n"
+                "called gui.build_mask with args ('video',)\n"
                 "called gui.ask_for_open_filename with args"
-                f" ({testobj.gui}, 'Choose a file', 'path/to/xxx', 'mask')\n"
+                f" ({testobj.gui}, 'path/to/xxx', 'mask')\n"
                 "called AddDialogGui.set_textinput_value with args ('linktext', 'xxx')\n")
 
-    def test_on_spinbox(self, monkeypatch, capsys):
-        """unittest for VideoDialog.on_spinbox
+    def test_on_height(self, monkeypatch, capsys):
+        """unittest for VideoDialog.on_height
         """
         def mock_show(*args):
             print('called gui.show_message with args', args)
+        def mock_get(*args):
+            print('called gui.get_spinbox_value with args', args)
+            return value
         monkeypatch.setattr(testee.gui, 'show_message', mock_show)
         testobj = self.setup_testobj(monkeypatch, capsys)
-        testobj.on_spinbox('number')
+        testobj.gui.get_spinbox_value = mock_get
+        testobj.hig_text = 'hig_text'
+        value = 'number'
+        testobj.on_height()
         assert capsys.readouterr().out == (
+                "called gui.get_spinbox_value with args ('hig_text',)\n"
                 "called gui.show_message with args"
                 f" ({testobj.gui}, 'Add Image', 'Number must be numeric integer')\n")
-        testobj.on_spinbox('1')
-        assert capsys.readouterr().out == ""
+        value = '1'
+        testobj.on_height()
+        assert capsys.readouterr().out == "called gui.get_spinbox_value with args ('hig_text',)\n"
+
+    def test_on_width(self, monkeypatch, capsys):
+        """unittest for VideoDialog.on_width
+        """
+        def mock_show(*args):
+            print('called gui.show_message with args', args)
+        def mock_get(*args):
+            print('called gui.get_spinbox_value with args', args)
+            return value
+        monkeypatch.setattr(testee.gui, 'show_message', mock_show)
+        testobj = self.setup_testobj(monkeypatch, capsys)
+        testobj.gui.get_spinbox_value = mock_get
+        testobj.wid_text = 'wid_text'
+        value = 'number'
+        testobj.on_width()
+        assert capsys.readouterr().out == (
+                "called gui.get_spinbox_value with args ('wid_text',)\n"
+                "called gui.show_message with args"
+                f" ({testobj.gui}, 'Add Image', 'Number must be numeric integer')\n")
+        value = '1'
+        testobj.on_width()
+        assert capsys.readouterr().out == "called gui.get_spinbox_value with args ('wid_text',)\n"
 
     def test_confirm(self, monkeypatch, capsys):
         """unittest for VideoDialog.confirm
         """
-        def mock_get(*args):
-            print('called AddDialogGui.get_textinput_value with args', args)
-            return args[0]
+        # def mock_get(*args):
+        #     print('called AddDialogGui.get_textinput_value with args', args)
+        #     return args[0]
         def mock_convert(*args):
             print('called Editor.convert_link with args', args)
             raise ValueError('Error on convert')
@@ -6301,23 +6397,23 @@ class TestAudioDialog:
         testobj.link_text = 'linktext'
         testobj.kies()
         assert capsys.readouterr().out == (
-                "called Editor.build_mask with args ('audio',)\n"
+                "called gui.build_mask with args ('audio',)\n"
                 "called gui.ask_for_open_filename with args"
-                f" ({testobj.gui}, 'Choose a file', 'path/to/xxx', 'mask')\n")
+                f" ({testobj.gui}, 'path/to/xxx', 'mask')\n")
         monkeypatch.setattr(testee.gui, 'ask_for_open_filename', mock_ask_open_2)
         testobj.kies()
         assert capsys.readouterr().out == (
-                "called Editor.build_mask with args ('audio',)\n"
+                "called gui.build_mask with args ('audio',)\n"
                 "called gui.ask_for_open_filename with args"
-                f" ({testobj.gui}, 'Choose a file', 'path/to/xxx', 'mask')\n"
+                f" ({testobj.gui}, 'path/to/xxx', 'mask')\n"
                 "called AddDialogGui.set_textinput_value with args ('linktext', 'xxx')\n")
 
     def test_confirm(self, monkeypatch, capsys):
         """unittest for AudioDialog.confirm
         """
-        def mock_get(*args):
-            print('called AddDialogGui.get_textinput_value with args', args)
-            return args[0]
+        # def mock_get(*args):
+        #     print('called AddDialogGui.get_textinput_value with args', args)
+        #     return args[0]
         def mock_convert(*args):
             print('called Editor.convert_link with args', args)
             raise ValueError('Error on convert')
@@ -6382,7 +6478,7 @@ class TestListDialog:
                 "called AddDialogGui.add_text_to_section with args"
                 " ('grid', 'initial number of items:', 1, 0)\n"
                 "called AddDialogGui.add_spinbox_to_section with args"
-                f" ('grid', 1, 1) {{'callback': {testobj.on_rows}}}\n"
+                f" ('grid', 1, 1) {{'startvalue': 1, 'callback': {testobj.on_rows}}}\n"
                 "called AddDialogGui.add_table_to_section with args"
                 " ('grid', 2, 1, ['list item']) {}\n"
                 "called AddDialogGui.add_buttons_to_bottom with args {}\n"
@@ -6414,7 +6510,7 @@ class TestListDialog:
                 "called AddDialogGui.get_table_columncount with args ('table',)\n"
                 "called AddDialogGui.add_table_column with args ('table', 0)\n"
                 "called AddDialogGui.set_table_headers with args"
-                " (['term', 'description'], (102, 152))\n")
+                " ('table', ['term', 'description'], (102, 152))\n")
         testobj.gui.get_combobox_text = mock_get_text_2
         testobj.gui.get_table_columncount = mock_get_count
         testobj.on_type()
@@ -6435,7 +6531,7 @@ class TestListDialog:
                 "called AddDialogGui.get_table_columncount with args ('table',)\n"
                 "called AddDialogGui.remove_table_column with args ('table', 0)\n"
                 "called AddDialogGui.set_table_headers with args"
-                " (['list item'], (254,))\n")
+                " ('table', ['list item'], (254,))\n")
 
     def test_on_rows(self, monkeypatch, capsys):
         """unittest for ListDialog.on_rows
@@ -6503,7 +6599,7 @@ class TestListDialog:
         testobj = self.setup_testobj(monkeypatch, capsys)
         testobj.parent = types.SimpleNamespace()
         testobj.type_select = 'combobox'
-        testobj.list_table =  'table'
+        testobj.list_table = 'table'
         testobj.gui.get_combobox_text = mock_get_text
         testobj.gui.get_table_rowcount = mock_get_rowcount
         testobj.gui.get_tablecell_itemtext = mock_get_itemtext
@@ -6578,7 +6674,7 @@ class TestTableDialog:
         parent = types.SimpleNamespace(gui='EditorGui')
         testobj = testee.TableDialog(parent, title='Add a Table')
         assert testobj.parent == parent
-        assert testobj.headings == []
+        assert testobj.headings == ['']
         assert testobj.title_text == 'text'
         assert testobj.rows_text == 'spinner'
         assert testobj.cols_text == 'spinner'
@@ -6594,10 +6690,12 @@ class TestTableDialog:
                 " ('grid', 0, 1) {'width': 250}\n"
                 "called AddDialogGui.add_text_to_section with args"
                 " ('grid', 'initial number of rows:', 1, 0)\n"
-                "called AddDialogGui.add_spinbox_to_section with args ('grid', 1, 1) {}\n"
+                "called AddDialogGui.add_spinbox_to_section with args"
+                f" ('grid', 1, 1) {{'startvalue': 1, 'callback': {testobj.on_rows}}}\n"
                 "called AddDialogGui.add_text_to_section with args"
                 " ('grid', 'initial number of columns:', 2, 0)\n"
-                "called AddDialogGui.add_spinbox_to_section with args ('grid', 2, 1) {}\n"
+                "called AddDialogGui.add_spinbox_to_section with args"
+                f" ('grid', 2, 1) {{'startvalue': 1, 'callback': {testobj.on_cols}}}\n"
                 "called AddDialogGui.add_checkbox_to_section with args"
                 " ('grid', 3, 1, 'Show Titles')"
                 f" {{'checked': True, 'callback': {testobj.on_check}}}\n"
@@ -6619,7 +6717,7 @@ class TestTableDialog:
             print('called gui.show_message with args', args)
         monkeypatch.setattr(testee.gui, 'show_message', mock_show)
         testobj = self.setup_testobj(monkeypatch, capsys)
-        testobj.list_table = 'table'
+        testobj.table_table = 'table'
         testobj.gui.get_spinbox_value = mock_get_value
         testobj.gui.get_table_rowcount = mock_get_rowcount
         testobj.rows_text = 'number'
@@ -6659,7 +6757,7 @@ class TestTableDialog:
             print('called gui.show_message with args', args)
         monkeypatch.setattr(testee.gui, 'show_message', mock_show)
         testobj = self.setup_testobj(monkeypatch, capsys)
-        testobj.list_table = 'table'
+        testobj.table_table = 'table'
         testobj.gui.get_spinbox_value = mock_get_value
         testobj.gui.get_table_columncount = mock_get_colcount
         testobj.cols_text = 'number'
@@ -6677,7 +6775,7 @@ class TestTableDialog:
                 "called AddDialogGui.get_spinbox_value with args ('0',)\n"
                 "called AddDialogGui.get_table_columncount with args ('table',)\n"
                 "called AddDialogGui.remove_table_column with args ('table', 0)\n"
-                "called AddDialogGui.set_table_headers with args ([], [])\n")
+                "called AddDialogGui.set_table_headers with args ('table', [], [])\n")
         testobj.headings = ['xx']
         testobj.cols_text = '1'
         testobj.on_cols()
@@ -6693,7 +6791,7 @@ class TestTableDialog:
                 "called AddDialogGui.get_spinbox_value with args ('2',)\n"
                 "called AddDialogGui.get_table_columncount with args ('table',)\n"
                 "called AddDialogGui.add_table_column with args ('table', 1)\n"
-                "called AddDialogGui.set_table_headers with args (['xx', ''], [])\n")
+                "called AddDialogGui.set_table_headers with args ('table', ['xx', ''], [])\n")
 
     def test_on_check(self, monkeypatch, capsys):
         """unittest for TableDialog.on_check
@@ -6715,6 +6813,9 @@ class TestTableDialog:
         def mock_get_2(*args):
             print('called AddDialogGui.get_table_column with args', args)
             return 1
+        def mock_get_3(*args):
+            print('called AddDialogGui.get_table_column with args', args)
+            return -1
         def mock_ask(*args):
             print('called gui.ask_for_text with args', args)
             return ''
@@ -6723,10 +6824,14 @@ class TestTableDialog:
             return 'xxx'
         monkeypatch.setattr(testee.gui, 'ask_for_text', mock_ask)
         testobj = self.setup_testobj(monkeypatch, capsys)
+        testobj.table_table = 'table'
         testobj.headings = ['', '']
         testobj.gui.get_table_column = mock_get
         testobj.on_title()
-        assert capsys.readouterr().out == "called AddDialogGui.get_table_column with args ()\n"
+        assert capsys.readouterr().out == (
+                "called AddDialogGui.get_table_column with args ()\n"
+                "called gui.ask_for_text with args"
+                f" ({testobj.gui}, 'Add a table', 'Enter a title for this column:')\n")
         testobj.gui.get_table_column = mock_get_2
         testobj.on_title()
         assert capsys.readouterr().out == (
@@ -6739,7 +6844,10 @@ class TestTableDialog:
                 "called AddDialogGui.get_table_column with args ()\n"
                 "called gui.ask_for_text with args"
                 f" ({testobj.gui}, 'Add a table', 'Enter a title for this column:')\n"
-                "called AddDialogGui.set_table_headers with args (['', 'xxx'], [])\n")
+                "called AddDialogGui.set_table_headers with args ('table', ['', 'xxx'], [])\n")
+        testobj.gui.get_table_column = mock_get_3
+        testobj.on_title()
+        assert capsys.readouterr().out == "called AddDialogGui.get_table_column with args ()\n"
 
     def test_confirm(self, monkeypatch, capsys):
         """unittest for TableDialog.confirm
@@ -6831,14 +6939,14 @@ class TestScrolledTextDialog:
         parent = types.SimpleNamespace(gui='EditorGui', do_validate=mock_validate)
         testobj = testee.ScrolledTextDialog(parent)
         assert capsys.readouterr().out == (
-                f"called ScrolledTextDialogGui.__init__ with args ({testobj}, 'EditorGui', '')\n"
+                "called ScrolledTextDialogGui.__init__ with args ('EditorGui', '')\n"
                 "called ScrolledTextDialogGui.add_top_label with arg ''\n"
                 "called ScrolledTextDialogGui.add_text_area\n"
                 "called ScrolledTextDialogGui.add_bottom_buttons with args"
                 f" ([('&Done', {testobj.gui.close})],)\n")
         testobj = testee.ScrolledTextDialog(parent, title='xxx', htmlfile='qqq')
         assert capsys.readouterr().out == (
-                f"called ScrolledTextDialogGui.__init__ with args ({testobj}, 'EditorGui', 'xxx')\n"
+                "called ScrolledTextDialogGui.__init__ with args ('EditorGui', 'xxx')\n"
                 "called ScrolledTextDialogGui.add_top_label with arg ''\n"
                 "called ScrolledTextDialogGui.add_text_area\n"
                 "called ScrolledTextDialogGui.add_bottom_buttons with args"
@@ -6847,7 +6955,7 @@ class TestScrolledTextDialog:
                 "called Editor.do_validate with arg 'qqq'\n")
         testobj = testee.ScrolledTextDialog(parent, title='xxx', data='yyy')
         assert capsys.readouterr().out == (
-                f"called ScrolledTextDialogGui.__init__ with args ({testobj}, 'EditorGui', 'xxx')\n"
+                "called ScrolledTextDialogGui.__init__ with args ('EditorGui', 'xxx')\n"
                 "called ScrolledTextDialogGui.add_top_label with arg ''\n"
                 "called ScrolledTextDialogGui.add_text_area\n"
                 "called ScrolledTextDialogGui.add_bottom_buttons with args"
@@ -6856,7 +6964,7 @@ class TestScrolledTextDialog:
                 " ('textfield', 'yyy')\n")
         testobj = testee.ScrolledTextDialog(parent, title='xxx', fromdisk=True)
         assert capsys.readouterr().out == (
-                f"called ScrolledTextDialogGui.__init__ with args ({testobj}, 'EditorGui', 'xxx')\n"
+                "called ScrolledTextDialogGui.__init__ with args ('EditorGui', 'xxx')\n"
                 "called ScrolledTextDialogGui.add_top_label with arg"
                 " 'Validation results are for the file on disk\n"
                 "some errors/warnings may already have been corrected by BeautifulSoup\n"
@@ -6888,7 +6996,7 @@ class TestScrolledTextDialog:
         assert capsys.readouterr().out == (
                 "called CodeViewDialog.__init__ with args"
                 f" ({testobj}, 'Submitted source') {{'data': 'xxx\\nyyy'}}\n"
-                "called gui.show_dialog with args ('CodeViewDialogGui',)\n")
+                f"called gui.show_dialog with args ({testobj.dlg},)\n")
 
 
 class TestCodeViewDialog:
@@ -6926,13 +7034,13 @@ class TestCodeViewDialog:
         parent = types.SimpleNamespace(gui='EditorGui')
         testobj = testee.CodeViewDialog(parent)
         assert capsys.readouterr().out == (
-                f"called CodeViewDialogGui.__init__ with args ({testobj}, 'EditorGui', '')\n"
+                "called CodeViewDialogGui.__init__ with args ('EditorGui', '')\n"
                 "called CodeViewDialogGui.add_top_message with arg ''\n"
                 "called CodeViewDialogGui.add_content_area with arg ''\n"
                 "called CodeViewDialogGui.add_bottom_button\n")
         testobj = testee.CodeViewDialog(parent, title='xxx', caption='yyy', data='zzz', size=(60, 40))
         assert capsys.readouterr().out == (
-                f"called CodeViewDialogGui.__init__ with args ({testobj}, 'EditorGui', 'xxx')\n"
+                "called CodeViewDialogGui.__init__ with args ('EditorGui', 'xxx')\n"
                 "called CodeViewDialogGui.add_top_message with arg 'yyy'\n"
                 "called CodeViewDialogGui.add_content_area with arg 'zzz'\n"
                 "called CodeViewDialogGui.add_bottom_button\n")

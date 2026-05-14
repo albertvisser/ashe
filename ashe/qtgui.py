@@ -8,10 +8,7 @@ import PyQt6.QtCore as core
 import PyQt6.QtWebEngineWidgets as webeng
 import PyQt6.Qsci as qsc  # scintilla
 
-from ashe.shared import masks, analyze_element
-# from ashe.dialogs_qt import (ElementDialog, TextDialog, DtdDialog, CssDialog, LinkDialog,
-#                              ImageDialog, VideoDialog, AudioDialog, ListDialog, TableDialog,
-#                              ScrolledTextDialog, CodeViewDialog, SearchDialog)
+from ashe.shared import masks
 
 
 class EditorGui(qtw.QMainWindow):
@@ -108,11 +105,6 @@ class EditorGui(qtw.QMainWindow):
         """show the screen
         """
         sys.exit(self.app.exec())
-
-    # def setfilenametooltip((self):
-        # """bedoeld om de filename ook als tooltip te tonen, uit te voeren
-        # aan het eind van new, open, save, saveas en reload"""
-        # zie ticket 406 voor een overweging om dit helemaal achterwege te laten
 
     def get_screen_title(self):
         "retrieve the screen's title"
@@ -228,14 +220,8 @@ class EditorGui(qtw.QMainWindow):
             else:
                 menu.addSeparator()
         # determine location of popup
-        # y = self.tree.visualItemRect(arg).bottom()
-        # x = self.tree.visualItemRect(arg).left()
-        # popup_location = core.QPoint(int(x) + 200, y)
         popup_location = self.tree.visualItemRect(arg).bottomRight()
-        # self.in_contextmenu = True
         menu.exec(self.tree.mapToGlobal(popup_location))
-        # self.in_contextmenu = False
-        # del menu
 
     def keyReleaseEvent(self, event):
         "reimplemented event handler"
@@ -258,22 +244,6 @@ class EditorGui(qtw.QMainWindow):
         """
         title = title or self._parent.title
         return ask_yesnocancel(self, text, title)
-
-    # def ask_for_open_filename(self):
-    #     """open een dialoog om te vragen welk file geladen moet worden
-    #     """
-    #     filename = qtw.QFileDialog.getOpenFileName(self, "Choose a file",
-    #                                                self.editor.xmlfn or os.getcwd(),
-    #                                                self.build_mask('html'))[0]
-    #     return filename
-
-    # def ask_for_save_filename(self):
-    #     """open een dialoog om te vragen onder welke naam de html moet worden opgeslagen
-    #     """
-    #     filename = qtw.QFileDialog.getSaveFileName(self, "Save file as ...",
-    #                                                self.editor.xmlfn or os.getcwd(),
-    #                                                self.build_mask('html'))[0]
-    #     return filename
 
     @staticmethod
     def set_item_expanded(item, state):
@@ -324,32 +294,6 @@ class EditorGui(qtw.QMainWindow):
                           baseUrl=core.QUrl.fromLocalFile(os.path.abspath(self.editor.xmlfn)))
         self.tree.setFocus()
 
-    # def do_edit_element(self, tagdata, attrdict):
-    #     """show dialog for existing element"""
-    #     obj = ElementDialog(self, title='Edit an element', tag=tagdata, attrs=attrdict)
-    #     return self.call_dialog(obj)
-
-    # def do_add_element(self, where):
-    #     """show dialog for new element"""
-    #     obj = ElementDialog(self, title=f"New element (insert {where})")
-    #     return self.call_dialog(obj)
-
-    # def do_edit_textvalue(self, textdata):
-    #     """show dialog for existing text"""
-    #     return self.call_dialog(TextDialog(self, title='Edit Text', text=textdata))
-
-    # def do_add_textvalue(self):
-    #     """show dialog for new text"""
-    #     return self.call_dialog(TextDialog(self, title="New Text"))
-
-    # IE support misschien kan dit een keer echt weg
-    # def ask_for_condition(self):
-    #     "zet een IE conditie om het element heen"
-    #     cond, ok = qtw.QInputDialog.getText(self, self.title, 'Enter the condition', text='')
-    #     if ok:
-    #         return cond
-    #     return ''
-
     def do_delete_item(self, item):
         """remove element from tree
         """
@@ -365,91 +309,14 @@ class EditorGui(qtw.QMainWindow):
         parent.removeChild(item)
         return prev
 
-    # def get_search_args(self, replace=False):
-    #     """show search options dialog"""
-    #     title = 'Search options'
-    #     return self.call_dialog(SearchDialog(self, title, replace))
-
     def meld(self, text):
         """notify about some information"""
         qtw.QMessageBox.information(self, self.editor.title, text)
-
-    # def meld_fout(self, text, abort=False):
-    #     """notify about an error"""
-    #     qtw.QMessageBox.critical(self, self.title, text)
-    #     if abort:
-    #         self.quit()
-
-    # def ask_yesnocancel(self, prompt):
-    #     """stelt een vraag en retourneert het antwoord
-    #     1 = Yes, 0 = No, -1 = Cancel
-    #     """
-    #     retval = dict(zip((qtw.QMessageBox.Yes, qtw.QMessageBox.No,
-    #                        qtw.QMessageBox.Cancel), (1, 0, -1)))
-    #     h = qtw.QMessageBox.question(
-    #         self, self.title, prompt,
-    #         qtw.QMessageBox.Yes | qtw.QMessageBox.No | qtw.QMessageBox.Cancel,
-    #         defaultButton=qtw.QMessageBox.Yes)
-    #     return retval[h]
-
-    # def ask_for_text(self, prompt):
-    #     """vraagt om tekst en retourneert het antwoord"""
-    #     data, ok = qtw.QInputDialog.getText(self, self.title, prompt, qtw.QLineEdit.Normal, "")
-    #     return data, ok
 
     def ensure_item_visible(self, item):
         """make sure we can see the item
         """
         self.tree.scrollToItem(item)
-
-    # def get_dtd(self):
-    #     """show dialog for dtd
-    #     """
-    #     return self.call_dialog(DtdDialog(self))
-
-    # def get_css_data(self):
-    #     """show dialog for new style element
-    #     """
-    #     return self.call_dialog(CssDialog(self))
-
-    # def get_link_data(self):
-    #     """show dialog for new link element
-    #     """
-    #     return self.call_dialog(LinkDialog(self))
-
-    # def get_image_data(self):
-    #     """show dialog for new image element
-    #     """
-    #     return self.call_dialog(ImageDialog(self))
-
-    # def get_video_data(self):
-    #     """show dialog for new video element
-    #     """
-    #     return self.call_dialog(VideoDialog(self))
-
-    # def get_audio_data(self):
-    #     """show dialog for new audio element
-    #     """
-    #     return self.call_dialog(AudioDialog(self))
-
-    # def get_list_data(self):
-    #     """show dialog for new list element
-    #     """
-    #     return self.call_dialog(ListDialog(self))
-
-    # def get_table_data(self):
-    #     """show dialog for new table element
-    #     """
-    #     return self.call_dialog(TableDialog(self))
-
-    # def validate(self, htmlfile, fromdisk):
-    #     "start validation"
-    #     ScrolledTextDialog(self, "Validation output", htmlfile=htmlfile, fromdisk=fromdisk).show()
-    #     # ScrolledTextDialog(self, "Validation output", htmlfile=htmlfile, fromdisk=fromdisk).gui.show()
-
-    # def show_code(self, title, caption, data):
-    #     "show dialog for view source"
-    #     CodeViewDialog(self, title, caption, data).show()
 
 
 class VisualTree(qtw.QTreeWidget):
@@ -513,16 +380,17 @@ def show_message(parent, title, message):
 
 
 def ask_yesnocancel(parent, prompt, title):
-        """stelt een vraag en retourneert het antwoord
-        1 = Yes, 0 = No, -1 = Cancel
-        """
-        retval = dict(zip((qtw.QMessageBox.StandardButton.Yes, qtw.QMessageBox.StandardButton.No,
-                           qtw.QMessageBox.StandardButton.Cancel), (1, 0, -1)))
-        hlp = qtw.QMessageBox.question(parent, title, prompt, qtw.QMessageBox.StandardButton.Yes
-                                       | qtw.QMessageBox.StandardButton.No
-                                       | qtw.QMessageBox.StandardButton.Cancel,
-                                       defaultButton=qtw.QMessageBox.StandardButton.Yes)
-        return retval[hlp]
+    """stelt een vraag en retourneert het antwoord
+
+    1 = Yes, 0 = No, -1 = Cancel
+    """
+    retval = dict(zip((qtw.QMessageBox.StandardButton.Yes, qtw.QMessageBox.StandardButton.No,
+                       qtw.QMessageBox.StandardButton.Cancel), (1, 0, -1)))
+    hlp = qtw.QMessageBox.question(parent, title, prompt, qtw.QMessageBox.StandardButton.Yes
+                                   | qtw.QMessageBox.StandardButton.No
+                                   | qtw.QMessageBox.StandardButton.Cancel,
+                                   defaultButton=qtw.QMessageBox.StandardButton.Yes)
+    return retval[hlp]
 
 
 def ask_for_text(parent, title, caption):
@@ -543,6 +411,8 @@ def call_dialog(obj):
 
 def show_dialog(obj):
     "show a nonmodal dialog"
+    # print('called show_dialog with arg', obj)
+    # breakpoint()
     obj.gui.show()
 
 
@@ -648,6 +518,7 @@ class EditDialogGui(qtw.QDialog):
 
     def add_buttons_to_section(self, section, buttondefs):
         "add a line of buttons to the content area"
+        result = []
         hbox = qtw.QHBoxLayout()
         hbox.addStretch()
         for text, callback in buttondefs:
@@ -655,10 +526,11 @@ class EditDialogGui(qtw.QDialog):
             btn.clicked.connect(callback)
             hbox.addWidget(btn)
             if text == self.master.style_text:
-                self.style_button = btn
+                result.append(btn)
         hbox.addStretch()
         section.addLayout(hbox)
         self.check_changes = False
+        return result
 
     def add_textinput_to_section(self, section, text, width, height):
         "add a multiline text input field to the content area"
@@ -705,82 +577,6 @@ class EditDialogGui(qtw.QDialog):
     def set_focus_to(self, widget):
         "position for input"
         widget.setFocus()
-
-    # def on_add(self):
-    #     "attribuut toevoegen"
-    #     self.refresh()
-    #     self.attr_table.setFocus()
-    #     row = self.attr_table.rowCount()
-    #     self.attr_table.insertRow(row)
-    #     self.attr_table.setVerticalHeaderItem(row, qtw.QTableWidgetItem('  '))
-    #     self.attr_table.setCurrentCell(row, 0)
-
-    # def on_del(self):
-    #     "attribuut verwijderen"
-    #     self.refresh()
-    #     row = self.attr_table.currentRow()
-    #     # if row or row == 0:
-    #     try:
-    #         if self.attr_table.item(row, 0).text() == 'style':
-    #             self.has_style = False
-    #         self.attr_table.removeRow(row)
-    #     except AttributeError:
-    #         qtw.QMessageBox.information(self, 'Delete attribute',
-    #                                     "Select a row by clicking on the row heading")
-
-    # def on_style(self):
-    #     "adjust style attributes"
-    #     if self.check_changes:
-    #         self.refresh()
-    #         self.check_changes = False
-    #         self.style_button.setText(self.master.style_text)
-    #         return
-    #     self.check_changes = True
-    #     self.style_button.setText('Chec&k Changes')
-    #     tag = self.tag_text.text()
-    #     fname = ''
-    #     test = self.attr_table.findItems('href', core.Qt.MatchFlag.MatchFixedString)
-    #     for item in test:
-    #         col = self.attr_table.column(item)
-    #         row = self.attr_table.row(item)
-    #         if col == 0:
-    #             fname = self.attr_table.item(row, 1).text()
-    #     if self.master.is_stylesheet:
-    #         self._parent.editor.cssm.call_editor_for_stylesheet(fname)
-    #         self.refresh()
-    #         self.check_changes = False
-    #     else:
-    #         self._parent.editor.cssm.call_editor(self, tag)
-
-    # def refresh(self):
-    #     "ververs het style / styledata element i.v.m. terugkeer uit css editor"
-    #     if self.tag_text.text() == 'link':
-    #         return
-    #     self.is_style_tag = self.tag_text.text() == 'style'
-    #     attrname = 'styledata' if self.is_style_tag else 'style'
-    #     self.has_style = not self.is_style_tag
-    #     # klopt de voorgaande regel wel? Is wel equivalent met hoe het eerder stond volgens mij
-    #     # maar zet has_style ook aan als we een nieuwe (lege) style definiëren
-    #     # in on_del wordt has_style uitgezet als de style regel wordt verwijderd dus lijkt te kloppen
-    #     for row in range(self.attr_table.rowCount()):
-    #         # if self.attr_table.item(row, 0).text() in ('style', 'styledata'):
-    #         if self.attr_table.item(row, 0).text() == attrname:
-    #             self.attr_table.item(row, 1).setText(str(self.styledata))
-    #             break
-    #     else:
-    #         row = self.attr_table.rowCount()
-    #         self.attr_table.insertRow(row)
-    #         item = qtw.QTableWidgetItem(attrname)
-    #         self.attr_table.setVerticalHeaderItem(row, qtw.QTableWidgetItem('  '))
-    #         self.attr_table.setItem(row, 0, item)
-    #         # item.setFlags(item.flags() & (not core.Qt.ItemFlag.ItemIsEditable))
-    #         item.setFlags(item.flags() & ~core.Qt.ItemFlag.ItemIsEditable)
-    #         item = qtw.QTableWidgetItem(self.styledata)
-    #         self.attr_table.setItem(row, 1, item)
-    #         # item.setFlags(item.flags() & (not core.Qt.ItemFlag.ItemIsEditable))
-    #         item.setFlags(item.flags() & ~core.Qt.ItemFlag.ItemIsEditable)
-    #         self.style_button.setText(analyze_element('', {attrname: ''})[2])
-    #     self.old_styledata = self.styledata
 
     def get_radiobutton_state(self, rb):
         "return the state of a radiobutton"
@@ -850,15 +646,16 @@ class EditDialogGui(qtw.QDialog):
         "controle bij afbreken: css data kan gewijzigd zijn"
         if hasattr(self.master, 'styledata'):
             if self.master.styledata != self.master.old_styledata:
+                # breakpoint()
                 qtw.QMessageBox.information(self, 'Let op', "bijbehorende style data is gewijzigd")
-                self.refresh()
+                self.master.refresh()
                 return
         super().reject()
 
     def accept(self):
         "controle bij OK aanklikken"
         if hasattr(self.master, 'attr_table'):
-            self.refresh()
+            self.master.refresh()
         msg = self.master.confirm()
         if msg:
             qtw.QMessageBox.information(self, self.title, msg)
@@ -893,6 +690,8 @@ class SearchDialogGui(qtw.QDialog):
     def add_lineinput(self, gsizer, row, col, callback):
         "add a text input box to a cell"
         txt = qtw.QLineEdit(self)
+        # height = txt.size().height()
+        # txt.setMinimumHeight(height)
         txt.textChanged.connect(callback)
         gsizer.addWidget(txt, row, col)
         return txt
@@ -948,13 +747,13 @@ class SearchDialogGui(qtw.QDialog):
 
     def update_size(self):
         "adjust widget sizer after changing text contents"
-        # not needed
+        # self.sizer.update()
 
     def accept(self):
         """confirm dialog and pass changed data to parent"""
         msg = self.master.confirm()
         if msg:
-            qtw.QMessageBox.information(self, self.parent.title, msg)
+            qtw.QMessageBox.information(self, self.master.title, msg)
             widget = self.txt_element_replace if 'replace' in msg else self.txt_element
             self.set_focus_to(widget)
         else:
@@ -1015,7 +814,8 @@ class AddDialogGui(qtw.QDialog):
         "add a spinbox to a cell in the content area"
         hbox = qtw.QHBoxLayout()
         sb = qtw.QSpinBox(self)  # .pnl, -1, size = (40, -1))
-        sb.setMaximum(maxvalue)
+        if maxvalue:
+            sb.setMaximum(maxvalue)
         sb.setValue(startvalue)
         if callback:
             sb.valueChanged.connect(callback)
@@ -1047,25 +847,28 @@ class AddDialogGui(qtw.QDialog):
 
     def add_table_to_section(self, grid, row, initialrows, headers, callback=None):
         "add a full-width table to the content area"
+        # breakpoint()
         hbox = qtw.QHBoxLayout()
-        hbox.addStretch()
+        hbox.addSpacing(1)  # addStretch()
         table = qtw.QTableWidget(self)
         table.setRowCount(initialrows)
         table.setColumnCount(len(headers))
-        table.setHorizontalHeaderLabels(headers)
         hdr = table.horizontalHeader()
+        hdr.setStretchLastSection(True)
         # hdr.resizeSection(0, 252)
         if callback:
             hdr.setSectionsClickable(True)
             hdr.sectionClicked.connect(callback)
+        table.setHorizontalHeaderLabels(headers)
         table.verticalHeader().setVisible(False)
         hbox.addWidget(table)
-        hbox.addStretch()
+        hbox.addSpacing(1)  # addStretch()
         grid.addLayout(hbox, row, 0, 1, 2)
         return table
 
     def add_buttons_to_bottom(self, extra=()):
         "add a button strip with action buttons at the bottom"
+        buttons = []
         hbox = qtw.QHBoxLayout()
         hbox.addStretch()
         ok_button = qtw.QPushButton('&Save', self)
@@ -1073,15 +876,16 @@ class AddDialogGui(qtw.QDialog):
         ok_button.setDefault(True)
         hbox.addWidget(ok_button)
         if extra:
-            check_changes = False
             inline_button = qtw.QPushButton(extra[0], self)
             inline_button.clicked.connect(extra[1])
             hbox.addWidget(inline_button)
+            buttons.append(inline_button)
         cancel_button = qtw.QPushButton('&Cancel', self)
         cancel_button.clicked.connect(self.reject)
         hbox.addWidget(cancel_button)
         hbox.addStretch()
         self.vbox.addLayout(hbox)
+        return buttons
 
     def set_focus_to(self, widget):
         "position for input"
@@ -1095,7 +899,7 @@ class AddDialogGui(qtw.QDialog):
         "set a textfield's contents"
         return field.setText(value)
 
-    def get_conbobox_text(self, cb):
+    def get_combobox_text(self, cb):
         "return the selected text in a combobox"
         return cb.currentText()
 
@@ -1121,8 +925,8 @@ class AddDialogGui(qtw.QDialog):
 
     def set_table_headers(self, table, headers, widths):
         "reset the column titles and widths "
+        table.setHorizontalHeaderLabels(headers)
         hdr = table.horizontalHeader()
-        hdr.setHorizontalHeaderLabels(headers)
         for ix, section in enumerate(widths):
             hdr.resizeSection(ix, section)
 
@@ -1170,13 +974,13 @@ class ScrolledTextDialogGui(qtw.QDialog):
 
     aanroepen met show() om openhouden tijdens aanpassen mogelijk te maken
     """
-    def __init__(self, master, parent, title):
+    def __init__(self, parent, title):
         super().__init__(parent)
         self.setWindowTitle(title)
         self.setWindowIcon(parent.appicon)
-        self.resize(600, 400)
         self.vbox = qtw.QVBoxLayout()
         self.setLayout(self.vbox)
+        self.resize(800, 600)
 
     def add_top_label(self, text):
         "add a message to the top of the display"
@@ -1197,11 +1001,14 @@ class ScrolledTextDialogGui(qtw.QDialog):
 
     def add_bottom_buttons(self, buttondefs):
         "add one or more action buttons"
+        # breakpoint()
+        # print('called ScrolledTextDialogGui.add_bottom_buttons with arg', buttondefs)
         hbox = qtw.QHBoxLayout()
         hbox.addStretch()
         first = True
         for text, callback in buttondefs:
             button = qtw.QPushButton(text, self)
+            # print(f'called clicked.connect with arg {callback} on button {button}')
             button.clicked.connect(callback)
             if first:
                 button.setDefault(True)
@@ -1221,12 +1028,13 @@ class CodeViewDialogGui(qtw.QDialog):
     create a window with a scintilla text widget and an ok button
     aanroepen met show() om openhouden tijdens aanpassen mogelijk te maken
     """
-    def __init__(self, master, parent, title):
+    def __init__(self, parent, title):
+        # print('called CodeviewDialogGui')
         super().__init__(parent)
         self.setWindowTitle(title)
         # self.setWindowIcon(self._parent.appicon)
-        self.resize(600, 400)
         self.vbox = qtw.QVBoxLayout()
+        self.resize(800, 600)
         self.setLayout(self.vbox)
 
     def add_top_message(self, text):
