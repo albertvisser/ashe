@@ -1002,17 +1002,17 @@ class ScrolledTextDialogGui(qtw.QDialog):
     def add_bottom_buttons(self, buttondefs):
         "add one or more action buttons"
         # breakpoint()
-        # print('called ScrolledTextDialogGui.add_bottom_buttons with arg', buttondefs)
+        print('called ScrolledTextDialogGui.add_bottom_buttons with arg', buttondefs)
         hbox = qtw.QHBoxLayout()
         hbox.addStretch()
-        first = True
+        # first = True
         for text, callback in buttondefs:
             button = qtw.QPushButton(text, self)
-            # print(f'called clicked.connect with arg {callback} on button {button}')
+            print(f'called clicked.connect with arg {callback} on button {button} with text {text}')
             button.clicked.connect(callback)
-            if first:
-                button.setDefault(True)
-                first = False
+            # if first:
+            #     button.setDefault(True)
+            #     first = False
             hbox.addWidget(button)
         hbox.addStretch()
         self.vbox.addLayout(hbox)
@@ -1060,7 +1060,8 @@ class CodeViewDialogGui(qtw.QDialog):
         hbox.addStretch()
         button = qtw.QPushButton('&Done', self)
         button.clicked.connect(self.close)
-        button.setDefault(True)
+        # button.setDefault(True)
+        button.setFocus()
         hbox.addWidget(button)
         hbox.addStretch()
         self.vbox.addLayout(hbox)

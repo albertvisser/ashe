@@ -1490,7 +1490,7 @@ class SearchHelper:
 
         itemfound = None
         ele_ok = attr_name_ok = attr_value_ok = attr_ok = text_ok = False
-        for newpos, data_item in enumerate(data):
+        for _newpos, data_item in enumerate(data):
             item, element_name, attr_data = data_item
             # itemtext = self.gui.get_element_text(item)
             if element_name.startswith(ELSTART):
@@ -1886,7 +1886,7 @@ class DtdDialog:
 
     def confirm(self):
         "controle bij OK aanklikken"
-        for caption, dtd, radio in self.dtd_list:
+        for _caption, dtd, radio in self.dtd_list:
             if radio and self.gui.get_radiobutton_state(radio):
                 self.parent.dialog_data = dtd
                 break
@@ -2360,6 +2360,7 @@ class ScrolledTextDialog:
         if htmlfile:
             buttondefs.append(('&View submitted source', self.show_source))
         self.gui.add_bottom_buttons(buttondefs)
+        # breakpoint()
         if htmlfile:
             data = parent.do_validate(htmlfile)
         if data:
@@ -2370,6 +2371,7 @@ class ScrolledTextDialog:
         # print('called ScrolledTextDialog.show_source with args', args)
         with open(self.htmlfile) as f_in:
             data = ''.join(list(f_in))
+        # print(self.htmlfile, data)
         if data:
             dlg = CodeViewDialog(self, "Submitted source", data=data)
             self.dlg = dlg  # alleen t.b.v. unittest

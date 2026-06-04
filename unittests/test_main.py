@@ -5452,7 +5452,7 @@ class TestDtdDialog:
         parent = types.SimpleNamespace(gui='EditDialogGui', dtdlist=[])
         with pytest.raises(IndexError):
             testobj = testee.DtdDialog(parent, title='Add DTD')
-        dummy = capsys.readouterr().out   # ignore captured output
+        capsys.readouterr()   # ignore and flush captured output
         parent.dtdlist = [('xxx', 'yyy', 'zzz'), ('HTML 5', 'bbb', 'ccc')]
         testobj = testee.DtdDialog(parent, title='Add DTD')
         assert testobj.parent == parent
@@ -7032,13 +7032,13 @@ class TestCodeViewDialog:
                 print('called CodeViewDialogGui.add_bottom_button')
         monkeypatch.setattr(testee.gui, 'CodeViewDialogGui', MockGui)
         parent = types.SimpleNamespace(gui='EditorGui')
-        testobj = testee.CodeViewDialog(parent)
+        testee.CodeViewDialog(parent)
         assert capsys.readouterr().out == (
                 "called CodeViewDialogGui.__init__ with args ('EditorGui', '')\n"
                 "called CodeViewDialogGui.add_top_message with arg ''\n"
                 "called CodeViewDialogGui.add_content_area with arg ''\n"
                 "called CodeViewDialogGui.add_bottom_button\n")
-        testobj = testee.CodeViewDialog(parent, title='xxx', caption='yyy', data='zzz', size=(60, 40))
+        testee.CodeViewDialog(parent, title='xxx', caption='yyy', data='zzz', size=(60, 40))
         assert capsys.readouterr().out == (
                 "called CodeViewDialogGui.__init__ with args ('EditorGui', 'xxx')\n"
                 "called CodeViewDialogGui.add_top_message with arg 'yyy'\n"
