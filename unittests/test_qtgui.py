@@ -2454,7 +2454,7 @@ class TestScrolledTextDialogGui:
                 "called HBox.addStretch\n"
                 f"called PushButton.__init__ with args ('xx', {testobj}) {{}}\n"
                 "called Signal.connect with args ('callback1',)\n"
-                "called PushButton.setDefault with arg `True`\n"
+                # "called PushButton.setDefault with arg `True`\n"
                 "called HBox.addWidget with arg MockPushButton\n"
                 f"called PushButton.__init__ with args ('yy', {testobj}) {{}}\n"
                 "called Signal.connect with args ('callback2',)\n"
@@ -2560,7 +2560,8 @@ class TestCodeViewDialogGui:
                 "called HBox.addStretch\n"
                 f"called PushButton.__init__ with args ('&Done', {testobj}) {{}}\n"
                 f"called Signal.connect with args ({testobj.close},)\n"
-                "called PushButton.setDefault with arg `True`\n"
+                # "called PushButton.setDefault with arg `True`\n"
+                "called PushButton.setFocus\n"
                 "called HBox.addWidget with arg MockPushButton\n"
                 "called HBox.addStretch\n"
                 "called VBox.addLayout with arg MockHBoxLayout\n")

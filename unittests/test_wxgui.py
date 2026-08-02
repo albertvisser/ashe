@@ -1796,7 +1796,7 @@ class TestSearchDialogGui:
         result = testobj.add_checkbox(gsizer, 'text', 'row', 'col')
         assert isinstance(result, testee.wx.CheckBox)
         assert capsys.readouterr().out == (
-                f"called CheckBox.__init__ with args ({testobj}, 'text') {{}}\n"
+                f"called CheckBox.__init__ with args ({testobj},) {{'label': 'text'}}\n"
                 "called GridSizer.Add with args MockCheckBox (('row', 'col'), (1, 3))\n")
 
     def test_add_description(self, monkeypatch, capsys):

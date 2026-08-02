@@ -722,7 +722,7 @@ class SearchDialogGui(wx.Dialog):
 
     def add_checkbox(self, gsizer, text, row, col):
         "add a checkbox to a cell"
-        cb = wx.CheckBox(self, text)
+        cb = wx.CheckBox(self, label=text)
         gsizer.Add(cb, (row, col), (1, 3))
         return cb
 

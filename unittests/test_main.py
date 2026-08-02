@@ -4324,33 +4324,28 @@ class TestSearchHelper:
         assert testobj.build_search_spec('', 'x', '', '') == 'search for a(n) `x` attribute'
         assert testobj.build_search_spec('', '', 'x', '') == 'search for an attribute with value `x`'
         assert testobj.build_search_spec('', '', '', 'x') == 'search for text'
-        assert testobj.build_search_spec('x', 'y', '', '') == ('search for a(n) `x` element'
-                                                               ' with a(n) `y` attribute')
-        assert testobj.build_search_spec('x', '', 'y', '') == ('search for a(n) `x` element'
-                                                               ' with an attribute with value `y`')
-        assert testobj.build_search_spec('x', '', '', 'y') == 'search for text under a(n) `x` element'
-        assert testobj.build_search_spec('', 'x', 'y', '') == ('search for a(n) `x` attribute'
-                                                               ' with value `y`')
-        assert testobj.build_search_spec('', 'x', '', 'y') == ('search for text under an element'
-                                                               ' with a(n) `x` attribute')
-        assert testobj.build_search_spec('', '', 'x', 'y') == ('search for text under an element'
-                                                               ' with an attribute with value `x`')
-        assert testobj.build_search_spec('x', 'y', 'z', '') == ('search for a(n) `x` element'
-                                                                ' with a(n) `y` attribute'
-                                                                ' with value `z`')
-        assert testobj.build_search_spec('x', 'y', '', 'z') == ('search for text'
-                                                                ' under a(n) `x` element'
-                                                                ' with a(n) `y` attribute')
-        assert testobj.build_search_spec('x', '', 'y', 'z') == ('search for text'
-                                                                ' under a(n) `x` element'
-                                                                ' with an attribute with value `y`')
-        assert testobj.build_search_spec('', 'x', 'y', 'z') == ('search for text under an element'
-                                                                ' with a(n) `x` attribute'
-                                                                ' with value `y`')
-        assert testobj.build_search_spec('x', 'y', 'z', 'a', ()) == ('search for text'
-                                                                     ' under a(n) `x` element'
-                                                                     ' with a(n) `y` attribute'
-                                                                     ' with value `z`')
+        assert testobj.build_search_spec('x', 'y', '', '') == (
+                'search for a(n) `x` element\n with a(n) `y` attribute')
+        assert testobj.build_search_spec('x', '', 'y', '') == (
+                'search for a(n) `x` element\n with an attribute with value `y`')
+        assert testobj.build_search_spec('x', '', '', 'y') == (
+                'search for text under a(n) `x` element')
+        assert testobj.build_search_spec('', 'x', 'y', '') == (
+                'search for a(n) `x` attribute with value `y`')
+        assert testobj.build_search_spec('', 'x', '', 'y') == (
+                'search for text under an element with a(n) `x` attribute')
+        assert testobj.build_search_spec('', '', 'x', 'y') == (
+                'search for text under an element with an attribute with value `x`')
+        assert testobj.build_search_spec('x', 'y', 'z', '') == (
+                'search for a(n) `x` element\n with a(n) `y` attribute with value `z`')
+        assert testobj.build_search_spec('x', 'y', '', 'z') == (
+                'search for text under a(n) `x` element\n with a(n) `y` attribute')
+        assert testobj.build_search_spec('x', '', 'y', 'z') == (
+                'search for text under a(n) `x` element\n with an attribute with value `y`')
+        assert testobj.build_search_spec('', 'x', 'y', 'z') == (
+                'search for text under an element with a(n) `x` attribute with value `y`')
+        assert testobj.build_search_spec('x', 'y', 'z', 'a', ()) == (
+                'search for text under a(n) `x` element\n with a(n) `y` attribute with value `z`')
         assert testobj.build_search_spec('', '', '', '', ('x')) == (
                 'error: element replacement without element search')
         assert testobj.build_search_spec('', '', '', '', ('', 'x')) == (
@@ -4360,17 +4355,17 @@ class TestSearchHelper:
         assert testobj.build_search_spec('', '', '', '', ('', '', '', 'x')) == (
                 'error: text replacement without text search')
         assert testobj.build_search_spec('x', '', '', '', ('y', '', '', '')) == (
-                'search for a(n) `x` element\nand replace element name with `y`')
+                'search for a(n) `x` element\n and replace element name with `y`')
         assert testobj.build_search_spec('', 'x', '', '', ('', 'y', '', '')) == (
-                'search for a(n) `x` attribute\nand replace attribute name with `y`')
+                'search for a(n) `x` attribute and replace attribute name with `y`')
         assert testobj.build_search_spec('', '', 'x', '', ('', '', 'y', '')) == (
-                'search for an attribute with value `x`\nand replace attribute value with `y`')
+                'search for an attribute with value `x`\n and replace attribute value with `y`')
         assert testobj.build_search_spec('', '', '', 'x', ('', '', '', 'y')) == (
-                'search for text\nand replace text with `y`')
+                'search for text and replace `x` in text with `y`')
         assert testobj.build_search_spec('x', 'y', 'z', 'a', ('xx', 'yy', 'zz', 'aa')) == (
-                'search for text under a(n) `x` element with a(n) `y` attribute'
-                ' with value `z`\nand replace element name with `xx`, attribute name with `yy`,'
-                ' attribute value with `zz`, text with `aa`')
+                'search for text under a(n) `x` element\n with a(n) `y` attribute'
+                ' with value `z`\n\n and replace element name with `xx`,\n'
+                ' attribute name with `yy`,\n attribute value with `zz`,\n `a` in text with `aa`')
 
     def test_find_next(self, monkeypatch, capsys):
         """unittest for SearchHelper.find_next

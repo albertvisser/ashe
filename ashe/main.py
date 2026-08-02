@@ -1413,7 +1413,7 @@ class SearchHelper:
         attr = ''
         if ele:
             # ele = f' an element named `{ele}`'
-            ele = f' a(n) `{ele}` element'
+            ele = f' a(n) `{ele}` element\n'
         if attr_name or attr_val:
             # attr = ' an attribute'
             # if attr_name:
@@ -1424,9 +1424,9 @@ class SearchHelper:
                 attr += ' an attribute'
             if attr_val:
                 # attr += f' that has value `{attr_val}`'
-                attr += f' with value `{attr_val}`'
+                attr += f' with value `{attr_val}`\n'
             if ele:
-                attr = f' with {attr[1:]}'
+                attr = f' with {attr[1:]}\n'
         out = ''
         if text:
             out = 'search for text'
@@ -1443,7 +1443,7 @@ class SearchHelper:
         elif attr:
             out = 'search for' + attr
         if replacements:
-            out += '\nand replace '
+            out += ' and replace '
             replace = ''
             if replacements[0]:
                 if not ele:
@@ -1453,22 +1453,22 @@ class SearchHelper:
                 if not attr_name:
                     return 'error: attribute replacement without attribute search'
                 if replace:
-                    replace += ', '
+                    replace += ',\n '
                 replace += f'attribute name with `{replacements[1]}`'
             if replacements[2]:
                 if not attr_val:
                     return 'error: attribute value replacement without attribute value search'
                 if replace:
-                    replace += ', '
+                    replace += ',\n '
                 replace += f'attribute value with `{replacements[2]}`'
             if replacements[3]:
                 if not text:
                     return 'error: text replacement without text search'
                 if replace:
-                    replace += ', '
-                replace += f'text with `{replacements[3]}`'
+                    replace += ',\n '
+                replace += f'`{text}` in text with `{replacements[3]}`'
             out += replace
-        return out
+        return out.strip()
 
     @staticmethod
     def find_next(data, search_args, reverse=False, pos=None):
@@ -1490,7 +1490,7 @@ class SearchHelper:
 
         itemfound = None
         ele_ok = attr_name_ok = attr_value_ok = attr_ok = text_ok = False
-        for _newpos, data_item in enumerate(data):
+        for newpos, data_item in enumerate(data):
             item, element_name, attr_data = data_item
             # itemtext = self.gui.get_element_text(item)
             if element_name.startswith(ELSTART):
@@ -1816,6 +1816,7 @@ class SearchDialog:
             self.txt_text_replace = self.gui.add_lineinput(grid, 4, 6, self.update_search_text)
             self.cb_replace_all = self.gui.add_checkbox(grid, 'Replace All', 5, 3)
         self.lbl_search = self.gui.add_description()
+        # self.lbl_search = self.gui.add_description(grid, 7)
         self.gui.add_buttons_to_bottom()
         if self.parent.search_args:
             self.gui.set_lineinput_value(self.txt_element, self.parent.search_args[0])
@@ -2353,7 +2354,9 @@ class ScrolledTextDialog:
     """
     def __init__(self, parent, title='', data='', htmlfile='', fromdisk=False):
         self.htmlfile = htmlfile
+        # print(self)
         self.gui = gui.ScrolledTextDialogGui(parent.gui, title)
+        # print(self.gui)
         self.gui.add_top_label(VAL_MESSAGE if fromdisk else '')
         textfield = self.gui.add_text_area()
         buttondefs = [('&Done', self.gui.close)]
